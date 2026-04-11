@@ -1,0 +1,29 @@
+name: gymlog
+description: "GymLog - Track your workouts, monitor progress, and crush your goals."
+
+version: 1.0.2+33
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  sqflite: ^2.3.0
+  path: ^1.9.0
+  shared_preferences: ^2.2.3
+  image_picker: ^1.1.2
+  path_provider: ^2.1.4
+  gal: ^2.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+
+flutter:
+
+  uses-material-design: true
+

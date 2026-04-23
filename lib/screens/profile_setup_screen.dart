@@ -3,6 +3,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:gymlog/screens/home_screen.dart';
+import 'package:gymlog/screens/body_measurements_screen.dart';
+import 'package:gymlog/utils/app_colors.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   final bool isEditing;
@@ -47,7 +49,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     final picker = ImagePicker();
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.cardBg(context),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => SafeArea(
@@ -59,16 +61,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                  color: const Color(0xFFDDDDDD),
+                  color: AppColors.border(ctx),
                   borderRadius: BorderRadius.circular(2)),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'Profile Photo',
               style: TextStyle(
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF111111),
+                color: AppColors.textPrimary(ctx),
               ),
             ),
             const SizedBox(height: 8),
@@ -77,14 +79,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF111111).withValues(alpha: 0.06),
+                  color: AppColors.border(ctx).withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.camera_alt_outlined,
-                    color: Color(0xFF111111), size: 20),
+                child: Icon(Icons.camera_alt_outlined,
+                    color: AppColors.textPrimary(ctx), size: 20),
               ),
-              title: const Text('Take a photo',
-                  style: TextStyle(fontWeight: FontWeight.w500)),
+              title: Text('Take a photo',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary(ctx))),
               onTap: () async {
                 Navigator.pop(ctx);
                 final img = await picker.pickImage(
@@ -97,14 +101,16 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF111111).withValues(alpha: 0.06),
+                  color: AppColors.border(ctx).withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(Icons.photo_library_outlined,
-                    color: Color(0xFF111111), size: 20),
+                child: Icon(Icons.photo_library_outlined,
+                    color: AppColors.textPrimary(ctx), size: 20),
               ),
-              title: const Text('Choose from gallery',
-                  style: TextStyle(fontWeight: FontWeight.w500)),
+              title: Text('Choose from gallery',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary(ctx))),
               onTap: () async {
                 Navigator.pop(ctx);
                 final img = await picker.pickImage(
@@ -118,7 +124,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE53935).withValues(alpha: 0.08),
+                    color:
+                        const Color(0xFFE53935).withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.delete_outline,
@@ -126,7 +133,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                 ),
                 title: const Text('Remove photo',
                     style: TextStyle(
-                        color: Color(0xFFE53935), fontWeight: FontWeight.w500)),
+                        color: Color(0xFFE53935),
+                        fontWeight: FontWeight.w500)),
                 onTap: () {
                   Navigator.pop(ctx);
                   setState(() => _imagePath = null);
@@ -182,8 +190,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
 
   @override
   Widget build(BuildContext context) {
+    final bg = AppColors.background(context);
+    final textPrimary = AppColors.textPrimary(context);
+    final textSecondary = AppColors.textSecondary(context);
+    final border = AppColors.border(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: bg,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnim,
@@ -210,12 +223,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                             color: Color(0xFFFFD700), size: 20),
                       ),
                       const SizedBox(width: 10),
-                      const Text(
+                      Text(
                         'GymLog',
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFF111111),
+                          color: textPrimary,
                           letterSpacing: -0.5,
                         ),
                       ),
@@ -227,10 +240,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                   // ── Heading ──
                   Text(
                     widget.isEditing ? 'Edit Profile' : 'Welcome',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 30,
                       fontWeight: FontWeight.w900,
-                      color: Color(0xFF111111),
+                      color: textPrimary,
                       letterSpacing: -0.8,
                       height: 1.1,
                     ),
@@ -241,9 +254,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                         ? 'Update your profile details'
                         : 'Set up your profile\nto start logging workouts',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15,
-                      color: Color(0xFF888888),
+                      color: textSecondary,
                       height: 1.5,
                     ),
                   ),
@@ -261,11 +274,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                           height: 116,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xFFE8E8E8),
+                            color: border.withValues(alpha: 0.5),
                             border: Border.all(
                               color: _imagePath != null
                                   ? const Color(0xFFFFD700)
-                                  : const Color(0xFFDDDDDD),
+                                  : border,
                               width: _imagePath != null ? 3 : 2,
                             ),
                           ),
@@ -273,9 +286,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                             child: _imagePath != null
                                 ? Image.file(File(_imagePath!),
                                     fit: BoxFit.cover)
-                                : const Center(
+                                : Center(
                                     child: Icon(Icons.person_outline,
-                                        size: 48, color: Color(0xFFBBBBBB)),
+                                        size: 48, color: textSecondary),
                                   ),
                           ),
                         ),
@@ -294,11 +307,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                   ),
 
                   const SizedBox(height: 10),
-                  const Text(
+                  Text(
                     'Tap to add photo',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Color(0xFFAAAAAA),
+                      color: textSecondary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -309,12 +322,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'YOUR NAME',
                         style: TextStyle(
                           fontWeight: FontWeight.w700,
                           fontSize: 11,
-                          color: Color(0xFF888888),
+                          color: textSecondary,
                           letterSpacing: 1.2,
                         ),
                       ),
@@ -322,19 +335,19 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                       TextField(
                         controller: _nameController,
                         textCapitalization: TextCapitalization.words,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF111111),
+                          color: textPrimary,
                         ),
                         decoration: InputDecoration(
                           hintText: 'e.g. Alex',
                           hintStyle:
-                              const TextStyle(color: Color(0xFFCCCCCC)),
-                          prefixIcon: const Icon(Icons.person_outline,
-                              color: Color(0xFFAAAAAA)),
+                              TextStyle(color: AppColors.hintText(context)),
+                          prefixIcon: Icon(Icons.person_outline,
+                              color: textSecondary),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: AppColors.inputFill(context),
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 16),
                           border: OutlineInputBorder(
@@ -343,19 +356,47 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(
-                                color: Color(0xFFEEEEEE), width: 1.5),
+                            borderSide:
+                                BorderSide(color: border, width: 1.5),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide: const BorderSide(
-                                color: Color(0xFF111111), width: 2),
+                            borderSide: BorderSide(
+                                color: textPrimary, width: 2),
                           ),
                         ),
                         onSubmitted: (_) => _save(),
                       ),
                     ],
                   ),
+
+                  // ── Body Stats button (edit mode only) ──
+                  if (widget.isEditing) ...[
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                const BodyMeasurementsScreen()),
+                      ),
+                      icon: Icon(Icons.monitor_weight_outlined,
+                          color: textPrimary, size: 18),
+                      label: Text(
+                        'Body Measurements',
+                        style: TextStyle(
+                            color: textPrimary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 50),
+                        side: BorderSide(color: border, width: 1.5),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(height: 44),
 
@@ -366,22 +407,25 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                     child: ElevatedButton(
                       onPressed: _saving ? null : _save,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF111111),
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppColors.primaryBtnBg(context),
+                        foregroundColor: AppColors.primaryBtnFg(context),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),
                         elevation: 0,
-                        disabledBackgroundColor:
-                            const Color(0xFF111111).withValues(alpha: 0.4),
+                        disabledBackgroundColor: AppColors.primaryBtnBg(context)
+                            .withValues(alpha: 0.4),
                       ),
                       child: _saving
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 22,
                               height: 22,
                               child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2.5))
+                                  color: AppColors.primaryBtnFg(context),
+                                  strokeWidth: 2.5))
                           : Text(
-                              widget.isEditing ? 'Save Changes' : 'Get Started',
+                              widget.isEditing
+                                  ? 'Save Changes'
+                                  : 'Get Started',
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,

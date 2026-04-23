@@ -743,7 +743,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                     final isBW =
                                         (s['weight'] as num).toDouble() ==
                                             0;
-                                    return Padding(
+                                    final setRow = Padding(
                                       padding: const EdgeInsets.only(
                                           bottom: 8),
                                       child: Row(children: [
@@ -809,6 +809,30 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                           ),
                                         ],
                                       ]),
+                                    );
+                                    if (!_editMode) return setRow;
+                                    return Dismissible(
+                                      key: ValueKey('set-${s['id']}'),
+                                      direction:
+                                          DismissDirection.endToStart,
+                                      onDismissed: (_) =>
+                                          _deleteSet(s['id'] as int),
+                                      background: Container(
+                                        alignment: Alignment.centerRight,
+                                        padding: const EdgeInsets.only(
+                                            right: 12),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFE53935)
+                                              .withValues(alpha: 0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: const Icon(
+                                            Icons.delete_outline,
+                                            color: Color(0xFFE53935),
+                                            size: 20),
+                                      ),
+                                      child: setRow,
                                     );
                                   }),
                                   if (_editMode) ...[

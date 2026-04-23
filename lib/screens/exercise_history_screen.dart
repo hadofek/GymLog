@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:gymlog/db/db_helper.dart';
+import 'package:gymlog/utils/app_colors.dart';
 
 class ExerciseHistoryScreen extends StatefulWidget {
   final String exerciseName;
@@ -22,10 +23,12 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
 
   Future<void> _load() async {
     final h = await DBHelper.getExerciseHistory(widget.exerciseName);
-    setState(() {
-      _history = h;
-      _loading = false;
-    });
+    if (mounted) {
+      setState(() {
+        _history = h;
+        _loading = false;
+      });
+    }
   }
 
   String _formatDate(String raw) {
@@ -62,21 +65,25 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
   String _weightLabel(double w) =>
       w % 1 == 0 ? '${w.toInt()}kg' : '${w}kg';
 
+  String _rmLabel(double rm) =>
+      rm % 1 == 0 ? '${rm.toInt()}kg' : '${rm.toStringAsFixed(1)}kg';
+
   @override
   Widget build(BuildContext context) {
+    final bg = AppColors.background(context);
+    final textPrimary = AppColors.textPrimary(context);
+    final textSecondary = AppColors.textSecondary(context);
+
     if (_loading) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF5F5F5),
+        backgroundColor: bg,
         appBar: AppBar(
-          backgroundColor: const Color(0xFFF5F5F5),
-          surfaceTintColor: Colors.transparent,
-          elevation: 0,
-          scrolledUnderElevation: 0,
+          backgroundColor: bg,
           title: Text(widget.exerciseName,
-              style: const TextStyle(
+              style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: 18,
-                  color: Color(0xFF111111))),
+                  color: textPrimary)),
         ),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -87,7 +94,13 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
     final maxWeight = weights.isEmpty ? 0.0 : weights.reduce(max);
     final totalSessions = _history.length;
 
-    // Chart uses up to the 20 most recent sessions
+    // Best estimated 1RM across all sessions
+    final best1RM = _history.isEmpty
+        ? 0.0
+        : _history
+            .map((e) => (e['best_1rm'] as num?)?.toDouble() ?? 0.0)
+            .reduce(max);
+
     final chartHistory = _history.length > 20
         ? _history.sublist(_history.length - 20)
         : _history;
@@ -95,29 +108,29 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
         chartHistory.map((e) => (e['max_weight'] as num).toDouble()).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: bg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F5F5),
-        surfaceTintColor: Colors.transparent,
+        backgroundColor: bg,
         elevation: 0,
         scrolledUnderElevation: 0,
+        toolbarHeight: 64,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               widget.exerciseName,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 18,
-                color: Color(0xFF111111),
+                color: textPrimary,
                 letterSpacing: -0.3,
               ),
             ),
-            const Text(
+            Text(
               'Exercise History',
               style: TextStyle(
                   fontSize: 12,
-                  color: Color(0xFF888888),
+                  color: textSecondary,
                   fontWeight: FontWeight.w400),
             ),
           ],
@@ -132,25 +145,26 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                     width: 72,
                     height: 72,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF111111).withValues(alpha: 0.06),
+                      color: AppColors.border(context)
+                          .withValues(alpha: 0.5),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.fitness_center_outlined,
-                        size: 32, color: Color(0xFF999999)),
+                    child: Icon(Icons.fitness_center_outlined,
+                        size: 32, color: textSecondary),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'No sessions logged yet',
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF333333),
+                      color: textPrimary,
                     ),
                   ),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     'Log this exercise to see your progress',
-                    style: TextStyle(fontSize: 14, color: Color(0xFF999999)),
+                    style: TextStyle(fontSize: 14, color: textSecondary),
                   ),
                 ],
               ),
@@ -183,13 +197,90 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                   ),
                 ]),
 
+                // ── 1RM card ──
+                if (best1RM > 0) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.isDark(context)
+                          ? AppColors.cardBg(context)
+                          : const Color(0xFF111111),
+                      border: AppColors.isDark(context)
+                          ? Border.all(
+                              color:
+                                  AppColors.gold.withValues(alpha: 0.4),
+                              width: 1.5)
+                          : null,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: AppColors.gold.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.emoji_events_rounded,
+                            color: AppColors.gold, size: 22),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Est. 1 Rep Max',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppColors.isDark(context)
+                                    ? AppColors.textSecondary(context)
+                                    : const Color(0xFFAAAAAA),
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            Text(
+                              _rmLabel(best1RM),
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.gold,
+                                letterSpacing: -0.5,
+                                height: 1.1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        'Epley\nformula',
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textTertiary(context),
+                          height: 1.4,
+                        ),
+                      ),
+                    ]),
+                  ),
+                ],
+
                 const SizedBox(height: 20),
 
-                // ── Chart (2+ sessions only) ──
+                // ── Chart ──
                 if (chartWeights.length >= 2) ...[
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.cardBg(context),
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
@@ -204,19 +295,19 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Max Weight Progress',
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
-                              color: Color(0xFF111111),
+                              color: textPrimary,
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             '${chartHistory.length} most recent sessions',
-                            style: const TextStyle(
-                                fontSize: 12, color: Color(0xFF888888)),
+                            style: TextStyle(
+                                fontSize: 12, color: textSecondary),
                           ),
                           const SizedBox(height: 16),
                           SizedBox(
@@ -230,10 +321,10 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                   const SizedBox(height: 20),
                 ],
 
-                // ── Sessions list (newest first) ──
+                // ── Sessions list ──
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppColors.cardBg(context),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
@@ -245,8 +336,8 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                   ),
                   child: Column(
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(16, 14, 16, 10),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
                         child: Row(
                           children: [
                             Text(
@@ -254,22 +345,22 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                               style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 14,
-                                color: Color(0xFF111111),
+                                color: textPrimary,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      const Divider(height: 1, color: Color(0xFFF5F5F5)),
+                      Divider(
+                          height: 1,
+                          color: AppColors.divider(context)),
                       ...List.generate(_history.length, (i) {
-                        // newest first
-                        final session = _history[_history.length - 1 - i];
+                        final session =
+                            _history[_history.length - 1 - i];
                         final w =
                             (session['max_weight'] as num).toDouble();
                         final sets = session['set_count'] as int;
                         final isLast = i == _history.length - 1;
-                        // Only mark PR if it's the first occurrence of maxWeight
-                        // and there's more than 1 session
                         final isPR =
                             w == maxWeight && totalSessions > 1;
                         return Column(
@@ -286,18 +377,18 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                                       Text(
                                         _formatDate(
                                             session['date'] as String),
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.w600,
                                           fontSize: 14,
-                                          color: Color(0xFF111111),
+                                          color: textPrimary,
                                         ),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
                                         '$sets set${sets != 1 ? 's' : ''}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 12,
-                                          color: Color(0xFF888888),
+                                          color: textSecondary,
                                         ),
                                       ),
                                     ],
@@ -333,7 +424,7 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                                         fontSize: 15,
                                         color: isPR
                                             ? const Color(0xFF8B7500)
-                                            : const Color(0xFF111111),
+                                            : textPrimary,
                                       ),
                                     ),
                                   ],
@@ -341,11 +432,11 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                               ]),
                             ),
                             if (!isLast)
-                              const Divider(
+                              Divider(
                                   height: 1,
                                   indent: 16,
                                   endIndent: 16,
-                                  color: Color(0xFFF5F5F5)),
+                                  color: AppColors.divider(context)),
                           ],
                         );
                       }),
@@ -357,8 +448,6 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
     );
   }
 }
-
-// ── Stat card ────────────────────────────────────────────────────────────────
 
 class _StatCard extends StatelessWidget {
   final String label;
@@ -376,7 +465,7 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBg(context),
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
@@ -391,9 +480,9 @@ class _StatCard extends StatelessWidget {
         children: [
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
-              color: Color(0xFF888888),
+              color: AppColors.textSecondary(context),
               fontWeight: FontWeight.w600,
               letterSpacing: 0.2,
             ),
@@ -404,7 +493,7 @@ class _StatCard extends StatelessWidget {
             style: TextStyle(
               fontSize: smallValue ? 14 : 18,
               fontWeight: FontWeight.w800,
-              color: const Color(0xFF111111),
+              color: AppColors.textPrimary(context),
               letterSpacing: -0.3,
             ),
           ),
@@ -414,11 +503,8 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-// ── Weight chart ─────────────────────────────────────────────────────────────
-
 class _WeightChart extends StatelessWidget {
   final List<double> values;
-
   const _WeightChart({required this.values});
 
   @override
@@ -461,7 +547,6 @@ class _ChartPainter extends CustomPainter {
       return Offset(x, y);
     }
 
-    // Gradient fill
     final fillPath = Path()
       ..moveTo(pt(0).dx, size.height - vPad)
       ..lineTo(pt(0).dx, pt(0).dy);
@@ -485,7 +570,6 @@ class _ChartPainter extends CustomPainter {
         ).createShader(Rect.fromLTWH(0, 0, size.width, size.height)),
     );
 
-    // Line
     final linePath = Path()..moveTo(pt(0).dx, pt(0).dy);
     for (int i = 1; i < values.length; i++) {
       linePath.lineTo(pt(i).dx, pt(i).dy);
@@ -500,7 +584,6 @@ class _ChartPainter extends CustomPainter {
         ..strokeJoin = StrokeJoin.round,
     );
 
-    // Dots: find global max index for highlighting
     int maxIdx = 0;
     for (int i = 1; i < values.length; i++) {
       if (values[i] > values[maxIdx]) maxIdx = i;
@@ -509,7 +592,6 @@ class _ChartPainter extends CustomPainter {
     for (int i = 0; i < values.length; i++) {
       final p = pt(i);
       final isMax = i == maxIdx;
-      // Outer ring for max
       if (isMax) {
         canvas.drawCircle(
             p,
@@ -519,9 +601,7 @@ class _ChartPainter extends CustomPainter {
               ..style = PaintingStyle.stroke
               ..strokeWidth = 2);
       }
-      // White background
       canvas.drawCircle(p, 5, Paint()..color = Colors.white);
-      // Filled dot
       canvas.drawCircle(p, isMax ? 4.5 : 3.5, Paint()..color = _lineColor);
     }
   }

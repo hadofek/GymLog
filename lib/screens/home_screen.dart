@@ -10,6 +10,7 @@ import 'package:gymlog/screens/flexibility_log_screen.dart';
 import 'package:gymlog/screens/exercise_library_screen.dart';
 import 'package:gymlog/screens/templates_screen.dart';
 import 'package:gymlog/screens/stats_screen.dart';
+import 'package:gymlog/screens/settings_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -204,6 +205,13 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined,
+                color: Color(0xFF111111)),
+            tooltip: 'Settings',
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen())),
+          ),
           IconButton(
             icon: const Icon(Icons.bar_chart_rounded,
                 color: Color(0xFF111111)),

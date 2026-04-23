@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gymlog/db/db_helper.dart';
+import 'package:gymlog/screens/exercise_history_screen.dart';
 
 class ExerciseLibraryScreen extends StatefulWidget {
   const ExerciseLibraryScreen({super.key});
@@ -33,6 +34,45 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
     final current = (exercise['is_bodyweight'] as int? ?? 0) == 1;
     await DBHelper.setExerciseBodyweight(exercise['name'] as String, !current);
     await _load();
+  }
+
+  Future<void> _confirmDelete(Map<String, dynamic> exercise) async {
+    final name = exercise['name'] as String;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete exercise?',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+        content: Text(
+          'Remove "$name" from your library?\nThis won\'t delete past sets that used it.',
+          style: const TextStyle(color: Color(0xFF666666)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel',
+                style: TextStyle(color: Color(0xFF888888))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(
+              backgroundColor: const Color(0xFFE53935).withValues(alpha: 0.08),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Delete',
+                style: TextStyle(
+                    color: Color(0xFFE53935), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await DBHelper.deleteExercise(name);
+      await _load();
+    }
   }
 
   Future<void> _showAddDialog() async {
@@ -133,6 +173,14 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
                 final ex = _exercises[i];
                 final isBw = (ex['is_bodyweight'] as int? ?? 0) == 1;
                 return ListTile(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ExerciseHistoryScreen(
+                          exerciseName: ex['name'] as String),
+                    ),
+                  ),
+                  onLongPress: () => _confirmDelete(ex),
                   leading: Container(
                     width: 36,
                     height: 36,

@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gymlog/db/db_helper.dart';
+import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/widgets/wheel_column.dart';
 
 class AddExerciseScreen extends StatefulWidget {
   final List<String> allExercises;
-  const AddExerciseScreen({super.key, required this.allExercises});
+  final String workoutType;
+  const AddExerciseScreen({
+    super.key,
+    required this.allExercises,
+    this.workoutType = WorkoutTypes.weighted,
+  });
   @override
   State<AddExerciseScreen> createState() => _AddExerciseScreenState();
 }
@@ -20,6 +26,12 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   List<Map<String, dynamic>> _lastSets = [];
   // null = unknown, true = bodyweight, false = weighted
   bool? _isBodyweight;
+
+  // For bodyweight workouts: whether this specific exercise uses added weight
+  bool _isWeightedExercise = false;
+
+  // Personal record: max weight ever logged for the current exercise
+  double _exercisePR = 0;
 
   bool _restTimerVisible = false;
   bool _restTimerRunning = false;
@@ -36,6 +48,8 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
               .toList();
       _isBodyweight = null;
       _lastSets = [];
+      _isWeightedExercise = false;
+      _exercisePR = 0;
     });
   }
 
@@ -43,14 +57,34 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
     _nameController.text = name;
     final last = await DBHelper.getLastSets(name);
     final isBw = await DBHelper.isExerciseBodyweight(name);
+    final pr = await DBHelper.getMaxWeightForExercise(name);
     setState(() {
       _suggestions = [];
       _lastSets = last;
       _isBodyweight = isBw ? true : null;
+      _exercisePR = pr;
+      _isWeightedExercise = false;
     });
   }
 
   Future<void> _saveSet() async {
+    // Bodyweight workout + no added weight: use weight=0, skip weight field
+    if (widget.workoutType == WorkoutTypes.bodyweight && !_isWeightedExercise) {
+      final r = int.tryParse(_repsController.text);
+      if (r == null || r <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter valid reps')),
+        );
+        return;
+      }
+      setState(() {
+        _sets.add({'weight': 0.0, 'reps': r, 'bodyweight': true});
+        _repsController.clear();
+      });
+      _showRestPicker();
+      return;
+    }
+
     final w = double.tryParse(_weightController.text);
     final r = int.tryParse(_repsController.text);
     if (w == null || r == null || w < 0 || r <= 0) {
@@ -139,11 +173,30 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
       );
       return;
     }
+    final isPR = w > 0 && _exercisePR > 0 && w > _exercisePR;
+    if (w > _exercisePR) _exercisePR = w;
     setState(() {
-      _sets.add({'weight': w, 'reps': r});
+      _sets.add({'weight': w, 'reps': r, 'isPR': isPR});
       _weightController.clear();
       _repsController.clear();
     });
+    if (isPR && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(children: [
+            Icon(Icons.emoji_events_rounded, color: Color(0xFFFFD700), size: 20),
+            SizedBox(width: 8),
+            Text('New Personal Record!',
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+          ]),
+          backgroundColor: const Color(0xFF111111),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        ),
+      );
+    }
     _showRestPicker();
   }
 
@@ -543,6 +596,20 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                                   letterSpacing: 0.3,
                                 ),
                               ),
+                              if (_exercisePR > 0) ...[
+                                const Spacer(),
+                                const Icon(Icons.emoji_events_rounded,
+                                    size: 12, color: Color(0xFF8B7500)),
+                                const SizedBox(width: 3),
+                                Text(
+                                  'PR: ${_exercisePR % 1 == 0 ? _exercisePR.toInt() : _exercisePR}kg',
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF8B7500),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -617,13 +684,31 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                                   _SetBadge(number: e.key + 1),
                                   const SizedBox(width: 10),
                                   Text(
-                                    '${e.value['weight']}kg  ×  ${e.value['reps']} reps',
+                                    e.value['bodyweight'] == true
+                                        ? 'BW  ×  ${e.value['reps']} reps'
+                                        : '${e.value['weight']}kg  ×  ${e.value['reps']} reps',
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600,
                                       color: Color(0xFF111111),
                                     ),
                                   ),
+                                  if (e.value['isPR'] == true) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFD700),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Text('PR',
+                                          style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w800,
+                                              color: Color(0xFF111111))),
+                                    ),
+                                  ],
                                   const Spacer(),
                                   GestureDetector(
                                     onTap: () => setState(
@@ -670,44 +755,82 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                       letterSpacing: 0.3,
                     ),
                   ),
+                  // "Add weight" switch — only shown for bodyweight workouts
+                  if (widget.workoutType == WorkoutTypes.bodyweight) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: const Color(0xFFEEEEEE), width: 1.5),
+                      ),
+                      child: SwitchListTile(
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 2),
+                        title: const Text(
+                          'Add weight',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF111111),
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'e.g. weighted vest or dip belt',
+                          style: TextStyle(
+                              fontSize: 12, color: Color(0xFF999999)),
+                        ),
+                        value: _isWeightedExercise,
+                        activeThumbColor: const Color(0xFF2196F3),
+                        activeTrackColor: const Color(0xFF2196F3).withValues(alpha: 0.4),
+                        onChanged: (v) =>
+                            setState(() => _isWeightedExercise = v),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 10),
                   Row(children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _weightController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF111111),
-                        ),
-                        decoration: InputDecoration(
-                          labelText: 'Weight (kg)',
-                          labelStyle:
-                              const TextStyle(color: Color(0xFF999999)),
-                          filled: true,
-                          fillColor: Colors.white,
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
+                    if (widget.workoutType != WorkoutTypes.bodyweight ||
+                        _isWeightedExercise) ...[
+                      Expanded(
+                        child: TextField(
+                          controller: _weightController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF111111),
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                                color: Color(0xFFEEEEEE), width: 1.5),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
-                                color: Color(0xFF111111), width: 2),
+                          decoration: InputDecoration(
+                            labelText: 'Weight (kg)',
+                            labelStyle:
+                                const TextStyle(color: Color(0xFF999999)),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 14),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                  color: Color(0xFFEEEEEE), width: 1.5),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(
+                                  color: Color(0xFF111111), width: 2),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
+                      const SizedBox(width: 12),
+                    ],
                     Expanded(
                       child: TextField(
                         controller: _repsController,

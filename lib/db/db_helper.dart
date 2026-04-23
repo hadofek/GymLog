@@ -10,9 +10,52 @@ class DBHelper {
     return _db!;
   }
 
+  static Future<void> _ensureV4Columns(Database d) async {
+    for (final stmt in [
+      "ALTER TABLE workouts ADD COLUMN type TEXT DEFAULT 'weighted'",
+      'ALTER TABLE workouts ADD COLUMN distance_km REAL DEFAULT 0',
+      "ALTER TABLE workouts ADD COLUMN notes TEXT DEFAULT ''",
+    ]) {
+      try {
+        await d.execute(stmt);
+      } catch (_) {}
+    }
+  }
+
+  static Future<void> _ensureV5Columns(Database d) async {
+    for (final stmt in [
+      'ALTER TABLE sets ADD COLUMN superset_group INTEGER',
+      "ALTER TABLE workouts ADD COLUMN photo_path TEXT DEFAULT ''",
+    ]) {
+      try {
+        await d.execute(stmt);
+      } catch (_) {}
+    }
+  }
+
+  static Future<void> _createTemplatesTables(Database d) async {
+    try {
+      await d.execute('''
+        CREATE TABLE IF NOT EXISTS templates (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          type TEXT DEFAULT 'weighted'
+        )
+      ''');
+      await d.execute('''
+        CREATE TABLE IF NOT EXISTS template_exercises (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          template_id INTEGER NOT NULL,
+          exercise_name TEXT NOT NULL,
+          sort_order INTEGER NOT NULL DEFAULT 0
+        )
+      ''');
+    } catch (_) {}
+  }
+
   static Future<Database> _initDB() async {
     final path = p.join(await getDatabasesPath(), 'gymlog.db');
-    return openDatabase(path, version: 3, onCreate: (db, v) async {
+    final d = await openDatabase(path, version: 5, onCreate: (db, v) async {
       await db.execute('''
         CREATE TABLE exercises (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,7 +67,11 @@ class DBHelper {
         CREATE TABLE workouts (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           date TEXT NOT NULL,
-          duration_seconds INTEGER DEFAULT 0
+          duration_seconds INTEGER DEFAULT 0,
+          type TEXT DEFAULT 'weighted',
+          distance_km REAL DEFAULT 0,
+          notes TEXT DEFAULT '',
+          photo_path TEXT DEFAULT ''
         )
       ''');
       await db.execute('''
@@ -34,7 +81,23 @@ class DBHelper {
           exercise_name TEXT NOT NULL,
           set_number INTEGER NOT NULL,
           weight REAL NOT NULL,
-          reps INTEGER NOT NULL
+          reps INTEGER NOT NULL,
+          superset_group INTEGER
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE templates (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          type TEXT DEFAULT 'weighted'
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE template_exercises (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          template_id INTEGER NOT NULL,
+          exercise_name TEXT NOT NULL,
+          sort_order INTEGER NOT NULL DEFAULT 0
         )
       ''');
     }, onUpgrade: (db, oldV, newV) async {
@@ -50,7 +113,18 @@ class DBHelper {
               'ALTER TABLE exercises ADD COLUMN is_bodyweight INTEGER DEFAULT 0');
         } catch (_) {}
       }
+      if (oldV < 4) {
+        await _ensureV4Columns(db);
+      }
+      if (oldV < 5) {
+        await _ensureV5Columns(db);
+        await _createTemplatesTables(db);
+      }
     });
+    await _ensureV4Columns(d);
+    await _ensureV5Columns(d);
+    await _createTemplatesTables(d);
+    return d;
   }
 
   static Future<void> insertExercise(String name) async {
@@ -90,9 +164,27 @@ class DBHelper {
     );
   }
 
-  static Future<int> insertWorkout(String date, int durationSeconds) async {
+  static Future<int> insertWorkout(
+    String date,
+    int durationSeconds, {
+    String type = 'weighted',
+    double distanceKm = 0,
+    String notes = '',
+  }) async {
     final d = await db;
-    return await d.insert('workouts', {'date': date, 'duration_seconds': durationSeconds});
+    return await d.insert('workouts', {
+      'date': date,
+      'duration_seconds': durationSeconds,
+      'type': type,
+      'distance_km': distanceKm,
+      'notes': notes,
+    });
+  }
+
+  static Future<Map<String, dynamic>?> getWorkoutById(int id) async {
+    final d = await db;
+    final rows = await d.query('workouts', where: 'id = ?', whereArgs: [id]);
+    return rows.isEmpty ? null : rows.first;
   }
 
   static String formatDuration(int seconds) {
@@ -106,15 +198,17 @@ class DBHelper {
   }
 
   static Future<void> insertSet(int workoutId, String exerciseName,
-      int setNumber, double weight, int reps) async {
+      int setNumber, double weight, int reps, {int? supersetGroup}) async {
     final d = await db;
-    await d.insert('sets', {
+    final data = <String, Object?>{
       'workout_id': workoutId,
       'exercise_name': exerciseName,
       'set_number': setNumber,
       'weight': weight,
       'reps': reps,
-    });
+      if (supersetGroup != null) 'superset_group': supersetGroup,
+    };
+    await d.insert('sets', data);
   }
 
   static Future<List<Map<String, dynamic>>> getWorkouts() async {
@@ -123,13 +217,12 @@ class DBHelper {
     rows.sort((a, b) {
       final aDate = _parseWorkoutDate(a['date'] as String);
       final bDate = _parseWorkoutDate(b['date'] as String);
-      return bDate.compareTo(aDate); // newest first
+      return bDate.compareTo(aDate);
     });
     return rows;
   }
 
   static DateTime _parseWorkoutDate(String dateStr) {
-    // format: "d/m/yyyy  hh:mm"
     try {
       final parts = dateStr.trim().split(RegExp(r'\s+'));
       final dateParts = parts[0].split('/');
@@ -155,6 +248,48 @@ class DBHelper {
         where: 'workout_id = ?', whereArgs: [workoutId], orderBy: 'set_number');
   }
 
+  static Future<void> deleteExercise(String name) async {
+    final d = await db;
+    await d.delete('exercises', where: 'name = ?', whereArgs: [name.trim()]);
+  }
+
+  static Future<double> getMaxWeightForExercise(String name) async {
+    final d = await db;
+    final res = await d.rawQuery(
+      'SELECT MAX(weight) as max_weight FROM sets WHERE exercise_name = ?',
+      [name.trim()],
+    );
+    if (res.isEmpty || res.first['max_weight'] == null) return 0;
+    return (res.first['max_weight'] as num).toDouble();
+  }
+
+  static Future<void> updateSet(int setId, double weight, int reps) async {
+    final d = await db;
+    await d.update('sets', {'weight': weight, 'reps': reps},
+        where: 'id = ?', whereArgs: [setId]);
+  }
+
+  static Future<void> deleteSet(int setId) async {
+    final d = await db;
+    await d.delete('sets', where: 'id = ?', whereArgs: [setId]);
+  }
+
+  static Future<List<Map<String, dynamic>>> getExerciseHistory(
+      String name) async {
+    final d = await db;
+    final res = await d.rawQuery('''
+      SELECT w.date, w.id as workout_id,
+             MAX(s.weight) as max_weight, SUM(s.reps) as total_reps,
+             COUNT(s.id) as set_count
+      FROM sets s
+      INNER JOIN workouts w ON s.workout_id = w.id
+      WHERE s.exercise_name = ?
+      GROUP BY s.workout_id
+      ORDER BY s.workout_id ASC
+    ''', [name.trim()]);
+    return List<Map<String, dynamic>>.from(res);
+  }
+
   static Future<void> deleteWorkout(int workoutId) async {
     final d = await db;
     await d.delete('sets', where: 'workout_id = ?', whereArgs: [workoutId]);
@@ -175,5 +310,124 @@ class DBHelper {
       ORDER BY s.set_number
     ''', [exerciseName, exerciseName]);
     return result;
+  }
+
+  // ── Templates ──────────────────────────────────────────────────────────────
+
+  static Future<int> saveTemplate(
+      String name, String type, List<String> exercises) async {
+    final d = await db;
+    final templateId =
+        await d.insert('templates', {'name': name.trim(), 'type': type});
+    for (int i = 0; i < exercises.length; i++) {
+      await d.insert('template_exercises', {
+        'template_id': templateId,
+        'exercise_name': exercises[i],
+        'sort_order': i,
+      });
+    }
+    return templateId;
+  }
+
+  static Future<List<Map<String, dynamic>>> getTemplates() async {
+    final d = await db;
+    return List<Map<String, dynamic>>.from(
+        await d.query('templates', orderBy: 'name'));
+  }
+
+  static Future<List<String>> getTemplateExercises(int templateId) async {
+    final d = await db;
+    final rows = await d.query('template_exercises',
+        where: 'template_id = ?',
+        whereArgs: [templateId],
+        orderBy: 'sort_order');
+    return rows.map((r) => r['exercise_name'] as String).toList();
+  }
+
+  static Future<void> deleteTemplate(int templateId) async {
+    final d = await db;
+    await d.delete('template_exercises',
+        where: 'template_id = ?', whereArgs: [templateId]);
+    await d.delete('templates', where: 'id = ?', whereArgs: [templateId]);
+  }
+
+  static Future<void> updateWorkoutPhoto(
+      int workoutId, String photoPath) async {
+    final d = await db;
+    await d.update('workouts', {'photo_path': photoPath},
+        where: 'id = ?', whereArgs: [workoutId]);
+  }
+
+  // ── All-time stats ─────────────────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> getAllTimeStats() async {
+    final d = await db;
+
+    final wRes =
+        await d.rawQuery('SELECT COUNT(*) as c FROM workouts');
+    final totalWorkouts = (wRes.first['c'] as int?) ?? 0;
+
+    final tRes = await d
+        .rawQuery('SELECT SUM(duration_seconds) as s FROM workouts');
+    final totalSeconds = (tRes.first['s'] as int?) ?? 0;
+
+    final weightRes =
+        await d.rawQuery('SELECT SUM(weight * reps) as s FROM sets');
+    final totalWeight =
+        (weightRes.first['s'] as num?)?.toDouble() ?? 0.0;
+
+    final setsRes =
+        await d.rawQuery('SELECT COUNT(*) as c FROM sets');
+    final totalSets = (setsRes.first['c'] as int?) ?? 0;
+
+    final topExRes = await d.rawQuery('''
+      SELECT exercise_name, COUNT(*) as cnt FROM sets
+      GROUP BY exercise_name ORDER BY cnt DESC LIMIT 1
+    ''');
+    final topExercise = topExRes.isEmpty
+        ? ''
+        : topExRes.first['exercise_name'] as String;
+
+    final typeRes = await d.rawQuery(
+        'SELECT type, COUNT(*) as cnt FROM workouts GROUP BY type');
+    final typeBreakdown = <String, int>{};
+    for (final r in typeRes) {
+      typeBreakdown[r['type'] as String? ?? 'weighted'] =
+          (r['cnt'] as int?) ?? 0;
+    }
+
+    // Dates for streak
+    final allDatesRes =
+        await d.rawQuery('SELECT DISTINCT date FROM workouts');
+    final dates = <DateTime>[];
+    for (final row in allDatesRes) {
+      final dt = _parseWorkoutDate(row['date'] as String);
+      if (dt.year > 1) {
+        dates.add(DateTime(dt.year, dt.month, dt.day));
+      }
+    }
+    dates.sort();
+
+    int longestStreak = dates.isEmpty ? 0 : 1;
+    int currentStreak = dates.isEmpty ? 0 : 1;
+    for (int i = 1; i < dates.length; i++) {
+      final diff = dates[i].difference(dates[i - 1]).inDays;
+      if (diff == 1) {
+        currentStreak++;
+        if (currentStreak > longestStreak) longestStreak = currentStreak;
+      } else if (diff > 1) {
+        currentStreak = 1;
+      }
+    }
+
+    return {
+      'total_workouts': totalWorkouts,
+      'total_seconds': totalSeconds,
+      'total_weight_kg': totalWeight,
+      'total_sets': totalSets,
+      'top_exercise': topExercise,
+      'type_breakdown': typeBreakdown,
+      'longest_streak': longestStreak,
+    };
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/screens/workout_detail_screen.dart';
+import 'package:gymlog/utils/workout_types.dart';
 
 class MonthWorkoutsScreen extends StatefulWidget {
   final List<Map<String, dynamic>> workouts;
@@ -167,6 +168,7 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
                       onTap: () async {
+                        final type = w['type'] as String? ?? WorkoutTypes.weighted;
                         final deleted = await Navigator.push<bool>(
                             context,
                             MaterialPageRoute(
@@ -174,7 +176,8 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
                                     workoutId: w['id'],
                                     date: w['date'],
                                     durationSeconds:
-                                        w['duration_seconds'] as int? ?? 0)));
+                                        w['duration_seconds'] as int? ?? 0,
+                                    type: type)));
                         if (deleted == true) {
                           setState(() => _workouts.removeAt(i));
                         }
@@ -184,17 +187,20 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
                             horizontal: 16, vertical: 14),
                         child: Row(
                           children: [
-                            // Gold dumbbell icon
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFFD700),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(Icons.fitness_center,
-                                  size: 20, color: Color(0xFF111111)),
-                            ),
+                            // Type-colored icon
+                            Builder(builder: (_) {
+                              final type = w['type'] as String? ?? WorkoutTypes.weighted;
+                              return Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: WorkoutTypes.color(type),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(WorkoutTypes.icon(type),
+                                    size: 20, color: Colors.white),
+                              );
+                            }),
                             const SizedBox(width: 14),
                             // Date + duration
                             Expanded(

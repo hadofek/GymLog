@@ -5,7 +5,12 @@ import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/screens/profile_setup_screen.dart';
 import 'package:gymlog/screens/month_workouts_screen.dart';
 import 'package:gymlog/screens/log_workout_screen.dart';
+import 'package:gymlog/screens/cardio_log_screen.dart';
+import 'package:gymlog/screens/flexibility_log_screen.dart';
 import 'package:gymlog/screens/exercise_library_screen.dart';
+import 'package:gymlog/screens/templates_screen.dart';
+import 'package:gymlog/screens/stats_screen.dart';
+import 'package:gymlog/utils/workout_types.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,14 +24,19 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _userImage;
   DateTime _currentMonth = DateTime(DateTime.now().year, DateTime.now().month);
 
-  Set<int> get _workedOutDays {
-    final result = <int>{};
+  // Returns day → color of the most recent workout that day
+  Map<int, Color> get _workedOutDays {
+    final result = <int, Color>{};
     for (final w in _workouts) {
       final date = _parseDate(w['date'] as String);
       if (date != null &&
           date.month == _currentMonth.month &&
           date.year == _currentMonth.year) {
-        result.add(date.day);
+        // _workouts is sorted newest-first; putIfAbsent keeps the first (newest)
+        result.putIfAbsent(
+          date.day,
+          () => WorkoutTypes.color(w['type'] as String? ?? WorkoutTypes.weighted),
+        );
       }
     }
     return result;
@@ -66,6 +76,88 @@ class _HomeScreenState extends State<HomeScreen> {
       _userName = prefs.getString('user_name') ?? '';
       _userImage = prefs.getString('user_image');
     });
+  }
+
+  Future<void> _startWorkout(DateTime date) async {
+    final type = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                    color: const Color(0xFFDDDDDD),
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Workout Type',
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.3,
+                    color: Color(0xFF111111)),
+              ),
+              const SizedBox(height: 8),
+              ...WorkoutTypes.all.map((t) => ListTile(
+                leading: Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: WorkoutTypes.color(t).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(WorkoutTypes.icon(t),
+                      color: WorkoutTypes.color(t), size: 20),
+                ),
+                title: Text(WorkoutTypes.label(t),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 15)),
+                onTap: () => Navigator.pop(ctx, t),
+              )),
+              const Divider(height: 1, indent: 16, endIndent: 16),
+              ListTile(
+                leading: Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFD700).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.bookmark_outline_rounded,
+                      color: Color(0xFF8B7500), size: 20),
+                ),
+                title: const Text('From Template',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                subtitle: const Text('Start with a saved routine',
+                    style: TextStyle(fontSize: 12)),
+                onTap: () => Navigator.pop(ctx, '__templates__'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (type == null || !mounted) return;
+    if (type == '__templates__') {
+      await Navigator.push(context,
+          MaterialPageRoute(builder: (_) => const TemplatesScreen()));
+    } else if (type == WorkoutTypes.cardio) {
+      await Navigator.push(context,
+          MaterialPageRoute(builder: (_) => CardioLogScreen(initialDate: date)));
+    } else if (type == WorkoutTypes.flexibility) {
+      await Navigator.push(context,
+          MaterialPageRoute(builder: (_) => FlexibilityLogScreen(initialDate: date)));
+    } else {
+      await Navigator.push(context,
+          MaterialPageRoute(builder: (_) => LogWorkoutScreen(initialDate: date, type: type)));
+    }
+    _load();
   }
 
   void _prevMonth() => setState(() =>
@@ -112,6 +204,20 @@ class _HomeScreenState extends State<HomeScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.bar_chart_rounded,
+                color: Color(0xFF111111)),
+            tooltip: 'All-Time Stats',
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const StatsScreen())),
+          ),
+          IconButton(
+            icon: const Icon(Icons.bookmark_outline_rounded,
+                color: Color(0xFF111111)),
+            tooltip: 'Templates',
+            onPressed: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const TemplatesScreen())),
+          ),
           IconButton(
             icon: const Icon(Icons.fitness_center_outlined,
                 color: Color(0xFF111111)),
@@ -266,7 +372,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (index < firstWeekday) return const SizedBox();
                           final day = index - firstWeekday + 1;
                           final isToday = isCurrentMonth && day == today;
-                          final hasWorkout = workedDays.contains(day);
+                          final workoutColor = workedDays[day];
+                          final hasWorkout = workoutColor != null;
                           final isFuture = isCurrentMonth && day > today;
 
                           final tappedDate = DateTime(
@@ -293,87 +400,48 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   width: 36,
                                                   height: 4,
                                                   decoration: BoxDecoration(
-                                                    color:
-                                                        const Color(0xFFDDDDDD),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            2),
+                                                    color: const Color(0xFFDDDDDD),
+                                                    borderRadius: BorderRadius.circular(2),
                                                   ),
                                                 ),
                                                 const SizedBox(height: 16),
                                                 ListTile(
                                                   leading: Container(
-                                                    width: 40,
-                                                    height: 40,
+                                                    width: 40, height: 40,
                                                     decoration: BoxDecoration(
-                                                      color: const Color(
-                                                              0xFF111111)
-                                                          .withValues(
-                                                              alpha: 0.08),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              12),
+                                                      color: const Color(0xFF111111).withValues(alpha: 0.08),
+                                                      borderRadius: BorderRadius.circular(12),
                                                     ),
-                                                    child: const Icon(
-                                                        Icons.list_alt_outlined,
-                                                        color:
-                                                            Color(0xFF111111),
-                                                        size: 20),
+                                                    child: const Icon(Icons.list_alt_outlined,
+                                                        color: Color(0xFF111111), size: 20),
                                                   ),
-                                                  title: const Text(
-                                                      'View workouts',
-                                                      style: TextStyle(
-                                                          fontWeight:
-                                                              FontWeight.w600)),
-                                                  onTap: () {
+                                                  title: const Text('View workouts',
+                                                      style: TextStyle(fontWeight: FontWeight.w600)),
+                                                  onTap: () async {
                                                     Navigator.pop(context);
-                                                    Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                            builder: (_) =>
-                                                                MonthWorkoutsScreen(
-                                                                    workouts:
-                                                                        monthWorkouts,
-                                                                    monthLabel:
-                                                                        _monthLabel,
-                                                                    initialDay:
-                                                                        day)));
+                                                    await Navigator.push(context, MaterialPageRoute(
+                                                        builder: (_) => MonthWorkoutsScreen(
+                                                            workouts: monthWorkouts,
+                                                            monthLabel: _monthLabel,
+                                                            initialDay: day)));
+                                                    if (mounted) _load();
                                                   },
                                                 ),
                                                 ListTile(
                                                   leading: Container(
-                                                    width: 40,
-                                                    height: 40,
+                                                    width: 40, height: 40,
                                                     decoration: BoxDecoration(
-                                                      color: const Color(
-                                                              0xFFFFD700)
-                                                          .withValues(
-                                                              alpha: 0.15),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              12),
+                                                      color: const Color(0xFFFFD700).withValues(alpha: 0.15),
+                                                      borderRadius: BorderRadius.circular(12),
                                                     ),
-                                                    child: const Icon(
-                                                        Icons.add,
-                                                        color:
-                                                            Color(0xFF8B7500),
-                                                        size: 20),
+                                                    child: const Icon(Icons.add,
+                                                        color: Color(0xFF8B7500), size: 20),
                                                   ),
-                                                  title: const Text(
-                                                      'Add another workout',
-                                                      style: TextStyle(
-                                                          fontWeight:
-                                                              FontWeight.w600)),
+                                                  title: const Text('Add another workout',
+                                                      style: TextStyle(fontWeight: FontWeight.w600)),
                                                   onTap: () async {
                                                     Navigator.pop(context);
-                                                    await Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute(
-                                                            builder: (_) =>
-                                                                LogWorkoutScreen(
-                                                                    initialDate:
-                                                                        tappedDate)));
-                                                    _load();
+                                                    await _startWorkout(tappedDate);
                                                   },
                                                 ),
                                                 const SizedBox(height: 8),
@@ -383,22 +451,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                         );
                                         _load();
                                       }
-                                    : () async {
-                                        await Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                                builder: (_) =>
-                                                    LogWorkoutScreen(
-                                                        initialDate:
-                                                            tappedDate)));
-                                        _load();
-                                      },
+                                    : () => _startWorkout(tappedDate),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: hasWorkout
-                                    ? const Color(0xFFFFD700)
+                                    ? workoutColor
                                     : isToday
                                         ? const Color(0xFF111111)
                                         : Colors.transparent,
@@ -506,11 +565,7 @@ class _HomeScreenState extends State<HomeScreen> {
         padding:
             EdgeInsets.only(bottom: MediaQuery.of(context).viewPadding.bottom),
         child: FloatingActionButton.extended(
-          onPressed: () async {
-            await Navigator.push(context,
-                MaterialPageRoute(builder: (_) => LogWorkoutScreen()));
-            _load();
-          },
+          onPressed: () => _startWorkout(DateTime.now()),
           backgroundColor: const Color(0xFF111111),
           foregroundColor: Colors.white,
           elevation: 4,

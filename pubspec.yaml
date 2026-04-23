@@ -1,7 +1,7 @@
 name: gymlog
 description: "GymLog - Track your workouts, monitor progress, and crush your goals."
 
-version: 1.0.2+33
+version: 1.1.0+34
 
 environment:
   sdk: ^3.9.2

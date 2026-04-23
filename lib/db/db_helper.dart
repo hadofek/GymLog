@@ -12,11 +12,12 @@ class DBHelper {
 
   static Future<Database> _initDB() async {
     final path = p.join(await getDatabasesPath(), 'gymlog.db');
-    return openDatabase(path, version: 2, onCreate: (db, v) async {
+    return openDatabase(path, version: 3, onCreate: (db, v) async {
       await db.execute('''
         CREATE TABLE exercises (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          name TEXT UNIQUE NOT NULL
+          name TEXT UNIQUE NOT NULL,
+          is_bodyweight INTEGER DEFAULT 0
         )
       ''');
       await db.execute('''
@@ -43,6 +44,12 @@ class DBHelper {
               'ALTER TABLE workouts ADD COLUMN duration_seconds INTEGER DEFAULT 0');
         } catch (_) {}
       }
+      if (oldV < 3) {
+        try {
+          await db.execute(
+              'ALTER TABLE exercises ADD COLUMN is_bodyweight INTEGER DEFAULT 0');
+        } catch (_) {}
+      }
     });
   }
 
@@ -56,6 +63,31 @@ class DBHelper {
     final d = await db;
     final res = await d.query('exercises', orderBy: 'name');
     return res.map((e) => e['name'] as String).toList();
+  }
+
+  static Future<List<Map<String, dynamic>>> getExercisesWithType() async {
+    final d = await db;
+    return await d.query('exercises', orderBy: 'name');
+  }
+
+  static Future<bool> isExerciseBodyweight(String name) async {
+    final d = await db;
+    final res = await d.query('exercises',
+        columns: ['is_bodyweight'],
+        where: 'name = ?',
+        whereArgs: [name.trim()]);
+    if (res.isEmpty) return false;
+    return (res.first['is_bodyweight'] as int? ?? 0) == 1;
+  }
+
+  static Future<void> setExerciseBodyweight(
+      String name, bool isBodyweight) async {
+    final d = await db;
+    await d.insert(
+      'exercises',
+      {'name': name.trim(), 'is_bodyweight': isBodyweight ? 1 : 0},
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
   }
 
   static Future<int> insertWorkout(String date, int durationSeconds) async {
@@ -87,7 +119,33 @@ class DBHelper {
 
   static Future<List<Map<String, dynamic>>> getWorkouts() async {
     final d = await db;
-    return await d.query('workouts', orderBy: 'id DESC');
+    final rows = await d.query('workouts');
+    rows.sort((a, b) {
+      final aDate = _parseWorkoutDate(a['date'] as String);
+      final bDate = _parseWorkoutDate(b['date'] as String);
+      return bDate.compareTo(aDate); // newest first
+    });
+    return rows;
+  }
+
+  static DateTime _parseWorkoutDate(String dateStr) {
+    // format: "d/m/yyyy  hh:mm"
+    try {
+      final parts = dateStr.trim().split(RegExp(r'\s+'));
+      final dateParts = parts[0].split('/');
+      final day = int.parse(dateParts[0]);
+      final month = int.parse(dateParts[1]);
+      final year = int.parse(dateParts[2]);
+      int hour = 0, minute = 0;
+      if (parts.length > 1) {
+        final timeParts = parts[1].split(':');
+        hour = int.parse(timeParts[0]);
+        minute = int.parse(timeParts[1]);
+      }
+      return DateTime(year, month, day, hour, minute);
+    } catch (_) {
+      return DateTime(0);
+    }
   }
 
   static Future<List<Map<String, dynamic>>> getSetsForWorkout(

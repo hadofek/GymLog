@@ -18,6 +18,8 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   final List<Map<String, dynamic>> _sets = [];
   List<String> _suggestions = [];
   List<Map<String, dynamic>> _lastSets = [];
+  // null = unknown, true = bodyweight, false = weighted
+  bool? _isBodyweight;
 
   bool _restTimerVisible = false;
   bool _restTimerRunning = false;
@@ -32,19 +34,23 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
           : widget.allExercises
           .where((e) => e.toLowerCase().contains(val.toLowerCase()))
           .toList();
+      _isBodyweight = null;
+      _lastSets = [];
     });
   }
 
   Future<void> _selectExercise(String name) async {
     _nameController.text = name;
     final last = await DBHelper.getLastSets(name);
+    final isBw = await DBHelper.isExerciseBodyweight(name);
     setState(() {
       _suggestions = [];
       _lastSets = last;
+      _isBodyweight = isBw ? true : null;
     });
   }
 
-  void _saveSet() {
+  Future<void> _saveSet() async {
     final w = double.tryParse(_weightController.text);
     final r = int.tryParse(_repsController.text);
     if (w == null || r == null || w < 0 || r <= 0) {
@@ -54,31 +60,60 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
       return;
     }
     if (w == 0) {
+      // If already confirmed bodyweight (this session or from DB), skip dialog
+      if (_isBodyweight == true) {
+        setState(() {
+          _sets.add({'weight': w, 'reps': r});
+          _weightController.clear();
+          _repsController.clear();
+        });
+        _showRestPicker();
+        return;
+      }
+      // Check DB in case user typed the name without selecting from suggestions
+      final name = _nameController.text.trim();
+      if (name.isNotEmpty) {
+        final isBw = await DBHelper.isExerciseBodyweight(name);
+        if (isBw) {
+          setState(() {
+            _isBodyweight = true;
+            _sets.add({'weight': w, 'reps': r});
+            _weightController.clear();
+            _repsController.clear();
+          });
+          _showRestPicker();
+          return;
+        }
+      }
+      if (!mounted) return;
       showDialog(
         context: context,
         builder: (ctx) => AlertDialog(
           title: const Text('Bodyweight exercise?'),
-          content: const Text(
-              'You entered 0 kg. Is this a bodyweight exercise?'),
+          content: const Text('You entered 0 kg. Is this a bodyweight exercise?'),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Please enter a valid weight amount')),
+                  const SnackBar(content: Text('Please enter a valid weight amount')),
                 );
               },
               child: const Text('No'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(ctx);
+                final exerciseName = _nameController.text.trim();
                 setState(() {
+                  _isBodyweight = true;
                   _sets.add({'weight': w, 'reps': r});
                   _weightController.clear();
                   _repsController.clear();
                 });
+                if (exerciseName.isNotEmpty) {
+                  await DBHelper.setExerciseBodyweight(exerciseName, true);
+                }
                 _showRestPicker();
               },
               child: const Text('Yes, bodyweight'),

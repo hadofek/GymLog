@@ -5,6 +5,7 @@ import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/screens/profile_setup_screen.dart';
 import 'package:gymlog/screens/month_workouts_screen.dart';
 import 'package:gymlog/screens/log_workout_screen.dart';
+import 'package:gymlog/screens/exercise_library_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -102,6 +103,14 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(fontWeight: FontWeight.bold)),
         elevation: 0,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.fitness_center),
+            tooltip: 'Exercise Library',
+            onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const ExerciseLibraryScreen())),
+          ),
           if (totalMonthSeconds > 0)
             Center(
               child: Container(

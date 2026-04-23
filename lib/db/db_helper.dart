@@ -119,7 +119,7 @@ class DBHelper {
 
   static Future<List<Map<String, dynamic>>> getWorkouts() async {
     final d = await db;
-    final rows = await d.query('workouts');
+    final rows = List<Map<String, dynamic>>.from(await d.query('workouts'));
     rows.sort((a, b) {
       final aDate = _parseWorkoutDate(a['date'] as String);
       final bDate = _parseWorkoutDate(b['date'] as String);

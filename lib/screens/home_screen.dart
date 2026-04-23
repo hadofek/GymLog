@@ -69,9 +69,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _prevMonth() => setState(() =>
-  _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1));
+      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1));
   void _nextMonth() => setState(() =>
-  _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1));
+      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1));
 
   String get _monthLabel {
     const months = [
@@ -84,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final daysInMonth =
-    DateUtils.getDaysInMonth(_currentMonth.year, _currentMonth.month);
+        DateUtils.getDaysInMonth(_currentMonth.year, _currentMonth.month);
     final firstWeekday =
         DateTime(_currentMonth.year, _currentMonth.month, 1).weekday % 7;
     final monthWorkouts = _monthWorkouts;
@@ -96,72 +96,56 @@ class _HomeScreenState extends State<HomeScreen> {
     final today = DateTime.now().day;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        title: const Text('GymLog',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFFF5F5F5),
+        surfaceTintColor: Colors.transparent,
+        title: const Text(
+          'GymLog',
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 22,
+            letterSpacing: -0.5,
+            color: Color(0xFF111111),
+          ),
+        ),
         elevation: 0,
+        scrolledUnderElevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.fitness_center),
+            icon: const Icon(Icons.fitness_center_outlined,
+                color: Color(0xFF111111)),
             tooltip: 'Exercise Library',
             onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
                     builder: (_) => const ExerciseLibraryScreen())),
           ),
-          if (totalMonthSeconds > 0)
-            Center(
-              child: Container(
-                margin: const EdgeInsets.only(right: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.timer_outlined,
-                        size: 14, color: Color(0xFFFFD700)),
-                    const SizedBox(width: 5),
-                    Text(
-                      DBHelper.formatDuration(totalMonthSeconds),
-                      style: const TextStyle(
-                        color: Color(0xFFFFD700),
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           GestureDetector(
             onTap: () async {
               await Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (_) => const ProfileSetupScreen(isEditing: true)));
+                      builder: (_) =>
+                          const ProfileSetupScreen(isEditing: true)));
               _load();
             },
             child: Padding(
-              padding: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.only(right: 16, left: 4),
               child: CircleAvatar(
                 radius: 18,
-                backgroundColor: Colors.grey[200],
+                backgroundColor: const Color(0xFFE0E0E0),
                 backgroundImage:
-                _userImage != null ? FileImage(File(_userImage!)) : null,
+                    _userImage != null ? FileImage(File(_userImage!)) : null,
                 child: _userImage == null
                     ? Text(
-                    _userName.isNotEmpty
-                        ? _userName[0].toUpperCase()
-                        : '?',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                        fontSize: 15))
+                        _userName.isNotEmpty
+                            ? _userName[0].toUpperCase()
+                            : '?',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF111111),
+                            fontSize: 15))
                     : null,
               ),
             ),
@@ -170,212 +154,316 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: SingleChildScrollView(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Greeting ──
             if (_userName.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                child: Row(children: [
-                  Text('Hey, $_userName 💪',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-                ]),
-              ),
-            const SizedBox(height: 16),
-
-            // ── Month navigator ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.chevron_left),
-                    onPressed: _prevMonth,
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                child: Text(
+                  'Hey, $_userName',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF666666),
                   ),
-                  Text(_monthLabel,
-                      style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold)),
-                  IconButton(
-                    icon: Icon(Icons.chevron_right,
-                        color: isCurrentMonth ? Colors.grey[300] : Colors.black),
-                    onPressed: isCurrentMonth ? null : _nextMonth,
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // ── Day-of-week headers ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-                    .map((d) => SizedBox(
-                  width: 36,
-                  child: Center(
-                    child: Text(d,
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey[500])),
-                  ),
-                ))
-                    .toList(),
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // ── Calendar grid ──
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 7,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 4,
-                  childAspectRatio: 1,
                 ),
-                itemCount: firstWeekday + daysInMonth,
-                itemBuilder: (ctx, index) {
-                  if (index < firstWeekday) return const SizedBox();
-                  final day = index - firstWeekday + 1;
-                  final isToday = isCurrentMonth && day == today;
-                  final hasWorkout = workedDays.contains(day);
-                  final isFuture = isCurrentMonth && day > today;
+              ),
 
-                  final tappedDate = DateTime(
-                      _currentMonth.year, _currentMonth.month, day);
+            const SizedBox(height: 20),
 
-                  return GestureDetector(
-                    onTap: isFuture
-                        ? null
-                        : hasWorkout
-                            ? () async {
-                                await showModalBottomSheet(
-                                  context: context,
-                                  shape: const RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.vertical(
-                                        top: Radius.circular(16)),
-                                  ),
-                                  builder: (_) => SafeArea(
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const SizedBox(height: 8),
-                                        Container(
-                                          width: 40,
-                                          height: 4,
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey[300],
-                                            borderRadius:
-                                                BorderRadius.circular(2),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 12),
-                                        ListTile(
-                                          leading: const Icon(Icons.list_alt),
-                                          title: const Text('View workouts'),
-                                          onTap: () {
-                                            Navigator.pop(context);
-                                            Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        MonthWorkoutsScreen(
-                                                            workouts:
-                                                                monthWorkouts,
-                                                            monthLabel:
-                                                                _monthLabel,
-                                                            initialDay: day)));
-                                          },
-                                        ),
-                                        ListTile(
-                                          leading: const Icon(Icons.add),
-                                          title:
-                                              const Text('Add another workout'),
-                                          onTap: () {
-                                            Navigator.pop(context);
-                                            Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        LogWorkoutScreen(
-                                                            initialDate:
-                                                                tappedDate)));
-                                          },
-                                        ),
-                                        const SizedBox(height: 8),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                                _load();
-                              }
-                            : () async {
-                                await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (_) => LogWorkoutScreen(
-                                            initialDate: tappedDate)));
-                                _load();
-                              },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: hasWorkout
-                            ? const Color(0xFFFFD700)
-                            : isToday
-                            ? Colors.black
-                            : Colors.grey[100],
-                      ),
-                      child: Center(
-                        child: Text(
-                          '$day',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: hasWorkout || isToday
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                            color: hasWorkout
-                                ? Colors.black
-                                : isToday
-                                ? Colors.white
-                                : isFuture
-                                ? Colors.grey[300]
-                                : Colors.black87,
+            // ── Calendar card ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    // Month navigator
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(8, 12, 8, 0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left,
+                                color: Color(0xFF111111)),
+                            onPressed: _prevMonth,
+                            splashRadius: 20,
                           ),
-                        ),
+                          Text(
+                            _monthLabel,
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF111111),
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.chevron_right,
+                                color: isCurrentMonth
+                                    ? const Color(0xFFCCCCCC)
+                                    : const Color(0xFF111111)),
+                            onPressed: isCurrentMonth ? null : _nextMonth,
+                            splashRadius: 20,
+                          ),
+                        ],
                       ),
                     ),
-                  );
-                },
+
+                    // Day-of-week headers
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+                            .map((d) => SizedBox(
+                                  width: 36,
+                                  child: Center(
+                                    child: Text(
+                                      d,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFFAAAAAA),
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                ))
+                            .toList(),
+                      ),
+                    ),
+
+                    // Calendar grid
+                    Padding(
+                      padding:
+                          const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                      child: GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 7,
+                          mainAxisSpacing: 6,
+                          crossAxisSpacing: 2,
+                          childAspectRatio: 1,
+                        ),
+                        itemCount: firstWeekday + daysInMonth,
+                        itemBuilder: (ctx, index) {
+                          if (index < firstWeekday) return const SizedBox();
+                          final day = index - firstWeekday + 1;
+                          final isToday = isCurrentMonth && day == today;
+                          final hasWorkout = workedDays.contains(day);
+                          final isFuture = isCurrentMonth && day > today;
+
+                          final tappedDate = DateTime(
+                              _currentMonth.year, _currentMonth.month, day);
+
+                          return GestureDetector(
+                            onTap: isFuture
+                                ? null
+                                : hasWorkout
+                                    ? () async {
+                                        await showModalBottomSheet(
+                                          context: context,
+                                          shape: const RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.vertical(
+                                                top: Radius.circular(20)),
+                                          ),
+                                          backgroundColor: Colors.white,
+                                          builder: (_) => SafeArea(
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const SizedBox(height: 10),
+                                                Container(
+                                                  width: 36,
+                                                  height: 4,
+                                                  decoration: BoxDecoration(
+                                                    color:
+                                                        const Color(0xFFDDDDDD),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            2),
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 16),
+                                                ListTile(
+                                                  leading: Container(
+                                                    width: 40,
+                                                    height: 40,
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(
+                                                              0xFF111111)
+                                                          .withValues(
+                                                              alpha: 0.08),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              12),
+                                                    ),
+                                                    child: const Icon(
+                                                        Icons.list_alt_outlined,
+                                                        color:
+                                                            Color(0xFF111111),
+                                                        size: 20),
+                                                  ),
+                                                  title: const Text(
+                                                      'View workouts',
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w600)),
+                                                  onTap: () {
+                                                    Navigator.pop(context);
+                                                    Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                            builder: (_) =>
+                                                                MonthWorkoutsScreen(
+                                                                    workouts:
+                                                                        monthWorkouts,
+                                                                    monthLabel:
+                                                                        _monthLabel,
+                                                                    initialDay:
+                                                                        day)));
+                                                  },
+                                                ),
+                                                ListTile(
+                                                  leading: Container(
+                                                    width: 40,
+                                                    height: 40,
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(
+                                                              0xFFFFD700)
+                                                          .withValues(
+                                                              alpha: 0.15),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              12),
+                                                    ),
+                                                    child: const Icon(
+                                                        Icons.add,
+                                                        color:
+                                                            Color(0xFF8B7500),
+                                                        size: 20),
+                                                  ),
+                                                  title: const Text(
+                                                      'Add another workout',
+                                                      style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.w600)),
+                                                  onTap: () async {
+                                                    Navigator.pop(context);
+                                                    await Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                            builder: (_) =>
+                                                                LogWorkoutScreen(
+                                                                    initialDate:
+                                                                        tappedDate)));
+                                                    _load();
+                                                  },
+                                                ),
+                                                const SizedBox(height: 8),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                        _load();
+                                      }
+                                    : () async {
+                                        await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                                builder: (_) =>
+                                                    LogWorkoutScreen(
+                                                        initialDate:
+                                                            tappedDate)));
+                                        _load();
+                                      },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: hasWorkout
+                                    ? const Color(0xFFFFD700)
+                                    : isToday
+                                        ? const Color(0xFF111111)
+                                        : Colors.transparent,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '$day',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: hasWorkout || isToday
+                                        ? FontWeight.bold
+                                        : FontWeight.w400,
+                                    color: hasWorkout
+                                        ? const Color(0xFF111111)
+                                        : isToday
+                                            ? Colors.white
+                                            : isFuture
+                                                ? const Color(0xFFCCCCCC)
+                                                : const Color(0xFF333333),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
             const SizedBox(height: 20),
 
-            // ── Stats ──
+            // ── Stats row ──
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _StatChip(
-                    icon: Icons.local_fire_department,
-                    label: '${workedDays.length}',
-                    sub: 'workouts this month',
-                    color: const Color(0xFFFFD700),
+                  Expanded(
+                    child: _StatCard(
+                      icon: Icons.local_fire_department_rounded,
+                      value: '${monthWorkouts.length}',
+                      label: 'Workouts',
+                      accentColor: const Color(0xFFFFD700),
+                    ),
                   ),
+                  if (totalMonthSeconds > 0) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _StatCard(
+                        icon: Icons.timer_outlined,
+                        value: DBHelper.formatDuration(totalMonthSeconds),
+                        label: 'Total time',
+                        accentColor: const Color(0xFF111111),
+                        iconColor: Colors.white,
+                        valueFontSize: 16,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // ── View list button ──
             if (monthWorkouts.isNotEmpty)
@@ -391,15 +479,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                 monthLabel: _monthLabel)));
                     _load();
                   },
-                  icon: const Icon(Icons.list_alt, color: Colors.black),
-                  label: Text(
-                      'View ${monthWorkouts.length} workout${monthWorkouts.length > 1 ? 's' : ''} this month',
-                      style: const TextStyle(color: Colors.black)),
+                  icon: const Icon(Icons.list_alt_outlined,
+                      color: Color(0xFF111111), size: 18),
+                  label: const Text(
+                    'View workouts this month',
+                    style: TextStyle(
+                        color: Color(0xFF111111),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14),
+                  ),
                   style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 48),
-                      side: const BorderSide(color: Colors.black),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12))),
+                    minimumSize: const Size(double.infinity, 50),
+                    side: const BorderSide(color: Color(0xFFDDDDDD), width: 1.5),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
+                    backgroundColor: Colors.white,
+                  ),
                 ),
               ),
 
@@ -408,52 +503,98 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       floatingActionButton: Padding(
-        padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewPadding.bottom),
+        padding:
+            EdgeInsets.only(bottom: MediaQuery.of(context).viewPadding.bottom),
         child: FloatingActionButton.extended(
           onPressed: () async {
             await Navigator.push(context,
                 MaterialPageRoute(builder: (_) => LogWorkoutScreen()));
             _load();
           },
-          backgroundColor: Colors.black,
+          backgroundColor: const Color(0xFF111111),
           foregroundColor: Colors.white,
-          icon: const Icon(Icons.add),
-          label: const Text('New Workout'),
+          elevation: 4,
+          icon: const Icon(Icons.add, size: 22),
+          label: const Text(
+            'New Workout',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          ),
         ),
       ),
     );
   }
 }
 
-class _StatChip extends StatelessWidget {
+class _StatCard extends StatelessWidget {
   final IconData icon;
+  final String value;
   final String label;
-  final String sub;
-  final Color color;
-  const _StatChip(
-      {required this.icon,
-        required this.label,
-        required this.sub,
-        required this.color});
+  final Color accentColor;
+  final Color? iconColor;
+  final double valueFontSize;
+
+  const _StatCard({
+    required this.icon,
+    required this.value,
+    required this.label,
+    required this.accentColor,
+    this.iconColor,
+    this.valueFontSize = 24,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(16)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(width: 8),
-          Text(label,
-              style:
-              const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(width: 6),
-          Text(sub, style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: accentColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon,
+                color: iconColor ?? const Color(0xFF111111), size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: valueFontSize,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF111111),
+                    letterSpacing: -0.5,
+                    height: 1.1,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF888888),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

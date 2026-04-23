@@ -47,7 +47,7 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
 
   Future<void> _showAddDialog() async {
     final weightCtrl = TextEditingController();
-    final fatCtrl = TextEditingController();
+    final heightCtrl = TextEditingController();
     final notesCtrl = TextEditingController();
     final card = AppColors.cardBg(context);
     final textPrimary = AppColors.textPrimary(context);
@@ -104,9 +104,9 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
               Expanded(
                 child: _buildField(
                   ctx: ctx,
-                  ctrl: fatCtrl,
-                  label: 'Body fat (%)',
-                  hint: 'e.g. 18.5',
+                  ctrl: heightCtrl,
+                  label: 'Height (cm)',
+                  hint: 'e.g. 178',
                   decimal: true,
                 ),
               ),
@@ -141,16 +141,16 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
 
     if (saved == true) {
       final weight = double.tryParse(weightCtrl.text.trim());
-      final fat = double.tryParse(fatCtrl.text.trim());
+      final height = double.tryParse(heightCtrl.text.trim());
       final notes = notesCtrl.text.trim();
-      if (weight == null && fat == null) return;
+      if (weight == null && height == null) return;
       final now = DateTime.now();
       final date =
           '${now.day}/${now.month}/${now.year}  ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
       await DBHelper.insertMeasurement(
         date: date,
         weightKg: weight,
-        bodyFatPct: fat,
+        heightCm: height,
         notes: notes,
       );
       await _load();
@@ -389,7 +389,7 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
                         children: List.generate(_measurements.length, (i) {
                           final m = _measurements[i];
                           final weight = m['weight_kg'] as double?;
-                          final fat = m['body_fat_pct'] as double?;
+                          final height = m['height_cm'] as double?;
                           final notes = m['notes'] as String? ?? '';
                           final isLast = i == _measurements.length - 1;
                           return Column(
@@ -462,9 +462,9 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
                                                 color: textPrimary,
                                               ),
                                             ),
-                                          if (fat != null)
+                                          if (height != null)
                                             Text(
-                                              '${fat % 1 == 0 ? fat.toInt() : fat.toStringAsFixed(1)}% fat',
+                                              '${height % 1 == 0 ? height.toInt() : height.toStringAsFixed(1)} cm',
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 color: textSecondary,

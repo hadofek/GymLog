@@ -364,26 +364,28 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              GestureDetector(
-                                onTap: () =>
+                              IconButton(
+                                onPressed: () =>
                                     setState(() => _exercises.removeAt(i)),
-                                child: Container(
-                                  width: 30,
-                                  height: 30,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFE53935)
-                                        .withValues(alpha: 0.08),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(Icons.close,
-                                      size: 16, color: Color(0xFFE53935)),
+                                icon: const Icon(Icons.close,
+                                    size: 18, color: Color(0xFFE53935)),
+                                style: IconButton.styleFrom(
+                                  backgroundColor: const Color(0xFFE53935)
+                                      .withValues(alpha: 0.08),
+                                  minimumSize: const Size(32, 32),
+                                  padding: EdgeInsets.zero,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 4),
                               ReorderableDragStartListener(
                                 index: i,
-                                child: Icon(Icons.drag_handle,
-                                    color: textSecondary),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Icon(Icons.drag_handle,
+                                      color: textSecondary),
+                                ),
                               ),
                             ],
                           ),

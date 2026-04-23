@@ -26,13 +26,6 @@ class _StatsScreenState extends State<StatsScreen> {
     });
   }
 
-  String _formatWeight(double kg) {
-    if (kg >= 1000) {
-      return '${(kg / 1000).toStringAsFixed(1)}t';
-    }
-    return kg % 1 == 0 ? '${kg.toInt()}kg' : '${kg.toStringAsFixed(1)}kg';
-  }
-
   String _formatDuration(int seconds) {
     if (seconds <= 0) return '0min';
     final h = seconds ~/ 3600;
@@ -118,9 +111,7 @@ class _StatsScreenState extends State<StatsScreen> {
     }
 
     final totalSeconds = stats['total_seconds'] as int;
-    final totalWeight = stats['total_weight_kg'] as double;
-    final totalSets = stats['total_sets'] as int;
-    final topExercise = stats['top_exercise'] as String;
+    final topExercises = stats['top_exercises'] as List<String>;
     final typeBreakdown = stats['type_breakdown'] as Map<String, int>;
     final longestStreak = stats['longest_streak'] as int;
 
@@ -147,73 +138,16 @@ class _StatsScreenState extends State<StatsScreen> {
           )),
         ]),
         const SizedBox(height: 12),
-        Row(children: [
-          Expanded(
-              child: _BigStatCard(
-            icon: Icons.timer_outlined,
-            value: _formatDuration(totalSeconds),
-            label: 'Total Time',
-            accentColor: const Color(0xFF2196F3),
-          )),
-          const SizedBox(width: 12),
-          Expanded(
-              child: _BigStatCard(
-            icon: Icons.layers_rounded,
-            value: '$totalSets',
-            label: 'Total Sets',
-            accentColor: const Color(0xFF4CAF50),
-          )),
-        ]),
-        const SizedBox(height: 12),
-
-        // ── Total weight lifted ──
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: const Color(0xFF111111),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(children: [
-            const Icon(Icons.bolt_rounded,
-                color: Color(0xFFFFD700), size: 32),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _formatWeight(totalWeight),
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      color: Color(0xFFFFD700),
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const Text(
-                    'Total weight lifted',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFFAAAAAA),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ]),
+        _BigStatCard(
+          icon: Icons.timer_outlined,
+          value: _formatDuration(totalSeconds),
+          label: 'Total Time',
+          accentColor: const Color(0xFF2196F3),
         ),
 
-        if (topExercise.isNotEmpty) ...[
+        if (topExercises.isNotEmpty) ...[
           const SizedBox(height: 12),
-          // ── Top exercise ──
+          // ── Top exercises ──
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -227,43 +161,57 @@ class _StatsScreenState extends State<StatsScreen> {
                 ),
               ],
             ),
-            child: Row(children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFD700).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Most Logged Exercises',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF888888),
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
                 ),
-                child: const Icon(Icons.emoji_events_outlined,
-                    color: Color(0xFF8B7500), size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Most Logged Exercise',
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF888888),
-                          fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      topExercise,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF111111),
-                        letterSpacing: -0.2,
+                const SizedBox(height: 12),
+                ...topExercises.asMap().entries.map((e) {
+                  final medals = ['🥇', '🥈', '🥉'];
+                  return Padding(
+                    padding: EdgeInsets.only(
+                        bottom: e.key < topExercises.length - 1 ? 10 : 0),
+                    child: Row(children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFD700)
+                              .withValues(alpha: 0.15 - e.key * 0.03),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Center(
+                          child: Text(
+                            medals[e.key],
+                            style: const TextStyle(fontSize: 18),
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ]),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          e.value,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF111111),
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                      ),
+                    ]),
+                  );
+                }),
+              ],
+            ),
           ),
         ],
 

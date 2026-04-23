@@ -50,6 +50,13 @@ class DBHelper {
     } catch (_) {}
   }
 
+  static Future<void> _ensureV7Columns(Database d) async {
+    try {
+      await d.execute(
+          'ALTER TABLE measurements ADD COLUMN height_cm REAL');
+    } catch (_) {}
+  }
+
   static Future<void> _createTemplatesTables(Database d) async {
     try {
       await d.execute('''
@@ -72,7 +79,7 @@ class DBHelper {
 
   static Future<Database> _initDB() async {
     final path = p.join(await getDatabasesPath(), 'gymlog.db');
-    final d = await openDatabase(path, version: 6, onCreate: (db, v) async {
+    final d = await openDatabase(path, version: 7, onCreate: (db, v) async {
       await db.execute('''
         CREATE TABLE exercises (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -123,7 +130,7 @@ class DBHelper {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           date TEXT NOT NULL,
           weight_kg REAL,
-          body_fat_pct REAL,
+          height_cm REAL,
           notes TEXT DEFAULT ''
         )
       ''');
@@ -146,11 +153,13 @@ class DBHelper {
         await _createTemplatesTables(db);
       }
       if (oldV < 6) await _ensureV6Columns(db);
+      if (oldV < 7) await _ensureV7Columns(db);
     });
     await _ensureV4Columns(d);
     await _ensureV5Columns(d);
     await _createTemplatesTables(d);
     await _ensureV6Columns(d);
+    await _ensureV7Columns(d);
     return d;
   }
 
@@ -425,14 +434,14 @@ class DBHelper {
   static Future<void> insertMeasurement({
     required String date,
     double? weightKg,
-    double? bodyFatPct,
+    double? heightCm,
     String notes = '',
   }) async {
     final d = await db;
     await d.insert('measurements', {
       'date': date,
       if (weightKg != null) 'weight_kg': weightKg,
-      if (bodyFatPct != null) 'body_fat_pct': bodyFatPct,
+      if (heightCm != null) 'height_cm': heightCm,
       'notes': notes,
     });
   }
@@ -460,20 +469,12 @@ class DBHelper {
         await d.rawQuery('SELECT SUM(duration_seconds) as s FROM workouts');
     final totalSeconds = (tRes.first['s'] as int?) ?? 0;
 
-    final weightRes =
-        await d.rawQuery('SELECT SUM(weight * reps) as s FROM sets');
-    final totalWeight =
-        (weightRes.first['s'] as num?)?.toDouble() ?? 0.0;
-
-    final setsRes = await d.rawQuery('SELECT COUNT(*) as c FROM sets');
-    final totalSets = (setsRes.first['c'] as int?) ?? 0;
-
     final topExRes = await d.rawQuery('''
       SELECT exercise_name, COUNT(*) as cnt FROM sets
-      GROUP BY exercise_name ORDER BY cnt DESC LIMIT 1
+      GROUP BY exercise_name ORDER BY cnt DESC LIMIT 3
     ''');
-    final topExercise =
-        topExRes.isEmpty ? '' : topExRes.first['exercise_name'] as String;
+    final topExercises =
+        topExRes.map((r) => r['exercise_name'] as String).toList();
 
     final typeRes = await d
         .rawQuery('SELECT type, COUNT(*) as cnt FROM workouts GROUP BY type');
@@ -509,9 +510,7 @@ class DBHelper {
     return {
       'total_workouts': totalWorkouts,
       'total_seconds': totalSeconds,
-      'total_weight_kg': totalWeight,
-      'total_sets': totalSets,
-      'top_exercise': topExercise,
+      'top_exercises': topExercises,
       'type_breakdown': typeBreakdown,
       'longest_streak': longestStreak,
     };

@@ -17,7 +17,7 @@ class WorkoutTypes {
       case flexibility:
         return const Color(0xFFFF6D00);
       default:
-        return const Color(0xFFFFD700);
+        return const Color(0xFF4477FF);
     }
   }
 

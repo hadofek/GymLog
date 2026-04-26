@@ -71,17 +71,17 @@ class _GymLogAppState extends State<GymLogApp> {
   static ThemeData get _darkTheme => ThemeData(
         brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFFFD700),
+          seedColor: const Color(0xFF4477FF),
           brightness: Brightness.dark,
         ),
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        cardColor: const Color(0xFF1E1E1E),
+        scaffoldBackgroundColor: const Color(0xFF07080F),
+        cardColor: const Color(0xFF0E1121),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF121212),
+          backgroundColor: Color(0xFF07080F),
           surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
-          foregroundColor: Colors.white,
+          foregroundColor: Color(0xFFE4E6F0),
         ),
         useMaterial3: true,
       );

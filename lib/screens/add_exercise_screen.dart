@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
+import 'package:gymlog/utils/ki_styles.dart';
 
 class AddExerciseScreen extends StatefulWidget {
   final List<String> allExercises;
@@ -335,64 +336,62 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                   // ── Last time reference ──
                   if (_lastSets.isNotEmpty) ...[
                     const SizedBox(height: 14),
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF8DC),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                            color: const Color(0xFFFFD700)
-                                .withValues(alpha: 0.4),
-                            width: 1.5),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.history,
-                                  size: 14, color: Color(0xFF8B7500)),
-                              const SizedBox(width: 6),
-                              const Text(
-                                'Last session',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                  color: Color(0xFF8B7500),
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                              if (_exercisePR > 0) ...[
-                                const Spacer(),
-                                const Icon(Icons.emoji_events_rounded,
-                                    size: 12, color: Color(0xFF8B7500)),
-                                const SizedBox(width: 3),
+                    Builder(builder: (context) {
+                      final isDark = AppColors.isDark(context);
+                      final refBg = isDark
+                          ? AppColors.gold.withValues(alpha: 0.08)
+                          : const Color(0xFFFFF8DC);
+                      final refText = isDark
+                          ? AppColors.gold
+                          : const Color(0xFF8B7500);
+                      return Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: refBg,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: AppColors.gold.withValues(alpha: 0.3),
+                              width: 1.5),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.history, size: 14, color: refText),
+                                const SizedBox(width: 6),
                                 Text(
-                                  'PR: ${_exercisePR % 1 == 0 ? _exercisePR.toInt() : _exercisePR}kg',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF8B7500),
-                                  ),
+                                  'LAST SESSION',
+                                  style: KiStyles.labelSm(color: refText),
                                 ),
+                                if (_exercisePR > 0) ...[
+                                  const Spacer(),
+                                  Icon(Icons.emoji_events_rounded,
+                                      size: 12, color: refText),
+                                  const SizedBox(width: 3),
+                                  Text(
+                                    'PR: ${_exercisePR % 1 == 0 ? _exercisePR.toInt() : _exercisePR}kg',
+                                    style: KiStyles.labelSm(color: refText),
+                                  ),
+                                ],
                               ],
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          ..._lastSets.map((s) => Padding(
-                                padding: const EdgeInsets.only(bottom: 3),
-                                child: Text(
-                                  'Set ${s['set_number']}:  ${s['weight']}kg × ${s['reps']} reps',
-                                  style: const TextStyle(
-                                    color: Color(0xFF6B5800),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
+                            ),
+                            const SizedBox(height: 8),
+                            ..._lastSets.map((s) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 3),
+                                  child: Text(
+                                    'Set ${s['set_number']}:  ${s['weight']}kg × ${s['reps']} reps',
+                                    style: TextStyle(
+                                      color: refText,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
-                                ),
-                              )),
-                        ],
-                      ),
-                    ),
+                                )),
+                          ],
+                        ),
+                      );
+                    }),
                   ],
 
                   const SizedBox(height: 24),
@@ -415,16 +414,16 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFD700)
+                            color: AppColors.accentContainer(context)
                                 .withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             '${_sets.length}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF8B7500),
+                              color: AppColors.accentContainer(context),
                             ),
                           ),
                         ),
@@ -643,8 +642,8 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                             fontWeight: FontWeight.bold, fontSize: 15),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFD700),
-                        foregroundColor: const Color(0xFF111111),
+                        backgroundColor: AppColors.accentContainer(context),
+                        foregroundColor: const Color(0xFF002469),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),

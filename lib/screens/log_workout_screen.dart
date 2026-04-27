@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -5,6 +6,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/screens/add_exercise_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
+import 'package:gymlog/utils/app_colors.dart';
+import 'package:gymlog/utils/ki_styles.dart';
 
 class LogWorkoutScreen extends StatefulWidget {
   final DateTime? initialDate;
@@ -25,6 +28,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   List<String> _allExercises = [];
   late DateTime _workoutDate;
   late Stopwatch _workoutStopwatch;
+  Timer? _ticker;
   int _nextSupersetGroup = 1;
 
   @override
@@ -33,6 +37,9 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     _workoutDate = widget.initialDate ?? DateTime.now();
     DBHelper.getExercises().then((e) => setState(() => _allExercises = e));
     _workoutStopwatch = Stopwatch()..start();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
     if (widget.initialExercises != null) {
       _exercises.addAll(widget.initialExercises!);
     }
@@ -40,8 +47,17 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
 
   @override
   void dispose() {
+    _ticker?.cancel();
     _workoutStopwatch.stop();
     super.dispose();
+  }
+
+  String get _elapsedDisplay {
+    final e = _workoutStopwatch.elapsed;
+    final h = e.inHours;
+    final m = e.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = e.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return h > 0 ? '$h:$m:$s' : '$m:$s';
   }
 
   Color get _accentColor => WorkoutTypes.color(widget.type);
@@ -88,11 +104,101 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     });
   }
 
+  Future<void> _addSetInline(int exIndex) async {
+    final cardBg = AppColors.cardBg(context);
+    final textPrimary = AppColors.textPrimary(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final accentContainer = AppColors.accentContainer(context);
+    final isBodyweight = widget.type == WorkoutTypes.bodyweight;
+
+    final wCtrl = TextEditingController();
+    final rCtrl = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: cardBg,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Add Set — ${_exercises[exIndex]['name']}',
+          style: KiStyles.headlineMd(color: textPrimary),
+        ),
+        content: Row(children: [
+          if (!isBodyweight) ...[
+            Expanded(
+              child: TextField(
+                controller: wCtrl,
+                autofocus: true,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                style: KiStyles.body(color: textPrimary),
+                decoration: InputDecoration(
+                  labelText: 'Weight (kg)',
+                  hintText: '0 = BW',
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: TextField(
+              controller: rCtrl,
+              autofocus: isBodyweight,
+              keyboardType: TextInputType.number,
+              style: KiStyles.body(color: textPrimary),
+              decoration: InputDecoration(
+                labelText: 'Reps',
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            ),
+          ),
+        ]),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('Cancel', style: KiStyles.label(color: textTertiary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(
+              backgroundColor: accentContainer.withValues(alpha: 0.12),
+              shape:
+                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: Text('Add Set',
+                style: KiStyles.label(color: accentContainer)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      final w = isBodyweight
+          ? 0.0
+          : (double.tryParse(wCtrl.text.isEmpty ? '0' : wCtrl.text) ?? 0.0);
+      final r = int.tryParse(rCtrl.text) ?? 0;
+      if (r > 0) {
+        setState(() {
+          (_exercises[exIndex]['sets'] as List)
+              .add({'weight': w, 'reps': r});
+        });
+      }
+    }
+  }
+
   Future<String?> _showProgressPhotoDialog() async {
     if (!mounted) return null;
+    final cardBg = AppColors.cardBg(context);
+    final textPrimary = AppColors.textPrimary(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final borderColor = AppColors.border(context);
+
     return await showModalBottomSheet<String?>(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: cardBg,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => SafeArea(
@@ -102,80 +208,70 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 36,
-                height: 4,
+                width: 36, height: 4,
                 decoration: BoxDecoration(
-                    color: const Color(0xFFDDDDDD),
+                    color: borderColor,
                     borderRadius: BorderRadius.circular(2)),
               ),
               const SizedBox(height: 20),
-              const Text(
-                'Add a progress photo?',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.3,
-                  color: Color(0xFF111111),
-                ),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Add a progress photo?',
+                    style: KiStyles.headlineMd(color: textPrimary)),
               ),
               const SizedBox(height: 4),
-              const Text(
-                'Document your progress with a photo',
-                style: TextStyle(fontSize: 13, color: Color(0xFF888888)),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Document your progress with a photo',
+                    style: KiStyles.label(color: textTertiary)),
               ),
               const SizedBox(height: 20),
               ListTile(
-                onTap: () async {
-                  Navigator.pop(ctx, 'camera');
-                },
+                onTap: () => Navigator.pop(ctx, 'camera'),
                 leading: Container(
-                  width: 44,
-                  height: 44,
+                  width: 44, height: 44,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF111111).withValues(alpha: 0.06),
+                    color: AppColors.accentContainer(ctx)
+                        .withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.camera_alt_outlined,
-                      color: Color(0xFF111111), size: 22),
+                  child: Icon(Icons.camera_alt_outlined,
+                      color: AppColors.accentContainer(ctx), size: 22),
                 ),
-                title: const Text('Take Photo',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: const Text('Open camera',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF888888))),
+                title: Text('Take Photo',
+                    style: KiStyles.bodySemibold(color: textPrimary)),
+                subtitle: Text('Open camera',
+                    style: KiStyles.labelSm(color: textTertiary)),
               ),
               ListTile(
                 onTap: () => Navigator.pop(ctx, 'gallery'),
                 leading: Container(
-                  width: 44,
-                  height: 44,
+                  width: 44, height: 44,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF111111).withValues(alpha: 0.06),
+                    color: AppColors.accentContainer(ctx)
+                        .withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.photo_library_outlined,
-                      color: Color(0xFF111111), size: 22),
+                  child: Icon(Icons.photo_library_outlined,
+                      color: AppColors.accentContainer(ctx), size: 22),
                 ),
-                title: const Text('Choose from Gallery',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
-                subtitle: const Text('Pick an existing photo',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF888888))),
+                title: Text('Choose from Gallery',
+                    style: KiStyles.bodySemibold(color: textPrimary)),
+                subtitle: Text('Pick an existing photo',
+                    style: KiStyles.labelSm(color: textTertiary)),
               ),
               ListTile(
                 onTap: () => Navigator.pop(ctx, null),
                 leading: Container(
-                  width: 44,
-                  height: 44,
+                  width: 44, height: 44,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF111111).withValues(alpha: 0.04),
+                    color: borderColor.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.close,
-                      color: Color(0xFF888888), size: 22),
+                  child: Icon(Icons.close, color: textTertiary, size: 22),
                 ),
-                title: const Text('Skip',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF888888))),
+                title: Text('Skip',
+                    style: KiStyles.bodySemibold(color: textTertiary)),
               ),
               const SizedBox(height: 8),
             ],
@@ -263,297 +359,483 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     final bool isToday = () {
       final now = DateTime.now();
       final d = _workoutDate;
-      return d.year == now.year &&
-          d.month == now.month &&
-          d.day == now.day;
+      return d.year == now.year && d.month == now.month && d.day == now.day;
     }();
 
+    final bg = AppColors.background(context);
+    final cardBg = AppColors.cardBg(context);
+    final textPrimary = AppColors.textPrimary(context);
+    final textSecondary = AppColors.textSecondary(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final accentContainer = AppColors.accentContainer(context);
+    final isDark = AppColors.isDark(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F5F5),
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.close, color: Color(0xFF111111)),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: GestureDetector(
-          onTap: _pickDate,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                isToday
-                    ? '${WorkoutTypes.label(widget.type)} Workout'
-                    : '${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                  color: Color(0xFF111111),
-                  letterSpacing: -0.3,
-                ),
-              ),
-              const SizedBox(width: 6),
-              const Icon(Icons.edit_calendar_outlined,
-                  size: 15, color: Color(0xFFAAAAAA)),
-            ],
-          ),
-        ),
-        actions: [
-          if (_exercises.isNotEmpty)
+      backgroundColor: bg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ── KO Header ──
             Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: TextButton(
-                onPressed: _saveWorkout,
-                style: TextButton.styleFrom(
-                  backgroundColor: _accentColor,
-                  foregroundColor: const Color(0xFF111111),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20)),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: const Text(
-                  'Save',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-              ),
-            ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: _exercises.isEmpty
-                ? Center(
-                    child: Column(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.close, color: textSecondary),
+                    onPressed: () => Navigator.pop(context),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'GYMLOG',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        fontStyle: FontStyle.italic,
+                        letterSpacing: 3,
+                        color: accentContainer,
+                      ),
+                    ),
+                  ),
+                  // Live session badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4AE176).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 72,
-                          height: 72,
+                          width: 6, height: 6,
                           decoration: BoxDecoration(
-                            color: _accentColor.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            WorkoutTypes.icon(widget.type),
-                            size: 32,
-                            color: _accentColor,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'No exercises yet',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF333333),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Tap Add Exercise to get started',
-                          style:
-                              TextStyle(fontSize: 14, color: Color(0xFF999999)),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    // Each pair (card + optional superset connector)
-                    itemCount: _exercises.length * 2 - 1,
-                    itemBuilder: (ctx, index) {
-                      // Even index = exercise card; odd index = connector between [index/2] and [index/2 + 1]
-                      if (index.isOdd) {
-                        final i = index ~/ 2; // index of left exercise
-                        final groupA =
-                            _exercises[i]['supersetGroup'] as int?;
-                        final groupB =
-                            _exercises[i + 1]['supersetGroup'] as int?;
-                        final isLinked =
-                            groupA != null && groupA == groupB;
-                        return _SupersetConnector(
-                          isLinked: isLinked,
-                          accentColor: _accentColor,
-                          onTap: () => _toggleSuperset(i, i + 1),
-                        );
-                      }
-                      final exIndex = index ~/ 2;
-                      final ex = _exercises[exIndex];
-                      final sets = ex['sets'] as List;
-                      final supersetGroup =
-                          ex['supersetGroup'] as int?;
-                      final isLinked = supersetGroup != null;
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: isLinked
-                              ? Border.all(
-                                  color:
-                                      _accentColor.withValues(alpha: 0.4),
-                                  width: 1.5)
-                              : null,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(children: [
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: _accentColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    ex['name'] as String,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 16,
-                                      color: Color(0xFF111111),
-                                      letterSpacing: -0.2,
-                                    ),
-                                  ),
-                                ),
-                                if (isLinked)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: _accentColor
-                                          .withValues(alpha: 0.12),
-                                      borderRadius:
-                                          BorderRadius.circular(6),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.link_rounded,
-                                            size: 11, color: _accentColor),
-                                        const SizedBox(width: 3),
-                                        Text(
-                                          'Superset',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
-                                            color: _accentColor,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                              ]),
-                              const SizedBox(height: 10),
-                              ...sets.asMap().entries.map((e) {
-                                final isBW =
-                                    (e.value['weight'] as num).toDouble() == 0;
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 6),
-                                  child: Row(children: [
-                                    _SetBadge(
-                                        number: e.key + 1,
-                                        color: _accentColor),
-                                    const SizedBox(width: 10),
-                                    Text(
-                                      isBW
-                                          ? 'BW'
-                                          : '${e.value['weight']}kg',
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF111111),
-                                      ),
-                                    ),
-                                    const Text('  ×  ',
-                                        style: TextStyle(
-                                            fontSize: 13,
-                                            color: Color(0xFFAAAAAA))),
-                                    Text(
-                                      '${e.value['reps']} reps',
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF111111),
-                                      ),
-                                    ),
-                                    if (e.value['isPR'] == true) ...[
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 5, vertical: 1),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFFFD700),
-                                          borderRadius:
-                                              BorderRadius.circular(5),
-                                        ),
-                                        child: const Text('PR',
-                                            style: TextStyle(
-                                                fontSize: 9,
-                                                fontWeight: FontWeight.w800,
-                                                color: Color(0xFF111111))),
-                                      ),
-                                    ],
-                                  ]),
-                                );
-                              }),
+                            color: const Color(0xFF4AE176),
+                            boxShadow: [
+                              BoxShadow(
+                                  color: const Color(0xFF4AE176)
+                                      .withValues(alpha: 0.6),
+                                  blurRadius: 6),
                             ],
                           ),
                         ),
-                      );
-                    }),
-          ),
-          SafeArea(
-            top: false,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(
-                    top: BorderSide(color: Color(0xFFEEEEEE), width: 1)),
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _addExercise,
-                  icon: const Icon(Icons.add, size: 20),
-                  label: const Text(
-                    'Add Exercise',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15),
+                        const SizedBox(width: 6),
+                        Text('LIVE',
+                            style: KiStyles.labelSm(
+                                color: const Color(0xFF4AE176))),
+                      ],
+                    ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF111111),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                    elevation: 0,
+                  if (_exercises.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: _saveWorkout,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: accentContainer,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text('Save',
+                            style: KiStyles.bodySemibold(
+                                color: const Color(0xFF002469))),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // ── Timer bento cards ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  // Workout time
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: cardBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? const Color(0xFF434654).withValues(alpha: 0.6)
+                              : const Color(0xFFEEEEEE),
+                        ),
+                        boxShadow: isDark
+                            ? [
+                                BoxShadow(
+                                  color: accentContainer
+                                      .withValues(alpha: 0.10),
+                                  blurRadius: 16,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(children: [
+                            Icon(Icons.timer_outlined,
+                                size: 14, color: accentContainer),
+                            const SizedBox(width: 6),
+                            Text('WORKOUT TIME',
+                                style: KiStyles.labelSm(
+                                    color: textTertiary)),
+                          ]),
+                          const SizedBox(height: 8),
+                          Text(_elapsedDisplay,
+                              style: KiStyles.headlineLg(
+                                  color: accentContainer)),
+                          const SizedBox(height: 2),
+                          Text(
+                            isToday
+                                ? WorkoutTypes.label(widget.type)
+                                    .toUpperCase()
+                                : '${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}',
+                            style: KiStyles.labelSm(color: textTertiary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // Date selector
+                  GestureDetector(
+                    onTap: _pickDate,
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: cardBg,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? const Color(0xFF434654).withValues(alpha: 0.6)
+                              : const Color(0xFFEEEEEE),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(children: [
+                            Icon(Icons.event_outlined,
+                                size: 14, color: textTertiary),
+                            const SizedBox(width: 6),
+                            Text('DATE',
+                                style: KiStyles.labelSm(
+                                    color: textTertiary)),
+                          ]),
+                          const SizedBox(height: 8),
+                          Text(
+                            isToday
+                                ? 'Today'
+                                : '${_workoutDate.day}/${_workoutDate.month}',
+                            style:
+                                KiStyles.headlineMd(color: textPrimary),
+                          ),
+                          const SizedBox(height: 2),
+                          Text('TAP TO CHANGE',
+                              style: KiStyles.labelSm(
+                                  color: textTertiary)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            // ── Exercise counter ──
+            if (_exercises.isNotEmpty)
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '${_exercises.length} EXERCISE${_exercises.length != 1 ? 'S' : ''}',
+                    style: KiStyles.label(color: textTertiary),
                   ),
                 ),
               ),
+
+            const SizedBox(height: 8),
+
+            // ── Exercise list ──
+            Expanded(
+              child: _exercises.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(WorkoutTypes.icon(widget.type),
+                              size: 44,
+                              color: _accentColor.withValues(alpha: 0.4)),
+                          const SizedBox(height: 16),
+                          Text('No exercises yet',
+                              style: KiStyles.headlineMd(
+                                  color: textPrimary)),
+                          const SizedBox(height: 6),
+                          Text('Tap Add Exercise to get started',
+                              style: KiStyles.label(
+                                  color: textTertiary)),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding:
+                          const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      itemCount: _exercises.length * 2 - 1,
+                      itemBuilder: (ctx, index) {
+                        if (index.isOdd) {
+                          final i = index ~/ 2;
+                          final groupA =
+                              _exercises[i]['supersetGroup'] as int?;
+                          final groupB = _exercises[i + 1]
+                              ['supersetGroup'] as int?;
+                          final isLinked =
+                              groupA != null && groupA == groupB;
+                          return _SupersetConnector(
+                            isLinked: isLinked,
+                            accentColor: _accentColor,
+                            onTap: () => _toggleSuperset(i, i + 1),
+                          );
+                        }
+                        final exIndex = index ~/ 2;
+                        final ex = _exercises[exIndex];
+                        final sets = ex['sets'] as List;
+                        final supersetGroup =
+                            ex['supersetGroup'] as int?;
+                        final isLinked = supersetGroup != null;
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 4),
+                          decoration: BoxDecoration(
+                            color: cardBg,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isLinked
+                                  ? _accentColor.withValues(alpha: 0.5)
+                                  : isDark
+                                      ? const Color(0xFF434654)
+                                          .withValues(alpha: 0.6)
+                                      : const Color(0xFFEEEEEE),
+                              width: isLinked ? 1.5 : 1,
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Row(children: [
+                                  Container(
+                                    width: 8, height: 8,
+                                    decoration: BoxDecoration(
+                                        color: _accentColor,
+                                        shape: BoxShape.circle),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      ex['name'] as String,
+                                      style: KiStyles.bodySemibold(
+                                          color: textPrimary),
+                                    ),
+                                  ),
+                                  if (isLinked)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: _accentColor
+                                            .withValues(alpha: 0.12),
+                                        borderRadius:
+                                            BorderRadius.circular(6),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.link_rounded,
+                                              size: 11,
+                                              color: _accentColor),
+                                          const SizedBox(width: 3),
+                                          Text('SS',
+                                              style: KiStyles.labelSm(
+                                                  color: _accentColor)),
+                                        ],
+                                      ),
+                                    ),
+                                ]),
+                                const SizedBox(height: 10),
+                                ...sets.asMap().entries.map((e) {
+                                  final isBW =
+                                      (e.value['weight'] as num)
+                                              .toDouble() ==
+                                          0;
+                                  return Padding(
+                                    padding:
+                                        const EdgeInsets.only(bottom: 6),
+                                    child: Row(children: [
+                                      _SetBadge(
+                                          number: e.key + 1,
+                                          color: _accentColor),
+                                      const SizedBox(width: 10),
+                                      Text(
+                                        isBW
+                                            ? 'BW'
+                                            : '${e.value['weight']}kg',
+                                        style: KiStyles.bodySemibold(
+                                            color: textPrimary),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8),
+                                        child: Text('×',
+                                            style: KiStyles.label(
+                                                color: textTertiary)),
+                                      ),
+                                      Text(
+                                        '${e.value['reps']} reps',
+                                        style: KiStyles.bodySemibold(
+                                            color: textSecondary),
+                                      ),
+                                      if (e.value['isPR'] == true) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding:
+                                              const EdgeInsets.symmetric(
+                                                  horizontal: 5,
+                                                  vertical: 1),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                const Color(0xFFFFD700),
+                                            borderRadius:
+                                                BorderRadius.circular(5),
+                                          ),
+                                          child: Text('PR',
+                                              style: KiStyles.labelSm(
+                                                  color: const Color(
+                                                      0xFF111111))),
+                                        ),
+                                      ],
+                                      // Remove set button
+                                      const Spacer(),
+                                      GestureDetector(
+                                        onTap: () => setState(() {
+                                          (ex['sets'] as List)
+                                              .removeAt(e.key);
+                                        }),
+                                        child: Icon(Icons.close,
+                                            size: 14,
+                                            color: textTertiary),
+                                      ),
+                                    ]),
+                                  );
+                                }),
+                                // + Add Set inline button
+                                const SizedBox(height: 6),
+                                GestureDetector(
+                                  onTap: () =>
+                                      _addSetInline(exIndex),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.add_circle_outline,
+                                          size: 15,
+                                          color: _accentColor),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        sets.isEmpty
+                                            ? 'ADD FIRST SET'
+                                            : 'ADD SET',
+                                        style: KiStyles.label(
+                                            color: _accentColor),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
             ),
-          ),
-        ],
+
+            // ── Bottom action area ──
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: Column(
+                  children: [
+                    // Add Exercise ghost button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _addExercise,
+                        icon: Icon(Icons.add_circle_outline,
+                            size: 18, color: accentContainer),
+                        label: Text('Add Exercise',
+                            style: KiStyles.bodySemibold(
+                                color: textPrimary)),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                              color: isDark
+                                  ? const Color(0xFF434654)
+                                      .withValues(alpha: 0.8)
+                                  : const Color(0xFFDDDDDD)),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ),
+                    if (_exercises.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      // Finish Workout primary button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _saveWorkout,
+                          icon: const Icon(Icons.task_alt_rounded,
+                              size: 20),
+                          label: Text('Finish Workout',
+                              style: KiStyles.bodySemibold(
+                                  color: const Color(0xFF002469))),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: accentContainer,
+                            foregroundColor: const Color(0xFF002469),
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(14)),
+                            elevation: isDark ? 0 : 2,
+                            shadowColor: accentContainer
+                                .withValues(alpha: 0.4),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

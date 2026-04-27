@@ -1,59 +1,75 @@
 import 'package:flutter/material.dart';
 
+// Kinetic Obsidian palette
 class AppColors {
   static bool isDark(BuildContext ctx) =>
       Theme.of(ctx).brightness == Brightness.dark;
 
+  // ── Surfaces ──
   static Color background(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF0C0C10) : const Color(0xFFF5F5F5);
+      isDark(ctx) ? const Color(0xFF11131B) : const Color(0xFFF5F5F5);
 
   static Color cardBg(BuildContext ctx) =>
       isDark(ctx) ? const Color(0xFF16161E) : Colors.white;
 
-  static Color cardElevated(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF1E1E28) : const Color(0xFFF9F9F9);
+  static Color surfaceContainer(BuildContext ctx) =>
+      isDark(ctx) ? const Color(0xFF1D1F27) : const Color(0xFFF9F9F9);
 
+  static Color surfaceContainerHigh(BuildContext ctx) =>
+      isDark(ctx) ? const Color(0xFF282A32) : const Color(0xFFF0F0F0);
+
+  static Color surfaceContainerHighest(BuildContext ctx) =>
+      isDark(ctx) ? const Color(0xFF33343D) : const Color(0xFFE8E8E8);
+
+  static Color cardElevated(BuildContext ctx) =>
+      isDark(ctx) ? const Color(0xFF1D1F27) : const Color(0xFFF9F9F9);
+
+  // ── Text ──
   static Color textPrimary(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFFEDEDF0) : const Color(0xFF111111);
+      isDark(ctx) ? const Color(0xFFE1E2ED) : const Color(0xFF111111);
 
   static Color textSecondary(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF72728A) : const Color(0xFF888888);
+      isDark(ctx) ? const Color(0xFFC3C6D7) : const Color(0xFF666666);
 
   static Color textTertiary(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF45455A) : const Color(0xFF666666);
+      isDark(ctx) ? const Color(0xFF8D90A0) : const Color(0xFFAAAAAA);
 
+  // ── Borders ──
   static Color border(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF242432) : const Color(0xFFEEEEEE);
+      isDark(ctx) ? const Color(0xFF434654) : const Color(0xFFEEEEEE);
 
   static Color divider(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF1A1A24) : const Color(0xFFF5F5F5);
+      isDark(ctx) ? const Color(0xFF282A32) : const Color(0xFFF5F5F5);
 
+  // ── Inputs ──
   static Color inputFill(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF1A1A24) : Colors.white;
+      isDark(ctx) ? const Color(0xFF1D1F27) : Colors.white;
 
   static Color hintText(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF45455A) : const Color(0xFFCCCCCC);
+      isDark(ctx) ? const Color(0xFF434654) : const Color(0xFFCCCCCC);
 
+  // ── Nav ──
   static Color bottomBarBg(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF0C0C10) : Colors.white;
+      isDark(ctx) ? const Color(0xFF16161E) : Colors.white;
 
-  // Primary button — blue in dark, near-black in light
-  static Color primaryBtnBg(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF4477FF) : const Color(0xFF111111);
-
-  static Color primaryBtnFg(BuildContext ctx) => Colors.white;
-
-  // Electric blue accent
+  // ── Primary (periwinkle blue) ──
   static Color accent(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF4D7FFF) : const Color(0xFF2D5BE3);
+      isDark(ctx) ? const Color(0xFFB4C5FF) : const Color(0xFF1154D4);
 
-  static Color accentDark(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF6699FF) : const Color(0xFF1A45BE);
+  static Color accentContainer(BuildContext ctx) =>
+      isDark(ctx) ? const Color(0xFF608BFF) : const Color(0xFF3A6FE8);
 
   static Color accentMuted(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0x204D7FFF) : const Color(0x1A2D5BE3);
+      isDark(ctx) ? const Color(0x26608BFF) : const Color(0x1A1154D4);
 
-  // Legacy constants (kept for backward compat in other screens)
+  // ── Primary button ──
+  static Color primaryBtnBg(BuildContext ctx) =>
+      isDark(ctx) ? const Color(0xFF608BFF) : const Color(0xFF111111);
+
+  static Color primaryBtnFg(BuildContext ctx) =>
+      isDark(ctx) ? const Color(0xFF002469) : Colors.white;
+
+  // ── Legacy constants ──
   static const Color gold = Color(0xFFFFD700);
   static const Color goldDark = Color(0xFF8B7500);
 }

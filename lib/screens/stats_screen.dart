@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/workout_types.dart';
+import 'package:gymlog/utils/app_colors.dart';
+import 'package:gymlog/utils/ki_styles.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -20,6 +22,7 @@ class _StatsScreenState extends State<StatsScreen> {
 
   Future<void> _load() async {
     final stats = await DBHelper.getAllTimeStats();
+    if (!mounted) return;
     setState(() {
       _stats = stats;
       _loading = false;
@@ -30,51 +33,63 @@ class _StatsScreenState extends State<StatsScreen> {
     if (seconds <= 0) return '0min';
     final h = seconds ~/ 3600;
     final m = (seconds % 3600) ~/ 60;
-    if (h > 0) return '${h}h ${m}min';
-    if (m > 0) return '${m}min';
-    return '<1min';
+    if (h > 0) return '${h}h ${m}m';
+    if (m > 0) return '${m}m';
+    return '<1m';
   }
 
   @override
   Widget build(BuildContext context) {
+    final bg = AppColors.background(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final accentContainer = AppColors.accentContainer(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F5F5),
-        surfaceTintColor: Colors.transparent,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        title: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'All-Time Stats',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 20,
-                color: Color(0xFF111111),
-                letterSpacing: -0.3,
+      backgroundColor: bg,
+      body: SafeArea(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  // ── KO Header ──
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'GYMLOG',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              fontStyle: FontStyle.italic,
+                              letterSpacing: 3,
+                              color: accentContainer,
+                            ),
+                          ),
+                        ),
+                        Text('ALL-TIME STATS',
+                            style: KiStyles.label(color: textTertiary)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(child: _buildBody()),
+                ],
               ),
-            ),
-            Text(
-              'Your complete training overview',
-              style: TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF888888),
-                  fontWeight: FontWeight.w400),
-            ),
-          ],
-        ),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _buildBody(),
     );
   }
 
   Widget _buildBody() {
     final stats = _stats!;
     final totalWorkouts = stats['total_workouts'] as int;
+    final textPrimary = AppColors.textPrimary(context);
+    final textSecondary = AppColors.textSecondary(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final accentContainer = AppColors.accentContainer(context);
+    final isDark = AppColors.isDark(context);
 
     if (totalWorkouts == 0) {
       return Center(
@@ -82,29 +97,20 @@ class _StatsScreenState extends State<StatsScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 72,
-              height: 72,
+              width: 72, height: 72,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFD700).withValues(alpha: 0.15),
+                color: accentContainer.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.bar_chart_rounded,
-                  size: 34, color: Color(0xFFFFD700)),
+              child: Icon(Icons.bar_chart_rounded,
+                  size: 34, color: accentContainer),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'No workouts yet',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF333333),
-              ),
-            ),
+            Text('No workouts yet',
+                style: KiStyles.headlineMd(color: textPrimary)),
             const SizedBox(height: 6),
-            const Text(
-              'Log your first workout to see stats',
-              style: TextStyle(fontSize: 14, color: Color(0xFF999999)),
-            ),
+            Text('Log your first workout to see stats',
+                style: KiStyles.label(color: textTertiary)),
           ],
         ),
       );
@@ -116,177 +122,200 @@ class _StatsScreenState extends State<StatsScreen> {
     final longestStreak = stats['longest_streak'] as int;
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
       children: [
-        // ── Main stats grid ──
-        Row(children: [
-          Expanded(
-              child: _BigStatCard(
-            icon: Icons.fitness_center_rounded,
-            value: '$totalWorkouts',
-            label: 'Total Workouts',
-            accentColor: const Color(0xFFFFD700),
-          )),
-          const SizedBox(width: 12),
-          Expanded(
-              child: _BigStatCard(
-            icon: Icons.local_fire_department_rounded,
-            value: '$longestStreak',
-            label: 'Best Streak',
-            suffix: longestStreak == 1 ? 'day' : 'days',
-            accentColor: const Color(0xFFFF6B35),
-          )),
-        ]),
-        const SizedBox(height: 12),
-        _BigStatCard(
-          icon: Icons.timer_outlined,
-          value: _formatDuration(totalSeconds),
-          label: 'Total Time',
-          accentColor: const Color(0xFF2196F3),
+
+        // ── Monument hero: total sessions ──
+        _KoBentoCard(
+          isDark: isDark,
+          glowColor: accentContainer,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('SESSIONS', style: KiStyles.label(color: textTertiary)),
+                    const SizedBox(height: 4),
+                    Text('$totalWorkouts',
+                        style: KiStyles.monument(color: textPrimary)),
+                  ],
+                ),
+              ),
+              Icon(Icons.fitness_center_rounded,
+                  color: accentContainer.withValues(alpha: 0.3), size: 48),
+            ],
+          ),
         ),
 
-        if (topExercises.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          // ── Top exercises ──
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+        const SizedBox(height: 10),
+
+        // ── Stats row: streak + total time ──
+        Row(children: [
+          Expanded(
+            child: _KoBentoCard(
+              isDark: isDark,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('BEST STREAK',
+                      style: KiStyles.label(color: textTertiary)),
+                  const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('$longestStreak',
+                          style: KiStyles.headlineLg(
+                              color: const Color(0xFFFFB690))),
+                      Padding(
+                        padding:
+                            const EdgeInsets.only(left: 4, bottom: 3),
+                        child: Text(
+                          longestStreak == 1 ? 'DAY' : 'DAYS',
+                          style: KiStyles.labelSm(color: textTertiary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _KoBentoCard(
+              isDark: isDark,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('TOTAL TIME',
+                      style: KiStyles.label(color: textTertiary)),
+                  const SizedBox(height: 8),
+                  Text(_formatDuration(totalSeconds),
+                      style: KiStyles.headlineLg(color: textPrimary)),
+                ],
+              ),
+            ),
+          ),
+        ]),
+
+        // ── Top exercises podium ──
+        if (topExercises.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _KoBentoCard(
+            isDark: isDark,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Most Logged Exercises',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF888888),
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
+                Text('TOP EXERCISES',
+                    style: KiStyles.label(color: textTertiary)),
+                const SizedBox(height: 16),
+
+                // Podium row (center=1st, left=2nd, right=3rd)
+                if (topExercises.length >= 2)
+                  _PodiumRow(
+                    exercises: topExercises,
+                    accentContainer: accentContainer,
+                    textPrimary: textPrimary,
+                    textTertiary: textTertiary,
+                    isDark: isDark,
+                  )
+                else
+                  Row(
+                    children: topExercises.asMap().entries.map((e) {
+                      final colors = [
+                        accentContainer,
+                        textSecondary,
+                        textTertiary,
+                      ];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(children: [
+                          Text('${e.key + 1}.',
+                              style: KiStyles.label(
+                                  color: colors[e.key.clamp(0, 2)])),
+                          const SizedBox(width: 8),
+                          Text(e.value,
+                              style:
+                                  KiStyles.bodySemibold(color: textPrimary)),
+                        ]),
+                      );
+                    }).toList(),
                   ),
-                ),
-                const SizedBox(height: 12),
-                ...topExercises.asMap().entries.map((e) {
-                  final medals = ['🥇', '🥈', '🥉'];
-                  return Padding(
-                    padding: EdgeInsets.only(
-                        bottom: e.key < topExercises.length - 1 ? 10 : 0),
-                    child: Row(children: [
-                      Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFD700)
-                              .withValues(alpha: 0.15 - e.key * 0.03),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Center(
-                          child: Text(
-                            medals[e.key],
-                            style: const TextStyle(fontSize: 18),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          e.value,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF111111),
-                            letterSpacing: -0.2,
-                          ),
-                        ),
-                      ),
-                    ]),
-                  );
-                }),
               ],
             ),
           ),
         ],
 
+        // ── Workout type distribution ──
         if (typeBreakdown.isNotEmpty) ...[
-          const SizedBox(height: 20),
-          const Text(
-            'Workout Types',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF111111),
-              letterSpacing: -0.2,
-            ),
-          ),
           const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
+          _KoBentoCard(
+            isDark: isDark,
             child: Column(
-              children: WorkoutTypes.all.where((t) {
-                final count = typeBreakdown[t] ?? 0;
-                return count > 0;
-              }).map((type) {
-                final count = typeBreakdown[type] ?? 0;
-                final pct = totalWorkouts > 0 ? count / totalWorkouts : 0.0;
-                final typeColor = WorkoutTypes.color(type);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 14),
-                  child: Column(
-                    children: [
-                      Row(children: [
-                        Icon(WorkoutTypes.icon(type),
-                            size: 16, color: typeColor),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            WorkoutTypes.label(type),
-                            style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF111111),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('TRAINING SPLIT',
+                    style: KiStyles.label(color: textTertiary)),
+                const SizedBox(height: 16),
+                ...WorkoutTypes.all.where((t) => (typeBreakdown[t] ?? 0) > 0).map((type) {
+                  final count = typeBreakdown[type] ?? 0;
+                  final pct =
+                      totalWorkouts > 0 ? count / totalWorkouts : 0.0;
+                  final typeColor = WorkoutTypes.color(type);
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: Column(
+                      children: [
+                        Row(children: [
+                          Container(
+                            width: 8, height: 8,
+                            decoration: BoxDecoration(
+                              color: typeColor, shape: BoxShape.circle),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              WorkoutTypes.label(type),
+                              style: KiStyles.bodySemibold(
+                                  color: textPrimary),
                             ),
                           ),
+                          Text(
+                            '${(pct * 100).round()}%',
+                            style: KiStyles.label(color: textSecondary),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '$count',
+                            style: KiStyles.label(color: textTertiary),
+                          ),
+                        ]),
+                        const SizedBox(height: 6),
+                        // Flat-end progress bar (KO spec)
+                        SizedBox(
+                          height: 4,
+                          child: Stack(
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: typeColor.withValues(alpha: 0.12),
+                                ),
+                              ),
+                              FractionallySizedBox(
+                                widthFactor: pct,
+                                child: Container(color: typeColor),
+                              ),
+                            ],
+                          ),
                         ),
-                        Text(
-                          '$count workout${count != 1 ? 's' : ''}',
-                          style: const TextStyle(
-                              fontSize: 12, color: Color(0xFF888888)),
-                        ),
-                      ]),
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: pct,
-                          minHeight: 6,
-                          backgroundColor: typeColor.withValues(alpha: 0.12),
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(typeColor),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
+                      ],
+                    ),
+                  );
+                }),
+              ],
             ),
           ),
         ],
@@ -295,91 +324,113 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 }
 
-class _BigStatCard extends StatelessWidget {
-  final IconData icon;
-  final String value;
-  final String label;
-  final String? suffix;
-  final Color accentColor;
+// ── Podium widget ──────────────────────────────────────────────────────────────
+class _PodiumRow extends StatelessWidget {
+  final List<String> exercises;
+  final Color accentContainer;
+  final Color textPrimary;
+  final Color textTertiary;
+  final bool isDark;
 
-  const _BigStatCard({
-    required this.icon,
-    required this.value,
-    required this.label,
-    this.suffix,
-    required this.accentColor,
+  const _PodiumRow({
+    required this.exercises,
+    required this.accentContainer,
+    required this.textPrimary,
+    required this.textTertiary,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Order: 2nd (left), 1st (center-raised), 3rd (right)
+    final order = [1, 0, exercises.length > 2 ? 2 : -1];
+    final heights = [56.0, 72.0, 44.0];
+    final colors = [
+      AppColors.textSecondary(context),
+      accentContainer,
+      AppColors.textTertiary(context),
+    ];
+    final labels = ['2ND', '1ST', '3RD'];
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: List.generate(3, (col) {
+        final idx = order[col];
+        if (idx < 0 || idx >= exercises.length) {
+          return const Expanded(child: SizedBox());
+        }
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(right: col < 2 ? 8 : 0),
+            child: Column(
+              children: [
+                Text(
+                  exercises[idx],
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: KiStyles.labelSm(color: textPrimary),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  height: heights[col],
+                  decoration: BoxDecoration(
+                    color: colors[col].withValues(alpha: 0.15),
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(8)),
+                    border: Border.all(
+                        color: colors[col].withValues(alpha: 0.3), width: 1),
+                  ),
+                  child: Center(
+                    child: Text(labels[col],
+                        style: KiStyles.label(color: colors[col])),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+// ── KO Bento Card ──────────────────────────────────────────────────────────────
+class _KoBentoCard extends StatelessWidget {
+  final Widget child;
+  final bool isDark;
+  final Color? glowColor;
+
+  const _KoBentoCard({
+    required this.child,
+    required this.isDark,
+    this.glowColor,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? const Color(0xFF16161E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: accentColor, size: 18),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Flexible(
-                child: Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF111111),
-                    letterSpacing: -0.5,
-                    height: 1.1,
-                  ),
+        border: Border.all(
+          color: isDark
+              ? const Color(0xFF434654).withValues(alpha: 0.6)
+              : const Color(0xFFEEEEEE),
+          width: 1,
+        ),
+        boxShadow: glowColor != null && isDark
+            ? [
+                BoxShadow(
+                  color: glowColor!.withValues(alpha: 0.12),
+                  blurRadius: 20,
                 ),
-              ),
-              if (suffix != null) ...[
-                const SizedBox(width: 3),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
-                  child: Text(
-                    suffix!,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF888888),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Color(0xFF888888),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+              ]
+            : null,
       ),
+      child: child,
     );
   }
 }

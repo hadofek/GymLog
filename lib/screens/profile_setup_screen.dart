@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import 'package:gymlog/screens/home_screen.dart';
+import 'package:gymlog/screens/main_shell.dart';
 import 'package:gymlog/screens/body_measurements_screen.dart';
 import 'package:gymlog/utils/app_colors.dart';
+import 'package:gymlog/utils/ki_styles.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   final bool isEditing;
@@ -169,7 +170,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
         Navigator.pop(context, true);
       } else {
         Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+            context, MaterialPageRoute(builder: (_) => const MainShell()));
       }
     } catch (e) {
       if (mounted) {
@@ -211,42 +212,24 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                   const SizedBox(height: 16),
 
                   // ── Brand mark ──
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: const BoxDecoration(
-                            color: Color(0xFF111111), shape: BoxShape.circle),
-                        child: const Icon(Icons.fitness_center,
-                            color: Color(0xFFFFD700), size: 20),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'GymLog',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          color: textPrimary,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    'GYMLOG',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      fontStyle: FontStyle.italic,
+                      letterSpacing: 4,
+                      color: AppColors.accentContainer(context),
+                    ),
                   ),
 
                   const SizedBox(height: 52),
 
                   // ── Heading ──
                   Text(
-                    widget.isEditing ? 'Edit Profile' : 'Welcome',
-                    style: TextStyle(
-                      fontSize: 30,
-                      fontWeight: FontWeight.w900,
-                      color: textPrimary,
-                      letterSpacing: -0.8,
-                      height: 1.1,
-                    ),
+                    widget.isEditing ? 'EDIT PROFILE' : 'WELCOME',
+                    style: KiStyles.headlineXl(color: textPrimary),
                   ),
                   const SizedBox(height: 10),
                   Text(
@@ -254,11 +237,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                         ? 'Update your profile details'
                         : 'Set up your profile\nto start logging workouts',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: textSecondary,
-                      height: 1.5,
-                    ),
+                    style: KiStyles.body(color: textSecondary),
                   ),
 
                   const SizedBox(height: 44),
@@ -277,7 +256,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                             color: border.withValues(alpha: 0.5),
                             border: Border.all(
                               color: _imagePath != null
-                                  ? const Color(0xFFFFD700)
+                                  ? AppColors.accentContainer(context)
                                   : border,
                               width: _imagePath != null ? 3 : 2,
                             ),
@@ -292,16 +271,19 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                                   ),
                           ),
                         ),
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF111111),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.camera_alt,
-                              color: Colors.white, size: 17),
-                        ),
+                        Builder(builder: (context) {
+                          final ac = AppColors.accentContainer(context);
+                          return Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: ac,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.camera_alt,
+                                color: Color(0xFF002469), size: 17),
+                          );
+                        }),
                       ],
                     ),
                   ),

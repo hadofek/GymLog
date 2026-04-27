@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gymlog/main.dart';
 import 'package:gymlog/utils/app_colors.dart';
+import 'package:gymlog/utils/ki_styles.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -38,30 +39,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
       backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: bg,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        title: Text(
-          'Settings',
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
-            color: textPrimary,
-            letterSpacing: -0.3,
-          ),
+        automaticallyImplyLeading: false,
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'GYMLOG',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  fontStyle: FontStyle.italic,
+                  letterSpacing: 3,
+                  color: AppColors.accentContainer(context),
+                ),
+              ),
+            ),
+            Text('SETTINGS',
+                style: KiStyles.label(color: textSecondary)),
+          ],
         ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(
-            'APPEARANCE',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: textSecondary,
-              letterSpacing: 1.2,
-            ),
-          ),
+          Text('APPEARANCE', style: KiStyles.label(color: textSecondary)),
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
@@ -157,21 +162,24 @@ class _ThemeOption extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: selected
-                    ? AppColors.gold.withValues(alpha: 0.2)
-                    : border.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                icon,
-                size: 18,
-                color: selected ? AppColors.goldDark : textSecondary,
-              ),
-            ),
+            Builder(builder: (context) {
+              final ac = AppColors.accentContainer(context);
+              return Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: selected
+                      ? ac.withValues(alpha: 0.15)
+                      : border.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: selected ? ac : textSecondary,
+                ),
+              );
+            }),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -193,15 +201,16 @@ class _ThemeOption extends StatelessWidget {
               ),
             ),
             if (selected)
-              Container(
-                width: 22,
-                height: 22,
-                decoration: const BoxDecoration(
-                  color: AppColors.gold,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.check, size: 14, color: Color(0xFF111111)),
-              )
+              Builder(builder: (context) {
+                final ac = AppColors.accentContainer(context);
+                return Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(color: ac, shape: BoxShape.circle),
+                  child: const Icon(Icons.check,
+                      size: 14, color: Color(0xFF002469)),
+                );
+              })
             else
               Container(
                 width: 22,

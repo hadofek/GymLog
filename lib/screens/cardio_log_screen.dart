@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/workout_types.dart';
+import 'package:gymlog/utils/app_colors.dart';
+import 'package:gymlog/utils/ki_styles.dart';
 
 class CardioLogScreen extends StatefulWidget {
   final DateTime? initialDate;
@@ -22,8 +24,6 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
     'Running', 'Cycling', 'Swimming', 'Rowing',
     'Jump Rope', 'Walking', 'Hiking', 'Elliptical',
   ];
-
-  static const _accentColor = Color(0xFF4CAF50);
 
   @override
   void initState() {
@@ -66,7 +66,9 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
     try {
       final date = _workoutDate;
       final now = DateTime.now();
-      final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
+      final isToday = date.year == now.year &&
+          date.month == now.month &&
+          date.day == now.day;
       final hour = isToday ? now.hour : 0;
       final minute = isToday ? now.minute : 0;
       final dateStr =
@@ -74,7 +76,6 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
       final distance = double.tryParse(_distanceController.text) ?? 0.0;
       final avgSpeed = double.tryParse(_avgSpeedController.text) ?? 0.0;
 
-      // Encode avgSpeed into notes since we don't have a dedicated column yet
       final notesParts = <String>[
         _activityController.text.trim(),
         if (avgSpeed > 0) 'avg_speed:$avgSpeed',
@@ -97,24 +98,37 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
     }
   }
 
-  InputDecoration _fieldDecoration(String hint) => InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: Color(0xFFCCCCCC)),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFEEEEEE), width: 1.5)),
-        focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _accentColor, width: 2)),
-      );
+  InputDecoration _fieldDecoration(String hint) {
+    final accent = AppColors.accentContainer(context);
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: AppColors.hintText(context)),
+      filled: true,
+      fillColor: AppColors.inputFill(context),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.border(context), width: 1.5)),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: accent, width: 2)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bg = AppColors.background(context);
+    final textPrimary = AppColors.textPrimary(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final accentContainer = AppColors.accentContainer(context);
+    final cardioColor = WorkoutTypes.color(WorkoutTypes.cardio);
+    final isDark = AppColors.isDark(context);
+    final cardBorder = isDark
+        ? const Color(0xFF434654).withValues(alpha: 0.6)
+        : const Color(0xFFEEEEEE);
+
     final bool isToday = () {
       final now = DateTime.now();
       return _workoutDate.year == now.year &&
@@ -123,55 +137,72 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
     }();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: bg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F5F5),
+        backgroundColor: bg,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Color(0xFF111111)),
+          icon: Icon(Icons.close, color: textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: GestureDetector(
-          onTap: _pickDate,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                isToday
-                    ? 'Cardio Workout'
-                    : '${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                  color: Color(0xFF111111),
-                  letterSpacing: -0.3,
-                ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'GYMLOG',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                fontStyle: FontStyle.italic,
+                letterSpacing: 2,
+                color: accentContainer,
               ),
-              const SizedBox(width: 6),
-              const Icon(Icons.edit_calendar_outlined,
-                  size: 15, color: Color(0xFFAAAAAA)),
-            ],
-          ),
+            ),
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: cardioColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                    color: cardioColor.withValues(alpha: 0.4), width: 1),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(WorkoutTypes.icon(WorkoutTypes.cardio),
+                      size: 11, color: cardioColor),
+                  const SizedBox(width: 4),
+                  Text(
+                    WorkoutTypes.label(WorkoutTypes.cardio).toUpperCase(),
+                    style: KiStyles.labelSm(color: cardioColor),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
         actions: [
           if (_canSave)
             Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.only(right: 12),
               child: TextButton(
                 onPressed: _save,
                 style: TextButton.styleFrom(
-                  backgroundColor: _accentColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  backgroundColor: accentContainer,
+                  foregroundColor: const Color(0xFF002469),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20)),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text('Save',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                child: Text('SAVE',
+                    style: KiStyles.label(color: const Color(0xFF002469))),
               ),
             ),
         ],
@@ -181,59 +212,99 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Activity
-            const Text('Activity', style: _labelStyle),
+            // Date selector
+            GestureDetector(
+              onTap: _pickDate,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF16161E) : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: cardBorder, width: 1),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_today_outlined,
+                        size: 16, color: textTertiary),
+                    const SizedBox(width: 10),
+                    Text(
+                      isToday
+                          ? 'Today'
+                          : '${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}',
+                      style: KiStyles.bodySemibold(color: textPrimary),
+                    ),
+                    const Spacer(),
+                    Icon(Icons.edit_outlined, size: 14, color: textTertiary),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            Text('ACTIVITY', style: KiStyles.label(color: textTertiary)),
             const SizedBox(height: 8),
             TextField(
               controller: _activityController,
               onChanged: (_) => setState(() {}),
-              style: _inputTextStyle,
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: textPrimary),
               decoration: _fieldDecoration('e.g. Running'),
             ),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _suggestions.map((s) => GestureDetector(
-                onTap: () { _activityController.text = s; setState(() {}); },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _activityController.text == s
-                        ? _accentColor.withValues(alpha: 0.15)
-                        : Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: _activityController.text == s
-                          ? _accentColor
-                          : const Color(0xFFEEEEEE),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Text(s,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: _activityController.text == s
-                          ? _accentColor
-                          : const Color(0xFF666666),
-                    ),
-                  ),
-                ),
-              )).toList(),
+              children: _suggestions
+                  .map((s) => GestureDetector(
+                        onTap: () {
+                          _activityController.text = s;
+                          setState(() {});
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _activityController.text == s
+                                ? cardioColor.withValues(alpha: 0.15)
+                                : AppColors.inputFill(context),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: _activityController.text == s
+                                  ? cardioColor
+                                  : AppColors.border(context),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Text(
+                            s,
+                            style: KiStyles.labelSm(
+                              color: _activityController.text == s
+                                  ? cardioColor
+                                  : textTertiary,
+                            ),
+                          ),
+                        ),
+                      ))
+                  .toList(),
             ),
 
             const SizedBox(height: 24),
 
-            // Duration — hours + minutes
-            const Text('Duration', style: _labelStyle),
+            Text('DURATION', style: KiStyles.label(color: textTertiary)),
             const SizedBox(height: 8),
             Row(children: [
               Expanded(
                 child: TextField(
                   controller: _hoursController,
                   keyboardType: TextInputType.number,
-                  style: _inputTextStyle,
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: textPrimary),
                   decoration: _fieldDecoration('Hours'),
                 ),
               ),
@@ -242,7 +313,10 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
                 child: TextField(
                   controller: _minutesController,
                   keyboardType: TextInputType.number,
-                  style: _inputTextStyle,
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: textPrimary),
                   decoration: _fieldDecoration('Minutes'),
                 ),
               ),
@@ -250,15 +324,18 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
 
             const SizedBox(height: 24),
 
-            // Distance + Avg speed
-            const Text('Stats', style: _labelStyle),
+            Text('STATS', style: KiStyles.label(color: textTertiary)),
             const SizedBox(height: 8),
             Row(children: [
               Expanded(
                 child: TextField(
                   controller: _distanceController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  style: _inputTextStyle,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: textPrimary),
                   decoration: _fieldDecoration('Distance (km)'),
                 ),
               ),
@@ -266,8 +343,12 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
               Expanded(
                 child: TextField(
                   controller: _avgSpeedController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  style: _inputTextStyle,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: textPrimary),
                   decoration: _fieldDecoration('Avg speed (km/h)'),
                 ),
               ),
@@ -275,15 +356,17 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
 
             const SizedBox(height: 24),
 
-            // Notes
-            const Text('Notes', style: _labelStyle),
+            Text('NOTES', style: KiStyles.label(color: textTertiary)),
             const SizedBox(height: 8),
             TextField(
               controller: _notesController,
               maxLines: 3,
-              style: const TextStyle(
-                  fontSize: 15, fontWeight: FontWeight.w400, color: Color(0xFF111111)),
-              decoration: _fieldDecoration('How did it go? (optional)').copyWith(
+              style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                  color: textPrimary),
+              decoration: _fieldDecoration('How did it go? (optional)')
+                  .copyWith(
                 contentPadding: const EdgeInsets.all(16),
               ),
             ),
@@ -294,17 +377,4 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
       ),
     );
   }
-
-  static const _labelStyle = TextStyle(
-    fontWeight: FontWeight.w700,
-    fontSize: 13,
-    color: Color(0xFF666666),
-    letterSpacing: 0.3,
-  );
-
-  static const _inputTextStyle = TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w500,
-    color: Color(0xFF111111),
-  );
 }

@@ -7,12 +7,11 @@ import 'package:gymlog/screens/month_workouts_screen.dart';
 import 'package:gymlog/screens/log_workout_screen.dart';
 import 'package:gymlog/screens/cardio_log_screen.dart';
 import 'package:gymlog/screens/flexibility_log_screen.dart';
-import 'package:gymlog/screens/exercise_library_screen.dart';
 import 'package:gymlog/screens/templates_screen.dart';
-import 'package:gymlog/screens/stats_screen.dart';
-import 'package:gymlog/screens/settings_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
+import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/utils/transitions.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,20 +25,29 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _userImage;
   DateTime _currentMonth = DateTime(DateTime.now().year, DateTime.now().month);
 
-  Map<int, Color> get _workedOutDays {
-    final result = <int, Color>{};
+  Map<int, ({Color color, double alpha})> get _workedOutDays {
+    final result = <int, ({Color color, double alpha})>{};
     for (final w in _workouts) {
       final date = _parseDate(w['date'] as String);
       if (date != null &&
           date.month == _currentMonth.month &&
           date.year == _currentMonth.year) {
+        final type = w['type'] as String? ?? WorkoutTypes.weighted;
+        final secs = w['duration_seconds'] as int? ?? 0;
         result.putIfAbsent(
           date.day,
-          () => WorkoutTypes.color(w['type'] as String? ?? WorkoutTypes.weighted),
+          () => (color: WorkoutTypes.color(type), alpha: _durationAlpha(secs)),
         );
       }
     }
     return result;
+  }
+
+  double _durationAlpha(int seconds) {
+    if (seconds < 1800) return 0.50;
+    if (seconds < 3600) return 0.68;
+    if (seconds < 5400) return 0.84;
+    return 1.0;
   }
 
   List<Map<String, dynamic>> get _monthWorkouts {
@@ -51,6 +59,17 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
   }
 
+  List<Map<String, dynamic>> get _recentWorkouts {
+    final sorted = List<Map<String, dynamic>>.from(_workouts);
+    sorted.sort((a, b) {
+      final da = _parseDate(a['date'] as String);
+      final db = _parseDate(b['date'] as String);
+      if (da == null || db == null) return 0;
+      return db.compareTo(da);
+    });
+    return sorted.take(3).toList();
+  }
+
   DateTime? _parseDate(String dateStr) {
     try {
       final datePart = dateStr.trim().split(RegExp(r'\s+')).first;
@@ -60,6 +79,19 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (_) {
       return null;
     }
+  }
+
+  String _relativeDate(String dateStr) {
+    final date = _parseDate(dateStr);
+    if (date == null) return dateStr;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final d = DateTime(date.year, date.month, date.day);
+    final diff = today.difference(d).inDays;
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    if (diff < 7) return '$diff days ago';
+    return '${d.day}/${d.month}/${d.year}';
   }
 
   @override
@@ -79,6 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _startWorkout(DateTime date) async {
+    final isDark = AppColors.isDark(context);
     final cardBg = AppColors.cardBg(context);
     final textPrimary = AppColors.textPrimary(context);
     final textSecondary = AppColors.textSecondary(context);
@@ -89,7 +122,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       backgroundColor: cardBg,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
@@ -97,30 +130,24 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 32, height: 3,
+                width: 36, height: 4,
                 decoration: BoxDecoration(
-                    color: borderColor,
+                    color: isDark
+                        ? const Color(0xFF434654)
+                        : borderColor,
                     borderRadius: BorderRadius.circular(2)),
               ),
               const SizedBox(height: 20),
               Align(
                 alignment: Alignment.centerLeft,
-                child: Text(
-                  'Start a workout',
-                  style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                      color: textPrimary),
-                ),
+                child: Text('Start a workout',
+                    style: KiStyles.headlineMd(color: textPrimary)),
               ),
               const SizedBox(height: 4),
               Align(
                 alignment: Alignment.centerLeft,
-                child: Text(
-                  'Choose a type to begin',
-                  style: TextStyle(fontSize: 13, color: textSecondary),
-                ),
+                child: Text('Choose a type to begin',
+                    style: KiStyles.label(color: AppColors.textTertiary(ctx))),
               ),
               const SizedBox(height: 16),
               ...WorkoutTypes.all.map((t) => _SheetTile(
@@ -148,17 +175,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     if (type == null || !mounted) return;
     if (type == '__templates__') {
-      await Navigator.push(context,
-          MaterialPageRoute(builder: (_) => const TemplatesScreen()));
+      await Navigator.push(context, fadeSlideRoute(const TemplatesScreen()));
     } else if (type == WorkoutTypes.cardio) {
-      await Navigator.push(context,
-          MaterialPageRoute(builder: (_) => CardioLogScreen(initialDate: date)));
+      await Navigator.push(
+          context, fadeSlideRoute(CardioLogScreen(initialDate: date)));
     } else if (type == WorkoutTypes.flexibility) {
-      await Navigator.push(context,
-          MaterialPageRoute(builder: (_) => FlexibilityLogScreen(initialDate: date)));
+      await Navigator.push(
+          context, fadeSlideRoute(FlexibilityLogScreen(initialDate: date)));
     } else {
-      await Navigator.push(context,
-          MaterialPageRoute(builder: (_) => LogWorkoutScreen(initialDate: date, type: type)));
+      await Navigator.push(
+          context,
+          fadeSlideRoute(LogWorkoutScreen(initialDate: date, type: type)));
     }
     _load();
   }
@@ -174,6 +201,13 @@ class _HomeScreenState extends State<HomeScreen> {
       'July', 'August', 'September', 'October', 'November', 'December'
     ];
     return '${months[_currentMonth.month - 1]} ${_currentMonth.year}';
+  }
+
+  String get _greeting {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   }
 
   int get _currentStreak {
@@ -193,28 +227,31 @@ class _HomeScreenState extends State<HomeScreen> {
     return streak;
   }
 
+  int get _totalWorkouts => _workouts.length;
+
   @override
   Widget build(BuildContext context) {
     final daysInMonth =
         DateUtils.getDaysInMonth(_currentMonth.year, _currentMonth.month);
-    final firstWeekday =
-        DateTime(_currentMonth.year, _currentMonth.month, 1).weekday % 7;
+    // Monday-first: Monday=0 ... Sunday=6
+    final rawWeekday =
+        DateTime(_currentMonth.year, _currentMonth.month, 1).weekday;
+    final firstWeekday = (rawWeekday - 1) % 7; // Mon=0, Sun=6
     final monthWorkouts = _monthWorkouts;
     final totalMonthSeconds = monthWorkouts.fold(
         0, (sum, w) => sum + (w['duration_seconds'] as int? ?? 0));
     final workedDays = _workedOutDays;
+
     final isCurrentMonth = _currentMonth.year == DateTime.now().year &&
         _currentMonth.month == DateTime.now().month;
     final today = DateTime.now().day;
     final streak = _currentStreak;
 
     final bg = AppColors.background(context);
-    final cardBg = AppColors.cardBg(context);
     final textPrimary = AppColors.textPrimary(context);
     final textSecondary = AppColors.textSecondary(context);
     final textTertiary = AppColors.textTertiary(context);
-    final borderColor = AppColors.border(context);
-    final accent = AppColors.accent(context);
+    final accentContainer = AppColors.accentContainer(context);
     final isDark = AppColors.isDark(context);
 
     return Scaffold(
@@ -222,56 +259,23 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // ── Custom header ──
+            // ── KO Header ──
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 12, 0),
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 0),
               child: Row(
                 children: [
-                  Text(
-                    'GymLog',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.8,
-                      color: textPrimary,
-                    ),
-                  ),
-                  const Spacer(),
-                  _HeaderIcon(
-                      icon: Icons.bar_chart_rounded,
-                      color: textSecondary,
-                      onTap: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => const StatsScreen()))),
-                  _HeaderIcon(
-                      icon: Icons.bookmark_outline_rounded,
-                      color: textSecondary,
-                      onTap: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => const TemplatesScreen()))),
-                  _HeaderIcon(
-                      icon: Icons.fitness_center_outlined,
-                      color: textSecondary,
-                      onTap: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => const ExerciseLibraryScreen()))),
-                  _HeaderIcon(
-                      icon: Icons.settings_outlined,
-                      color: textSecondary,
-                      onTap: () => Navigator.push(context,
-                          MaterialPageRoute(builder: (_) => const SettingsScreen()))),
-                  const SizedBox(width: 4),
+                  // Left: avatar
                   GestureDetector(
                     onTap: () async {
                       await Navigator.push(
                           context,
-                          MaterialPageRoute(
-                              builder: (_) =>
-                                  const ProfileSetupScreen(isEditing: true)));
+                          fadeSlideRoute(
+                              const ProfileSetupScreen(isEditing: true)));
                       _load();
                     },
                     child: CircleAvatar(
-                      radius: 17,
-                      backgroundColor: isDark
-                          ? const Color(0xFF242432)
-                          : const Color(0xFFE0E0E0),
+                      radius: 18,
+                      backgroundColor: AppColors.surfaceContainerHigh(context),
                       backgroundImage: _userImage != null
                           ? FileImage(File(_userImage!))
                           : null,
@@ -280,14 +284,35 @@ class _HomeScreenState extends State<HomeScreen> {
                               _userName.isNotEmpty
                                   ? _userName[0].toUpperCase()
                                   : '?',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: textPrimary,
-                                  fontSize: 14))
+                              style: KiStyles.bodySemibold(color: textPrimary))
                           : null,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
+                  // Center: GYMLOG wordmark
+                  Expanded(
+                    child: Text(
+                      'GYMLOG',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        fontStyle: FontStyle.italic,
+                        letterSpacing: 3,
+                        color: accentContainer,
+                      ),
+                    ),
+                  ),
+                  // Right: templates
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                        context, fadeSlideRoute(const TemplatesScreen())),
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(Icons.bookmark_outline_rounded,
+                          color: textTertiary, size: 22),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -295,21 +320,17 @@ class _HomeScreenState extends State<HomeScreen> {
             // ── Greeting ──
             if (_userName.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Hey, $_userName',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: textSecondary,
-                    ),
+                    '$_greeting, $_userName',
+                    style: KiStyles.label(color: textTertiary),
                   ),
                 ),
               ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // ── Scrollable body ──
             Expanded(
@@ -319,119 +340,130 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
 
-                    // ── Bento stats row ──
-                    if (monthWorkouts.isNotEmpty || streak > 0)
-                      Row(
+                    // ── Hero stat: total workouts ──
+                    _KoBentoCard(
+                      glowColor: accentContainer,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Expanded(
-                            child: _BentoCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('SESSIONS',
+                                    style: KiStyles.label(color: textTertiary)),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '$_totalWorkouts',
+                                  style: KiStyles.monument(color: textPrimary),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${monthWorkouts.length} this month',
+                                  style: KiStyles.label(color: textSecondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.fitness_center_rounded,
+                              color: accentContainer.withValues(alpha: 0.4),
+                              size: 48),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // ── Side-by-side: time + streak ──
+                    Row(
+                      children: [
+                        if (totalMonthSeconds > 0)
+                          Expanded(
+                            child: _KoBentoCard(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  Text('TOTAL TIME',
+                                      style:
+                                          KiStyles.label(color: textTertiary)),
+                                  const SizedBox(height: 8),
                                   Text(
-                                    '${monthWorkouts.length}',
-                                    style: TextStyle(
-                                      fontSize: 44,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: -2,
-                                      height: 1,
-                                      color: textPrimary,
-                                    ),
+                                    DBHelper.formatDuration(totalMonthSeconds),
+                                    style: KiStyles.headlineLg(
+                                        color: textPrimary),
                                   ),
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    'workouts\nthis month',
-                                    style: TextStyle(
-                                        fontSize: 12,
-                                        color: textSecondary,
-                                        height: 1.4),
-                                  ),
+                                  const SizedBox(height: 2),
+                                  Text('this month',
+                                      style:
+                                          KiStyles.labelSm(color: textTertiary)),
                                 ],
                               ),
                             ),
                           ),
-                          const SizedBox(width: 10),
-                          Expanded(
+                        if (totalMonthSeconds > 0) const SizedBox(width: 10),
+                        Expanded(
+                          child: _KoBentoCard(
                             child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                if (totalMonthSeconds > 0)
-                                  _BentoCard(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          DBHelper.formatDuration(totalMonthSeconds),
-                                          style: TextStyle(
-                                            fontSize: 26,
-                                            fontWeight: FontWeight.w800,
-                                            letterSpacing: -1,
-                                            height: 1,
-                                            color: textPrimary,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          'total time',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: textSecondary),
-                                        ),
-                                      ],
+                                Text('STREAK',
+                                    style: KiStyles.label(color: textTertiary)),
+                                const SizedBox(height: 8),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      '$streak',
+                                      style: KiStyles.headlineLg(
+                                          color: streak > 0
+                                              ? accentContainer
+                                              : textPrimary),
                                     ),
-                                  ),
-                                if (totalMonthSeconds > 0 && streak > 0)
-                                  const SizedBox(height: 10),
-                                if (streak > 0)
-                                  _BentoCard(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Row(
-                                          crossAxisAlignment: CrossAxisAlignment.end,
-                                          children: [
-                                            Text(
-                                              '$streak',
-                                              style: TextStyle(
-                                                fontSize: 26,
-                                                fontWeight: FontWeight.w800,
-                                                letterSpacing: -1,
-                                                height: 1,
-                                                color: accent,
-                                              ),
-                                            ),
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                  left: 3, bottom: 1),
-                                              child: Text(
-                                                streak == 1 ? 'day' : 'days',
-                                                style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: textSecondary),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          'current streak',
-                                          style: TextStyle(
-                                              fontSize: 12,
-                                              color: textSecondary),
-                                        ),
-                                      ],
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                          left: 4, bottom: 3),
+                                      child: Text(
+                                        streak == 1 ? 'DAY' : 'DAYS',
+                                        style: KiStyles.labelSm(
+                                            color: textTertiary),
+                                      ),
                                     ),
-                                  ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                // Streak dash indicators (up to 7)
+                                Row(
+                                  children: List.generate(7, (i) {
+                                    final filled = i < streak.clamp(0, 7);
+                                    return Expanded(
+                                      child: Container(
+                                        height: 3,
+                                        margin: EdgeInsets.only(
+                                            right: i < 6 ? 3 : 0),
+                                        decoration: BoxDecoration(
+                                          color: filled
+                                              ? accentContainer
+                                              : isDark
+                                                  ? const Color(0xFF282A32)
+                                                  : const Color(0xFFEEEEEE),
+                                          borderRadius:
+                                              BorderRadius.circular(2),
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    ),
 
-                    if (monthWorkouts.isNotEmpty || streak > 0)
-                      const SizedBox(height: 10),
+                    const SizedBox(height: 10),
 
                     // ── Calendar card ──
-                    _BentoCard(
+                    _KoBentoCard(
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                       child: Column(
                         children: [
@@ -447,15 +479,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                       color: textSecondary, size: 20),
                                 ),
                               ),
-                              Text(
-                                _monthLabel,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: textPrimary,
-                                  letterSpacing: -0.3,
-                                ),
-                              ),
+                              Text(_monthLabel,
+                                  style: KiStyles.bodySemibold(
+                                      color: textPrimary)),
                               GestureDetector(
                                 onTap: isCurrentMonth ? null : _nextMonth,
                                 child: Padding(
@@ -472,21 +498,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
                           const SizedBox(height: 12),
 
-                          // Day-of-week headers
+                          // Day-of-week headers — Monday first
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+                            children: ['M', 'T', 'W', 'T', 'F', 'S', 'S']
                                 .map((d) => SizedBox(
                                       width: 34,
                                       child: Center(
                                         child: Text(
                                           d,
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w600,
-                                            color: textTertiary,
-                                            letterSpacing: 0.5,
-                                          ),
+                                          style: KiStyles.labelSm(
+                                              color: textTertiary),
                                         ),
                                       ),
                                     ))
@@ -502,17 +524,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 7,
-                              mainAxisSpacing: 4,
+                              mainAxisSpacing: 6,
                               crossAxisSpacing: 0,
-                              childAspectRatio: 1,
+                              childAspectRatio: 0.75,
                             ),
                             itemCount: firstWeekday + daysInMonth,
                             itemBuilder: (ctx, index) {
                               if (index < firstWeekday) return const SizedBox();
                               final day = index - firstWeekday + 1;
                               final isToday = isCurrentMonth && day == today;
-                              final workoutColor = workedDays[day];
-                              final hasWorkout = workoutColor != null;
+                              final workoutData = workedDays[day];
+                              final hasWorkout = workoutData != null;
                               final isFuture = isCurrentMonth && day > today;
 
                               final tappedDate = DateTime(
@@ -524,42 +546,57 @@ class _HomeScreenState extends State<HomeScreen> {
                                     : hasWorkout
                                         ? () async {
                                             await _showDaySheet(
-                                                tappedDate, day, monthWorkouts,
-                                                cardBg, borderColor, textPrimary,
-                                                textSecondary, accent);
+                                                tappedDate, day, monthWorkouts);
                                             _load();
                                           }
                                         : () => _startWorkout(tappedDate),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 180),
-                                  margin: const EdgeInsets.all(1),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: hasWorkout
-                                        ? workoutColor.withValues(alpha: 0.85)
-                                        : isToday
-                                            ? accent
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    // Day number
+                                    Container(
+                                      width: 28,
+                                      height: 28,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: isToday
+                                            ? accentContainer
                                             : Colors.transparent,
-                                  ),
-                                  child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      Text(
-                                        '$day',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: hasWorkout || isToday
-                                              ? FontWeight.w700
-                                              : FontWeight.w400,
-                                          color: hasWorkout || isToday
-                                              ? Colors.white
-                                              : isFuture
-                                                  ? textTertiary
-                                                  : textPrimary,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '$day',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: isToday || hasWorkout
+                                                ? FontWeight.w700
+                                                : FontWeight.w400,
+                                            color: isToday
+                                                ? const Color(0xFF002469)
+                                                : hasWorkout
+                                                    ? textPrimary
+                                                    : isFuture
+                                                        ? textTertiary
+                                                        : textSecondary,
+                                          ),
                                         ),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                    // Dot BELOW the number (KO calendar spec)
+                                    const SizedBox(height: 3),
+                                    if (hasWorkout)
+                                      Container(
+                                        width: 5,
+                                        height: 5,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: workoutData.color.withValues(
+                                              alpha: workoutData.alpha),
+                                        ),
+                                      )
+                                    else
+                                      const SizedBox(height: 5),
+                                  ],
                                 ),
                               );
                             },
@@ -568,35 +605,128 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
 
-                    // ── View list link ──
+                    // ── Recent Activity ──
+                    if (_recentWorkouts.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      _KoBentoCard(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('RECENT ACTIVITY',
+                                style: KiStyles.label(color: textTertiary)),
+                            const SizedBox(height: 12),
+                            ..._recentWorkouts.map((w) {
+                              final type = w['type'] as String? ??
+                                  WorkoutTypes.weighted;
+                              final typeColor = WorkoutTypes.color(type);
+                              final secs =
+                                  w['duration_seconds'] as int? ?? 0;
+                              return Padding(
+                                padding:
+                                    const EdgeInsets.only(bottom: 12),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        color: typeColor
+                                            .withValues(alpha: 0.12),
+                                        borderRadius:
+                                            BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                          WorkoutTypes.icon(type),
+                                          size: 18,
+                                          color: typeColor),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            WorkoutTypes.label(type),
+                                            style: KiStyles.bodySemibold(
+                                                color: textPrimary),
+                                          ),
+                                          Text(
+                                            secs > 0
+                                                ? DBHelper.formatDuration(
+                                                    secs)
+                                                : '—',
+                                            style: KiStyles.labelSm(
+                                                color: textTertiary),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Text(
+                                      _relativeDate(w['date'] as String),
+                                      style: KiStyles.labelSm(
+                                          color: textTertiary),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    // ── Empty state ──
+                    if (_workouts.isEmpty) ...[
+                      const SizedBox(height: 10),
+                      _KoBentoCard(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 28),
+                        child: Column(
+                          children: [
+                            Icon(Icons.fitness_center_outlined,
+                                size: 40,
+                                color: accentContainer.withValues(alpha: 0.5)),
+                            const SizedBox(height: 14),
+                            Text(
+                              'No workouts yet',
+                              style: KiStyles.headlineMd(color: textPrimary),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Tap any day or hit New Workout to begin',
+                              textAlign: TextAlign.center,
+                              style: KiStyles.label(color: textTertiary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    // ── View all link ──
                     if (monthWorkouts.isNotEmpty) ...[
                       const SizedBox(height: 10),
                       GestureDetector(
                         onTap: () async {
                           await Navigator.push(
                               context,
-                              MaterialPageRoute(
-                                  builder: (_) => MonthWorkoutsScreen(
-                                      workouts: monthWorkouts,
-                                      monthLabel: _monthLabel)));
+                              fadeSlideRoute(MonthWorkoutsScreen(
+                                  workouts: monthWorkouts,
+                                  monthLabel: _monthLabel)));
                           _load();
                         },
-                        child: _BentoCard(
+                        child: _KoBentoCard(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 14),
                           child: Row(
                             children: [
-                              Text(
-                                'View all workouts this month',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: textPrimary,
-                                ),
-                              ),
+                              Text('View all workouts this month',
+                                  style:
+                                      KiStyles.bodySemibold(color: textPrimary)),
                               const Spacer(),
                               Icon(Icons.arrow_forward_rounded,
-                                  color: textSecondary, size: 16),
+                                  color: textTertiary, size: 16),
                             ],
                           ),
                         ),
@@ -614,13 +744,15 @@ class _HomeScreenState extends State<HomeScreen> {
             bottom: MediaQuery.of(context).viewPadding.bottom + 4),
         child: FloatingActionButton.extended(
           onPressed: () => _startWorkout(DateTime.now()),
-          backgroundColor: AppColors.primaryBtnBg(context),
-          foregroundColor: Colors.white,
+          backgroundColor: AppColors.accentContainer(context),
+          foregroundColor: const Color(0xFF002469),
           elevation: isDark ? 0 : 4,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           icon: const Icon(Icons.add, size: 22),
-          label: const Text(
+          label: Text(
             'New Workout',
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            style: KiStyles.bodySemibold(color: const Color(0xFF002469)),
           ),
         ),
       ),
@@ -631,16 +763,16 @@ class _HomeScreenState extends State<HomeScreen> {
     DateTime date,
     int day,
     List<Map<String, dynamic>> monthWorkouts,
-    Color cardBg,
-    Color borderColor,
-    Color textPrimary,
-    Color textSecondary,
-    Color accent,
   ) async {
+    final cardBg = AppColors.cardBg(context);
+    final borderColor = AppColors.border(context);
+    final textPrimary = AppColors.textPrimary(context);
+    final accent = AppColors.accent(context);
+
     await showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       backgroundColor: cardBg,
       builder: (_) => SafeArea(
@@ -650,7 +782,7 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 32, height: 3,
+                width: 36, height: 4,
                 decoration: BoxDecoration(
                   color: borderColor,
                   borderRadius: BorderRadius.circular(2),
@@ -661,11 +793,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   '$day ${_monthLabel.split(' ').first}',
-                  style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                      color: textPrimary),
+                  style: KiStyles.headlineMd(color: textPrimary),
                 ),
               ),
               const SizedBox(height: 16),
@@ -678,11 +806,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   Navigator.pop(context);
                   await Navigator.push(
                       context,
-                      MaterialPageRoute(
-                          builder: (_) => MonthWorkoutsScreen(
-                              workouts: monthWorkouts,
-                              monthLabel: _monthLabel,
-                              initialDay: day)));
+                      fadeSlideRoute(MonthWorkoutsScreen(
+                          workouts: monthWorkouts,
+                          monthLabel: _monthLabel,
+                          initialDay: day)));
                   if (mounted) _load();
                 },
               ),
@@ -705,14 +832,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ── Reusable bento card ──
-class _BentoCard extends StatelessWidget {
+// ── KO Bento Card ──────────────────────────────────────────────────────────────
+class _KoBentoCard extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
+  final Color? glowColor;
 
-  const _BentoCard({
+  const _KoBentoCard({
     required this.child,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.all(20),
+    this.glowColor,
   });
 
   @override
@@ -722,42 +851,30 @@ class _BentoCard extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: AppColors.cardBg(context),
-        borderRadius: BorderRadius.circular(18),
+        color: isDark ? const Color(0xFF16161E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? const Color(0xFF242432)
+              ? const Color(0xFF434654).withValues(alpha: 0.6)
               : const Color(0xFFEEEEEE),
           width: 1,
         ),
+        boxShadow: glowColor != null && isDark
+            ? [
+                BoxShadow(
+                  color: glowColor!.withValues(alpha: 0.12),
+                  blurRadius: 20,
+                  spreadRadius: 0,
+                ),
+              ]
+            : null,
       ),
       child: child,
     );
   }
 }
 
-// ── Header icon button ──
-class _HeaderIcon extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _HeaderIcon(
-      {required this.icon, required this.color, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-        child: Icon(icon, color: color, size: 22),
-      ),
-    );
-  }
-}
-
-// ── Bottom sheet list tile ──
+// ── Bottom sheet list tile ─────────────────────────────────────────────────────
 class _SheetTile extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
@@ -790,14 +907,10 @@ class _SheetTile extends StatelessWidget {
         child: Icon(icon, color: iconColor, size: 20),
       ),
       title: Text(title,
-          style: TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-              color: textColor)),
+          style: KiStyles.bodySemibold(color: textColor)),
       subtitle: subtitle != null
           ? Text(subtitle!,
-              style: TextStyle(
-                  fontSize: 12, color: subtitleColor ?? textColor))
+              style: KiStyles.labelSm(color: subtitleColor ?? textColor))
           : null,
       onTap: onTap,
     );

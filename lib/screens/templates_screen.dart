@@ -4,6 +4,7 @@ import 'package:gymlog/screens/log_workout_screen.dart';
 import 'package:gymlog/screens/template_edit_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
+import 'package:gymlog/utils/ki_styles.dart';
 
 class TemplatesScreen extends StatefulWidget {
   const TemplatesScreen({super.key});
@@ -39,8 +40,9 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(
-        child: CircularProgressIndicator(color: Color(0xFFFFD700)),
+      builder: (ctx) => Center(
+        child: CircularProgressIndicator(
+            color: AppColors.accentContainer(ctx)),
       ),
     );
 
@@ -160,16 +162,19 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
             ),
             const SizedBox(height: 8),
             ListTile(
-              leading: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFD700).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.play_arrow_rounded,
-                    color: Color(0xFF8B7500), size: 22),
-              ),
+              leading: Builder(builder: (ctx2) {
+                final ac = AppColors.accentContainer(ctx2);
+                return Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: ac.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.play_arrow_rounded,
+                      color: ac, size: 22),
+                );
+              }),
               title: Text('Start Workout',
                   style: TextStyle(
                       fontWeight: FontWeight.w600, color: textPrimary)),
@@ -179,16 +184,18 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
               },
             ),
             ListTile(
-              leading: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2196F3).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.edit_outlined,
-                    color: Color(0xFF1565C0), size: 20),
-              ),
+              leading: Builder(builder: (ctx2) {
+                final ac = AppColors.accentContainer(ctx2);
+                return Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: ac.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.edit_outlined, color: ac, size: 20),
+                );
+              }),
               title: Text('Edit Template',
                   style: TextStyle(
                       fontWeight: FontWeight.w600, color: textPrimary)),
@@ -230,30 +237,38 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
     final card = AppColors.cardBg(context);
     final textPrimary = AppColors.textPrimary(context);
     final textSecondary = AppColors.textSecondary(context);
+    final accentContainer = AppColors.accentContainer(context);
+    final isDark = AppColors.isDark(context);
+    final cardBorder = isDark
+        ? const Color(0xFF434654).withValues(alpha: 0.6)
+        : const Color(0xFFEEEEEE);
 
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: bg,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        automaticallyImplyLeading: false,
+        title: Row(
           children: [
-            Text(
-              'Templates',
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 20,
-                color: textPrimary,
-                letterSpacing: -0.3,
+            Expanded(
+              child: Text(
+                'GYMLOG',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  fontStyle: FontStyle.italic,
+                  letterSpacing: 3,
+                  color: accentContainer,
+                ),
               ),
             ),
-            Text(
-              'Tap to start · Long-press for options',
-              style: TextStyle(
-                  fontSize: 12,
-                  color: textSecondary,
-                  fontWeight: FontWeight.w400),
-            ),
+            Text('TEMPLATES',
+                style: KiStyles.label(
+                    color: AppColors.textTertiary(context))),
           ],
         ),
       ),
@@ -268,28 +283,20 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                         width: 72,
                         height: 72,
                         decoration: BoxDecoration(
-                          color: AppColors.border(context)
-                              .withValues(alpha: 0.5),
+                          color: accentContainer.withValues(alpha: 0.12),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(Icons.bookmark_outline_rounded,
-                            size: 32, color: textSecondary),
+                            size: 32, color: accentContainer),
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        'No templates yet',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          color: textPrimary,
-                        ),
-                      ),
+                      Text('No templates yet',
+                          style: KiStyles.headlineMd(color: textPrimary)),
                       const SizedBox(height: 6),
                       Text(
                         'Save a workout as a template\nfrom the workout detail screen',
                         textAlign: TextAlign.center,
-                        style:
-                            TextStyle(fontSize: 14, color: textSecondary),
+                        style: KiStyles.label(color: textSecondary),
                       ),
                     ],
                   ),
@@ -311,13 +318,7 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                         decoration: BoxDecoration(
                           color: card,
                           borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                          border: Border.all(color: cardBorder, width: 1),
                         ),
                         child: Row(
                           children: [
@@ -362,13 +363,12 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                color: const Color(0xFFFFD700)
-                                    .withValues(alpha: 0.15),
+                                color: accentContainer.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: const Icon(
+                              child: Icon(
                                   Icons.play_arrow_rounded,
-                                  color: Color(0xFF8B7500),
+                                  color: accentContainer,
                                   size: 20),
                             ),
                           ],

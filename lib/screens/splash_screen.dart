@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:gymlog/screens/home_screen.dart';
+import 'package:gymlog/screens/main_shell.dart';
 import 'package:gymlog/screens/profile_setup_screen.dart';
 
 class SplashRouter extends StatefulWidget {
@@ -25,7 +25,7 @@ class _SplashRouterState extends State<SplashRouter> {
           context, MaterialPageRoute(builder: (_) => const ProfileSetupScreen()));
     } else {
       Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (_) => const HomeScreen()));
+          context, MaterialPageRoute(builder: (_) => const MainShell()));
     }
   }
 

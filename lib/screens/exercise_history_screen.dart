@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/app_colors.dart';
+import 'package:gymlog/utils/ki_styles.dart';
 
 class ExerciseHistoryScreen extends StatefulWidget {
   final String exerciseName;
@@ -77,14 +78,7 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
     if (_loading) {
       return Scaffold(
         backgroundColor: bg,
-        appBar: AppBar(
-          backgroundColor: bg,
-          title: Text(widget.exerciseName,
-              style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                  color: textPrimary)),
-        ),
+        appBar: AppBar(backgroundColor: bg),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
@@ -107,31 +101,35 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
     final chartWeights =
         chartHistory.map((e) => (e['max_weight'] as num).toDouble()).toList();
 
+    final accentContainer = AppColors.accentContainer(context);
+    final textTertiary = AppColors.textTertiary(context);
+
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: bg,
         elevation: 0,
         scrolledUnderElevation: 0,
-        toolbarHeight: 64,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
             Text(
-              widget.exerciseName,
+              'GYMLOG',
               style: TextStyle(
-                fontWeight: FontWeight.w700,
+                fontFamily: 'Lexend',
                 fontSize: 18,
-                color: textPrimary,
-                letterSpacing: -0.3,
+                fontWeight: FontWeight.w900,
+                fontStyle: FontStyle.italic,
+                letterSpacing: 2,
+                color: accentContainer,
               ),
             ),
-            Text(
-              'Exercise History',
-              style: TextStyle(
-                  fontSize: 12,
-                  color: textSecondary,
-                  fontWeight: FontWeight.w400),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                widget.exerciseName.toUpperCase(),
+                style: KiStyles.label(color: textTertiary),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -203,15 +201,10 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.isDark(context)
-                          ? AppColors.cardBg(context)
-                          : const Color(0xFF111111),
-                      border: AppColors.isDark(context)
-                          ? Border.all(
-                              color:
-                                  AppColors.gold.withValues(alpha: 0.4),
-                              width: 1.5)
-                          : null,
+                      color: AppColors.cardBg(context),
+                      border: Border.all(
+                          color: AppColors.gold.withValues(alpha: 0.4),
+                          width: 1.5),
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
@@ -423,7 +416,7 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                                         fontWeight: FontWeight.w700,
                                         fontSize: 15,
                                         color: isPR
-                                            ? const Color(0xFF8B7500)
+                                            ? AppColors.gold
                                             : textPrimary,
                                       ),
                                     ),
@@ -510,7 +503,8 @@ class _WeightChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: _ChartPainter(values: values),
+      painter: _ChartPainter(
+          values: values, dotCenter: AppColors.cardBg(context)),
       size: Size.infinite,
     );
   }
@@ -518,9 +512,10 @@ class _WeightChart extends StatelessWidget {
 
 class _ChartPainter extends CustomPainter {
   final List<double> values;
+  final Color dotCenter;
   static const _lineColor = Color(0xFFFFD700);
 
-  const _ChartPainter({required this.values});
+  const _ChartPainter({required this.values, required this.dotCenter});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -601,11 +596,12 @@ class _ChartPainter extends CustomPainter {
               ..style = PaintingStyle.stroke
               ..strokeWidth = 2);
       }
-      canvas.drawCircle(p, 5, Paint()..color = Colors.white);
+      canvas.drawCircle(p, 5, Paint()..color = dotCenter);
       canvas.drawCircle(p, isMax ? 4.5 : 3.5, Paint()..color = _lineColor);
     }
   }
 
   @override
-  bool shouldRepaint(_ChartPainter old) => old.values != values;
+  bool shouldRepaint(_ChartPainter old) =>
+      old.values != values || old.dotCenter != dotCenter;
 }

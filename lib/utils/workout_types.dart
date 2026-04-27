@@ -8,16 +8,17 @@ class WorkoutTypes {
 
   static const List<String> all = [weighted, cardio, bodyweight, flexibility];
 
+  // Kinetic Obsidian workout-type colors
   static Color color(String type) {
     switch (type) {
       case cardio:
-        return const Color(0xFF4CAF50);
-      case bodyweight:
-        return const Color(0xFF2196F3);
+        return const Color(0xFF4AE176);
       case flexibility:
-        return const Color(0xFFFF6D00);
-      default:
-        return const Color(0xFF4477FF);
+        return const Color(0xFFEC6A06);
+      case bodyweight:
+        return const Color(0xFF608BFF);
+      default: // weighted
+        return const Color(0xFF608BFF);
     }
   }
 

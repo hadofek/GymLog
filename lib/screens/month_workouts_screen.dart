@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/screens/workout_detail_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
+import 'package:gymlog/utils/app_colors.dart';
+import 'package:gymlog/utils/ki_styles.dart';
 
 class MonthWorkoutsScreen extends StatefulWidget {
   final List<Map<String, dynamic>> workouts;
@@ -37,7 +39,6 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
       return int.tryParse(dayStr) == day;
     });
     if (idx > 0 && _scrollController.hasClients) {
-      // 16px top padding + each card is ~88px (taller cards now)
       final offset = (16.0 + idx * 88.0)
           .clamp(0.0, _scrollController.position.maxScrollExtent);
       _scrollController.animateTo(
@@ -54,7 +55,6 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
     super.dispose();
   }
 
-  /// Parse just the day number from the stored date string "d/m/yyyy  HH:mm"
   String _formatDisplayDate(String raw) {
     try {
       final datePart = raw.trim().split(RegExp(r'\s+')).first;
@@ -79,32 +79,39 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bg = AppColors.background(context);
+    final textPrimary = AppColors.textPrimary(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final accentContainer = AppColors.accentContainer(context);
+    final isDark = AppColors.isDark(context);
+    final cardBorder = isDark
+        ? const Color(0xFF434654).withValues(alpha: 0.6)
+        : const Color(0xFFEEEEEE);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: bg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F5F5),
+        backgroundColor: bg,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
             Text(
-              widget.monthLabel,
-              style: const TextStyle(
-                fontWeight: FontWeight.w800,
+              'GYMLOG',
+              style: TextStyle(
+                fontFamily: 'Lexend',
                 fontSize: 18,
-                color: Color(0xFF111111),
-                letterSpacing: -0.4,
+                fontWeight: FontWeight.w900,
+                fontStyle: FontStyle.italic,
+                letterSpacing: 2,
+                color: accentContainer,
               ),
             ),
+            const SizedBox(width: 10),
             Text(
-              '${_workouts.length} workout${_workouts.length != 1 ? 's' : ''}',
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF888888),
-                fontWeight: FontWeight.w400,
-              ),
+              widget.monthLabel.toUpperCase(),
+              style: KiStyles.label(color: textTertiary),
             ),
           ],
         ),
@@ -118,23 +125,19 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
                     width: 72,
                     height: 72,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF111111).withValues(alpha: 0.06),
+                      color: accentContainer.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.fitness_center_outlined,
-                      size: 32,
-                      color: Color(0xFF999999),
-                    ),
+                    child: Icon(Icons.fitness_center_outlined,
+                        size: 32, color: accentContainer),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'No workouts this month',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF333333),
-                    ),
+                  Text('No workouts this month',
+                      style: KiStyles.headlineMd(color: textPrimary)),
+                  const SizedBox(height: 6),
+                  Text(
+                    'No workouts logged this month',
+                    style: KiStyles.label(color: textTertiary),
                   ),
                 ],
               ),
@@ -147,20 +150,18 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
                 final w = _workouts[i];
                 final dur = DBHelper.formatDuration(
                     w['duration_seconds'] as int? ?? 0);
-                final displayDate = _formatDisplayDate(w['date'] as String);
+                final displayDate =
+                    _formatDisplayDate(w['date'] as String);
+                final type =
+                    w['type'] as String? ?? WorkoutTypes.weighted;
+                final typeColor = WorkoutTypes.color(type);
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 10),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark ? const Color(0xFF16161E) : Colors.white,
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    border: Border.all(color: cardBorder, width: 1),
                   ),
                   child: Material(
                     color: Colors.transparent,
@@ -168,7 +169,6 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
                       onTap: () async {
-                        final type = w['type'] as String? ?? WorkoutTypes.weighted;
                         final deleted = await Navigator.push<bool>(
                             context,
                             MaterialPageRoute(
@@ -187,58 +187,47 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
                             horizontal: 16, vertical: 14),
                         child: Row(
                           children: [
-                            // Type-colored icon
-                            Builder(builder: (_) {
-                              final type = w['type'] as String? ?? WorkoutTypes.weighted;
-                              return Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: WorkoutTypes.color(type),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(WorkoutTypes.icon(type),
-                                    size: 20, color: Colors.white),
-                              );
-                            }),
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: typeColor.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: typeColor.withValues(alpha: 0.3),
+                                    width: 1),
+                              ),
+                              child: Icon(WorkoutTypes.icon(type),
+                                  size: 20, color: typeColor),
+                            ),
                             const SizedBox(width: 14),
-                            // Date + duration
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     displayDate,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15,
-                                      color: Color(0xFF111111),
-                                    ),
+                                    style:
+                                        KiStyles.bodySemibold(color: textPrimary),
                                   ),
                                   if (dur.isNotEmpty) ...[
                                     const SizedBox(height: 3),
                                     Row(
                                       children: [
-                                        const Icon(Icons.timer_outlined,
-                                            size: 12,
-                                            color: Color(0xFFAAAAAA)),
+                                        Icon(Icons.timer_outlined,
+                                            size: 12, color: textTertiary),
                                         const SizedBox(width: 4),
-                                        Text(
-                                          dur,
-                                          style: const TextStyle(
-                                            color: Color(0xFFAAAAAA),
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
+                                        Text(dur,
+                                            style: KiStyles.labelSm(
+                                                color: textTertiary)),
                                       ],
                                     ),
                                   ],
                                 ],
                               ),
                             ),
-                            const Icon(Icons.chevron_right,
-                                color: Color(0xFFCCCCCC), size: 20),
+                            Icon(Icons.chevron_right,
+                                color: textTertiary, size: 20),
                           ],
                         ),
                       ),

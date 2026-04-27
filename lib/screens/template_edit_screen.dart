@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/app_colors.dart';
+import 'package:gymlog/utils/ki_styles.dart';
 
 class TemplateEditScreen extends StatefulWidget {
   final int templateId;
@@ -198,27 +199,46 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
       backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: bg,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        title: Text(
-          'Edit Template',
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            fontSize: 20,
-            color: textPrimary,
-            letterSpacing: -0.3,
-          ),
+        title: Row(
+          children: [
+            Text(
+              'GYMLOG',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                fontStyle: FontStyle.italic,
+                letterSpacing: 2,
+                color: AppColors.accentContainer(context),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text('EDIT TEMPLATE',
+                style: KiStyles.label(
+                    color: AppColors.textTertiary(context))),
+          ],
         ),
         actions: [
-          TextButton(
-            onPressed: _saving ? null : _save,
-            child: Text(
-              'Save',
-              style: TextStyle(
-                color: AppColors.gold,
-                fontWeight: FontWeight.w700,
-                fontSize: 15,
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: TextButton(
+              onPressed: _saving ? null : _save,
+              style: TextButton.styleFrom(
+                backgroundColor: AppColors.accentContainer(context),
+                foregroundColor: const Color(0xFF002469),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
+              child: Text('SAVE',
+                  style:
+                      KiStyles.label(color: const Color(0xFF002469))),
             ),
           ),
         ],
@@ -413,8 +433,8 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
                     style:
                         TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.gold,
-                  foregroundColor: const Color(0xFF111111),
+                  backgroundColor: AppColors.accentContainer(context),
+                  foregroundColor: const Color(0xFF002469),
                   minimumSize: const Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),

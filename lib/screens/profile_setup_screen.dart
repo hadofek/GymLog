@@ -17,6 +17,7 @@ class ProfileSetupScreen extends StatefulWidget {
 class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     with SingleTickerProviderStateMixin {
   final _nameController = TextEditingController();
+  final _heightController = TextEditingController();
   String? _imagePath;
   bool _saving = false;
   late AnimationController _animController;
@@ -40,9 +41,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
 
   Future<void> _loadExisting() async {
     final prefs = await SharedPreferences.getInstance();
+    final height = prefs.getDouble('user_height_cm');
     setState(() {
       _nameController.text = prefs.getString('user_name') ?? '';
       _imagePath = prefs.getString('user_image');
+      if (height != null) _heightController.text = height.toInt().toString();
     });
   }
 
@@ -160,6 +163,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('user_name', name);
+      final height = double.tryParse(_heightController.text.trim());
+      if (height != null && height > 0) {
+        await prefs.setDouble('user_height_cm', height);
+      }
       if (_imagePath != null) {
         await prefs.setString('user_image', _imagePath!);
       } else {
@@ -186,6 +193,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   void dispose() {
     _animController.dispose();
     _nameController.dispose();
+    _heightController.dispose();
     super.dispose();
   }
 
@@ -348,6 +356,61 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                           ),
                         ),
                         onSubmitted: (_) => _save(),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // ── Height field ──
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'HEIGHT (CM)',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                          color: textSecondary,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _heightController,
+                        keyboardType: TextInputType.number,
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'e.g. 178',
+                          hintStyle:
+                              TextStyle(color: AppColors.hintText(context)),
+                          prefixIcon: Icon(Icons.height_rounded,
+                              color: textSecondary),
+                          suffixText: 'cm',
+                          suffixStyle: TextStyle(color: textSecondary),
+                          filled: true,
+                          fillColor: AppColors.inputFill(context),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 16),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide:
+                                BorderSide(color: border, width: 1.5),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(
+                                color: textPrimary, width: 2),
+                          ),
+                        ),
                       ),
                     ],
                   ),

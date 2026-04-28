@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/app_colors.dart';
 
@@ -12,6 +13,7 @@ class BodyMeasurementsScreen extends StatefulWidget {
 class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
   List<Map<String, dynamic>> _measurements = [];
   bool _loading = true;
+  double? _profileHeight;
 
   @override
   void initState() {
@@ -20,10 +22,16 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
   }
 
   Future<void> _load() async {
-    final m = await DBHelper.getMeasurements();
+    final results = await Future.wait([
+      DBHelper.getMeasurements(),
+      SharedPreferences.getInstance(),
+    ]);
+    final m = results[0] as List<Map<String, dynamic>>;
+    final prefs = results[1] as SharedPreferences;
     if (mounted) {
       setState(() {
         _measurements = m;
+        _profileHeight = prefs.getDouble('user_height_cm');
         _loading = false;
       });
     }
@@ -47,7 +55,7 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
 
   Future<void> _showAddDialog() async {
     final weightCtrl = TextEditingController();
-    final heightCtrl = TextEditingController();
+    final bodyFatCtrl = TextEditingController();
     final notesCtrl = TextEditingController();
     final card = AppColors.cardBg(context);
     final textPrimary = AppColors.textPrimary(context);
@@ -104,9 +112,9 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
               Expanded(
                 child: _buildField(
                   ctx: ctx,
-                  ctrl: heightCtrl,
-                  label: 'Height (cm)',
-                  hint: 'e.g. 178',
+                  ctrl: bodyFatCtrl,
+                  label: 'Body fat (%)',
+                  hint: 'e.g. 18.5',
                   decimal: true,
                 ),
               ),
@@ -141,16 +149,16 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
 
     if (saved == true) {
       final weight = double.tryParse(weightCtrl.text.trim());
-      final height = double.tryParse(heightCtrl.text.trim());
+      final bodyFat = double.tryParse(bodyFatCtrl.text.trim());
       final notes = notesCtrl.text.trim();
-      if (weight == null && height == null) return;
+      if (weight == null && bodyFat == null) return;
       final now = DateTime.now();
       final date =
           '${now.day}/${now.month}/${now.year}  ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
       await DBHelper.insertMeasurement(
         date: date,
         weightKg: weight,
-        heightCm: height,
+        bodyFatPct: bodyFat,
         notes: notes,
       );
       await _load();
@@ -271,7 +279,9 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
               ),
             ),
             Text(
-              'Track your body stats over time',
+              _profileHeight != null
+                  ? 'Height: ${_profileHeight!.toInt()} cm · set in Profile'
+                  : 'Track your body stats over time',
               style: TextStyle(
                   fontSize: 12,
                   color: textSecondary,
@@ -389,7 +399,7 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
                         children: List.generate(_measurements.length, (i) {
                           final m = _measurements[i];
                           final weight = m['weight_kg'] as double?;
-                          final height = m['height_cm'] as double?;
+                          final bodyFat = m['body_fat_pct'] as double?;
                           final notes = m['notes'] as String? ?? '';
                           final isLast = i == _measurements.length - 1;
                           return Column(
@@ -462,9 +472,9 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
                                                 color: textPrimary,
                                               ),
                                             ),
-                                          if (height != null)
+                                          if (bodyFat != null)
                                             Text(
-                                              '${height % 1 == 0 ? height.toInt() : height.toStringAsFixed(1)} cm',
+                                              '${bodyFat % 1 == 0 ? bodyFat.toInt() : bodyFat.toStringAsFixed(1)}% fat',
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 color: textSecondary,

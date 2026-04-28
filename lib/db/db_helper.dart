@@ -48,6 +48,10 @@ class DBHelper {
         )
       ''');
     } catch (_) {}
+    try {
+      await d.execute(
+          'ALTER TABLE measurements ADD COLUMN body_fat_pct REAL');
+    } catch (_) {}
   }
 
   static Future<void> _ensureV7Columns(Database d) async {
@@ -131,6 +135,7 @@ class DBHelper {
           date TEXT NOT NULL,
           weight_kg REAL,
           height_cm REAL,
+          body_fat_pct REAL,
           notes TEXT DEFAULT ''
         )
       ''');
@@ -449,14 +454,14 @@ class DBHelper {
   static Future<void> insertMeasurement({
     required String date,
     double? weightKg,
-    double? heightCm,
+    double? bodyFatPct,
     String notes = '',
   }) async {
     final d = await db;
     await d.insert('measurements', {
       'date': date,
       if (weightKg != null) 'weight_kg': weightKg,
-      if (heightCm != null) 'height_cm': heightCm,
+      if (bodyFatPct != null) 'body_fat_pct': bodyFatPct,
       'notes': notes,
     });
   }

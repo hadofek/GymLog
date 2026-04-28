@@ -477,6 +477,32 @@ class DBHelper {
     await d.delete('measurements', where: 'id = ?', whereArgs: [id]);
   }
 
+  // ── Muscle group counts ────────────────────────────────────────────────────
+
+  static Future<Map<String, int>> getMuscleGroupCounts(
+      {DateTime? since}) async {
+    final d = await db;
+    final rows = await d.rawQuery('''
+      SELECT e.muscle_group, w.date
+      FROM sets s
+      INNER JOIN workouts w ON s.workout_id = w.id
+      INNER JOIN exercises e ON s.exercise_name = e.name
+      WHERE e.muscle_group IS NOT NULL
+      GROUP BY e.muscle_group, w.id
+    ''');
+    final counts = <String, int>{};
+    for (final row in rows) {
+      final group = row['muscle_group'] as String;
+      final dateStr = row['date'] as String;
+      if (since != null) {
+        final date = _parseWorkoutDate(dateStr);
+        if (date.isBefore(since)) continue;
+      }
+      counts[group] = (counts[group] ?? 0) + 1;
+    }
+    return counts;
+  }
+
   // ── All-time stats ─────────────────────────────────────────────────────────
 
   static Future<Map<String, dynamic>> getAllTimeStats() async {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gymlog/db/db_helper.dart';
+import 'package:gymlog/screens/muscle_map_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
@@ -376,6 +377,35 @@ class _StatsScreenState extends State<StatsScreen> {
             ),
           ),
         ],
+
+        // ── Muscle map entry ──
+        const SizedBox(height: 10),
+        GestureDetector(
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const MuscleMapScreen())),
+          child: _KoBentoCard(
+            isDark: isDark,
+            radius: 14,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('MUSCLE MAP',
+                          style: KiStyles.label(color: textTertiary)),
+                      const SizedBox(height: 8),
+                      Text('See which muscles\nyou\'ve been hitting',
+                          style: KiStyles.bodySemibold(color: textPrimary)),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded,
+                    color: textTertiary, size: 22),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

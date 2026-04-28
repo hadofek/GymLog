@@ -296,6 +296,21 @@ class DBHelper {
         where: 'id = ?', whereArgs: [workoutId]);
   }
 
+  static Future<void> updateWorkoutDetails(
+    int workoutId, {
+    String? notes,
+    double? distanceKm,
+    int? durationSeconds,
+  }) async {
+    final d = await db;
+    final data = <String, Object?>{};
+    if (notes != null) data['notes'] = notes;
+    if (distanceKm != null) data['distance_km'] = distanceKm;
+    if (durationSeconds != null) data['duration_seconds'] = durationSeconds;
+    if (data.isEmpty) return;
+    await d.update('workouts', data, where: 'id = ?', whereArgs: [workoutId]);
+  }
+
   // ── Sets ───────────────────────────────────────────────────────────────────
 
   static Future<void> insertSet(int workoutId, String exerciseName,
@@ -507,12 +522,18 @@ class DBHelper {
       }
     }
 
+    final distRes = await d.rawQuery(
+        "SELECT SUM(distance_km) as total FROM workouts WHERE type = 'cardio' AND distance_km > 0");
+    final totalDistanceKm =
+        (distRes.first['total'] as num?)?.toDouble() ?? 0.0;
+
     return {
       'total_workouts': totalWorkouts,
       'total_seconds': totalSeconds,
       'top_exercises': topExercises,
       'type_breakdown': typeBreakdown,
       'longest_streak': longestStreak,
+      'total_distance_km': totalDistanceKm,
     };
   }
 }

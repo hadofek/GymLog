@@ -41,44 +41,87 @@ class _StatsScreenState extends State<StatsScreen> {
   @override
   Widget build(BuildContext context) {
     final bg = AppColors.background(context);
+    final textPrimary = AppColors.textPrimary(context);
     final textTertiary = AppColors.textTertiary(context);
     final accentContainer = AppColors.accentContainer(context);
+
+    final totalWorkouts =
+        _stats != null ? _stats!['total_workouts'] as int : 0;
 
     return Scaffold(
       backgroundColor: bg,
       body: SafeArea(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
+        child: Column(
+          children: [
+            // ── Header ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // ── KO Header ──
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'GYMLOG',
-                            style: TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              fontStyle: FontStyle.italic,
-                              letterSpacing: 3,
-                              color: accentContainer,
-                            ),
-                          ),
-                        ),
-                        Text('ALL-TIME STATS',
-                            style: KiStyles.label(color: textTertiary)),
-                      ],
+                  Expanded(
+                    child: Text(
+                      'GYMLOG',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        fontStyle: FontStyle.italic,
+                        letterSpacing: 3,
+                        color: accentContainer,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Expanded(child: _buildBody()),
+                  if (!_loading && totalWorkouts > 0)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '$totalWorkouts',
+                          style: KiStyles.headlineMd(color: textPrimary),
+                        ),
+                        Text('sessions',
+                            style: KiStyles.labelSm(color: textTertiary)),
+                      ],
+                    )
+                  else
+                    Text('ALL-TIME',
+                        style: KiStyles.label(color: textTertiary)),
                 ],
               ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _loading ? _buildSkeleton(context) : _buildBody(),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildSkeleton(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+    final skeletonColor =
+        isDark ? const Color(0xFF282A32) : const Color(0xFFEEEEEE);
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+      children: [
+        _SkeletonBox(height: 72, radius: 14, color: skeletonColor),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(
+              child: _SkeletonBox(height: 72, radius: 14, color: skeletonColor)),
+          const SizedBox(width: 10),
+          Expanded(
+              child: _SkeletonBox(height: 72, radius: 14, color: skeletonColor)),
+        ]),
+        const SizedBox(height: 10),
+        _SkeletonBox(height: 120, radius: 14, color: skeletonColor),
+        const SizedBox(height: 10),
+        _SkeletonBox(height: 140, radius: 14, color: skeletonColor),
+      ],
     );
   }
 
@@ -92,25 +135,17 @@ class _StatsScreenState extends State<StatsScreen> {
     final isDark = AppColors.isDark(context);
 
     if (totalWorkouts == 0) {
-      return Center(
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 72, height: 72,
-              decoration: BoxDecoration(
-                color: accentContainer.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(Icons.bar_chart_rounded,
-                  size: 34, color: accentContainer),
-            ),
-            const SizedBox(height: 16),
-            Text('No workouts yet',
-                style: KiStyles.headlineMd(color: textPrimary)),
+            Text('No data yet.',
+                style: KiStyles.headlineLg(color: textPrimary)),
             const SizedBox(height: 6),
-            Text('Log your first workout to see stats',
-                style: KiStyles.label(color: textTertiary)),
+            Text('Log your first workout and stats will appear here.',
+                style: KiStyles.body(color: textTertiary)),
           ],
         ),
       );
@@ -120,42 +155,18 @@ class _StatsScreenState extends State<StatsScreen> {
     final topExercises = stats['top_exercises'] as List<String>;
     final typeBreakdown = stats['type_breakdown'] as Map<String, int>;
     final longestStreak = stats['longest_streak'] as int;
+    final totalDistanceKm = stats['total_distance_km'] as double? ?? 0.0;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
       children: [
-
-        // ── Monument hero: total sessions ──
-        _KoBentoCard(
-          isDark: isDark,
-          glowColor: accentContainer,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('SESSIONS', style: KiStyles.label(color: textTertiary)),
-                    const SizedBox(height: 4),
-                    Text('$totalWorkouts',
-                        style: KiStyles.monument(color: textPrimary)),
-                  ],
-                ),
-              ),
-              Icon(Icons.fitness_center_rounded,
-                  color: accentContainer.withValues(alpha: 0.3), size: 48),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 10),
 
         // ── Stats row: streak + total time ──
         Row(children: [
           Expanded(
             child: _KoBentoCard(
               isDark: isDark,
+              radius: 14,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -172,8 +183,8 @@ class _StatsScreenState extends State<StatsScreen> {
                         padding:
                             const EdgeInsets.only(left: 4, bottom: 3),
                         child: Text(
-                          longestStreak == 1 ? 'DAY' : 'DAYS',
-                          style: KiStyles.labelSm(color: textTertiary),
+                          longestStreak == 1 ? 'day' : 'days',
+                          style: KiStyles.label(color: textTertiary),
                         ),
                       ),
                     ],
@@ -186,6 +197,7 @@ class _StatsScreenState extends State<StatsScreen> {
           Expanded(
             child: _KoBentoCard(
               isDark: isDark,
+              radius: 14,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -200,11 +212,55 @@ class _StatsScreenState extends State<StatsScreen> {
           ),
         ]),
 
+        // ── Distance card (cardio users only) ──
+        if (totalDistanceKm > 0) ...[
+          const SizedBox(height: 10),
+          _KoBentoCard(
+            isDark: isDark,
+            radius: 14,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('TOTAL DISTANCE',
+                          style: KiStyles.label(color: textTertiary)),
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            totalDistanceKm >= 1000
+                                ? '${(totalDistanceKm / 1000).toStringAsFixed(1)}k'
+                                : totalDistanceKm % 1 == 0
+                                    ? '${totalDistanceKm.toInt()}'
+                                    : totalDistanceKm.toStringAsFixed(1),
+                            style: KiStyles.headlineLg(color: textPrimary),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4, bottom: 3),
+                            child: Text('km',
+                                style: KiStyles.label(color: textTertiary)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.straighten_rounded,
+                    color: textTertiary.withValues(alpha: 0.4), size: 32),
+              ],
+            ),
+          ),
+        ],
+
         // ── Top exercises podium ──
         if (topExercises.isNotEmpty) ...[
           const SizedBox(height: 10),
           _KoBentoCard(
             isDark: isDark,
+            radius: 18,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -253,6 +309,7 @@ class _StatsScreenState extends State<StatsScreen> {
           const SizedBox(height: 10),
           _KoBentoCard(
             isDark: isDark,
+            radius: 12,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -399,12 +456,12 @@ class _PodiumRow extends StatelessWidget {
 class _KoBentoCard extends StatelessWidget {
   final Widget child;
   final bool isDark;
-  final Color? glowColor;
+  final double radius;
 
   const _KoBentoCard({
     required this.child,
     required this.isDark,
-    this.glowColor,
+    this.radius = 16,
   });
 
   @override
@@ -414,23 +471,40 @@ class _KoBentoCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF16161E) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(radius),
         border: Border.all(
           color: isDark
               ? const Color(0xFF434654).withValues(alpha: 0.6)
               : const Color(0xFFEEEEEE),
           width: 1,
         ),
-        boxShadow: glowColor != null && isDark
-            ? [
-                BoxShadow(
-                  color: glowColor!.withValues(alpha: 0.12),
-                  blurRadius: 20,
-                ),
-              ]
-            : null,
       ),
       child: child,
+    );
+  }
+}
+
+// ── Skeleton placeholder box ───────────────────────────────────────────────────
+class _SkeletonBox extends StatelessWidget {
+  final double height;
+  final double radius;
+  final Color color;
+
+  const _SkeletonBox({
+    required this.height,
+    required this.color,
+    this.radius = 16,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: height,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(radius),
+      ),
     );
   }
 }

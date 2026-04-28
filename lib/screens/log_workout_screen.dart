@@ -181,10 +181,20 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
           : (double.tryParse(wCtrl.text.isEmpty ? '0' : wCtrl.text) ?? 0.0);
       final r = int.tryParse(rCtrl.text) ?? 0;
       if (r > 0) {
-        setState(() {
-          (_exercises[exIndex]['sets'] as List)
-              .add({'weight': w, 'reps': r});
-        });
+        final exName = _exercises[exIndex]['name'] as String;
+        final prevSets = await DBHelper.getLastSets(exName);
+        final prevMax = prevSets.isEmpty
+            ? 0.0
+            : prevSets
+                .map((s) => (s['weight'] as num).toDouble())
+                .reduce((a, b) => a > b ? a : b);
+        final isPR = !isBodyweight && prevSets.isNotEmpty && w > prevMax;
+        if (mounted) {
+          setState(() {
+            (_exercises[exIndex]['sets'] as List)
+                .add({'weight': w, 'reps': r, if (isPR) 'isPR': true});
+          });
+        }
       }
     }
   }
@@ -444,7 +454,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                         ),
                         child: Text('Save',
                             style: KiStyles.bodySemibold(
-                                color: const Color(0xFF002469))),
+                                color: const Color(0xFF150400))),
                       ),
                     ),
                   ],
@@ -814,7 +824,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                               size: 20),
                           label: Text('Finish Workout',
                               style: KiStyles.bodySemibold(
-                                  color: const Color(0xFF002469))),
+                                  color: const Color(0xFF150400))),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: accentContainer,
                             foregroundColor: const Color(0xFF002469),

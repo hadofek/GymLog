@@ -15,6 +15,7 @@ class ExerciseHistoryScreen extends StatefulWidget {
 class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
   List<Map<String, dynamic>> _history = [];
   bool _loading = true;
+  bool _isBodyweight = false;
 
   @override
   void initState() {
@@ -23,10 +24,14 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
   }
 
   Future<void> _load() async {
-    final h = await DBHelper.getExerciseHistory(widget.exerciseName);
+    final results = await Future.wait([
+      DBHelper.getExerciseHistory(widget.exerciseName),
+      DBHelper.isExerciseBodyweight(widget.exerciseName),
+    ]);
     if (mounted) {
       setState(() {
-        _history = h;
+        _history = results[0] as List<Map<String, dynamic>>;
+        _isBodyweight = results[1] as bool;
         _loading = false;
       });
     }
@@ -88,18 +93,26 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
     final maxWeight = weights.isEmpty ? 0.0 : weights.reduce(max);
     final totalSessions = _history.length;
 
-    // Best estimated 1RM across all sessions
     final best1RM = _history.isEmpty
         ? 0.0
         : _history
             .map((e) => (e['best_1rm'] as num?)?.toDouble() ?? 0.0)
             .reduce(max);
 
+    final maxReps = _history.isEmpty
+        ? 0
+        : _history
+            .map((e) => (e['total_reps'] as num).toInt())
+            .reduce((a, b) => a > b ? a : b);
+
     final chartHistory = _history.length > 20
         ? _history.sublist(_history.length - 20)
         : _history;
     final chartWeights =
         chartHistory.map((e) => (e['max_weight'] as num).toDouble()).toList();
+    final chartReps = chartHistory
+        .map((e) => (e['total_reps'] as num).toDouble())
+        .toList();
 
     final accentContainer = AppColors.accentContainer(context);
     final textTertiary = AppColors.textTertiary(context);
@@ -174,8 +187,11 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                 Row(children: [
                   Expanded(
                     child: _StatCard(
-                      label: 'Best Weight',
-                      value: _weightLabel(maxWeight),
+                      label: _isBodyweight ? 'Best Session' : 'Best Weight',
+                      value: _isBodyweight
+                          ? '$maxReps reps'
+                          : _weightLabel(maxWeight),
+                      smallValue: _isBodyweight,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -195,8 +211,8 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                   ),
                 ]),
 
-                // ── 1RM card ──
-                if (best1RM > 0) ...[
+                // ── 1RM card (weighted only) ──
+                if (!_isBodyweight && best1RM > 0) ...[
                   const SizedBox(height: 12),
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -270,7 +286,7 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                 const SizedBox(height: 20),
 
                 // ── Chart ──
-                if (chartWeights.length >= 2) ...[
+                if ((_isBodyweight ? chartReps : chartWeights).length >= 2) ...[
                   Container(
                     decoration: BoxDecoration(
                       color: AppColors.cardBg(context),
@@ -289,7 +305,9 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Max Weight Progress',
+                            _isBodyweight
+                                ? 'Total Reps Progress'
+                                : 'Max Weight Progress',
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 14,
@@ -305,7 +323,10 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                           const SizedBox(height: 16),
                           SizedBox(
                             height: 140,
-                            child: _WeightChart(values: chartWeights),
+                            child: _WeightChart(
+                                values: _isBodyweight
+                                    ? chartReps
+                                    : chartWeights),
                           ),
                         ],
                       ),
@@ -352,10 +373,12 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                             _history[_history.length - 1 - i];
                         final w =
                             (session['max_weight'] as num).toDouble();
+                        final reps = (session['total_reps'] as num).toInt();
                         final sets = session['set_count'] as int;
                         final isLast = i == _history.length - 1;
-                        final isPR =
-                            w == maxWeight && totalSessions > 1;
+                        final isPR = _isBodyweight
+                            ? reps == maxReps && totalSessions > 1
+                            : w == maxWeight && totalSessions > 1;
                         return Column(
                           children: [
                             Padding(
@@ -411,7 +434,9 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                                       const SizedBox(width: 8),
                                     ],
                                     Text(
-                                      _weightLabel(w),
+                                      _isBodyweight
+                                          ? '$reps reps'
+                                          : _weightLabel(w),
                                       style: TextStyle(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 15,

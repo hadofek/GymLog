@@ -33,8 +33,8 @@ class _MainShellState extends State<MainShell> {
     final unselected = AppColors.textTertiary(context);
     final selected = AppColors.accent(context);
     final indicatorColor = isDark
-        ? const Color(0xFF608BFF).withValues(alpha: 0.15)
-        : const Color(0xFF1154D4).withValues(alpha: 0.10);
+        ? const Color(0xFFCB601A).withValues(alpha: 0.18)
+        : const Color(0xFFB83C08).withValues(alpha: 0.10);
 
     return Scaffold(
       body: IndexedStack(

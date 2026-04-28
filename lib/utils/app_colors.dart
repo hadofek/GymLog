@@ -52,22 +52,22 @@ class AppColors {
   static Color bottomBarBg(BuildContext ctx) =>
       isDark(ctx) ? const Color(0xFF16161E) : Colors.white;
 
-  // ── Primary (periwinkle blue) ──
+  // ── Primary (warm amber-orange) ──
   static Color accent(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFFB4C5FF) : const Color(0xFF1154D4);
+      isDark(ctx) ? const Color(0xFFE07B3E) : const Color(0xFFB83C08);
 
   static Color accentContainer(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF608BFF) : const Color(0xFF3A6FE8);
+      isDark(ctx) ? const Color(0xFFCB601A) : const Color(0xFFA03208);
 
   static Color accentMuted(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0x26608BFF) : const Color(0x1A1154D4);
+      isDark(ctx) ? const Color(0x26E07B3E) : const Color(0x1AB83C08);
 
   // ── Primary button ──
   static Color primaryBtnBg(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF608BFF) : const Color(0xFF111111);
+      isDark(ctx) ? const Color(0xFFCB601A) : const Color(0xFF111111);
 
   static Color primaryBtnFg(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF002469) : Colors.white;
+      isDark(ctx) ? const Color(0xFF150400) : Colors.white;
 
   // ── Legacy constants ──
   static const Color gold = Color(0xFFFFD700);

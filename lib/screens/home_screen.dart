@@ -203,13 +203,6 @@ class _HomeScreenState extends State<HomeScreen> {
     return '${months[_currentMonth.month - 1]} ${_currentMonth.year}';
   }
 
-  String get _greeting {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
-  }
-
   int get _currentStreak {
     if (_workouts.isEmpty) return 0;
     final today = DateTime.now();
@@ -317,20 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // ── Greeting ──
-            if (_userName.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    '$_greeting, $_userName',
-                    style: KiStyles.label(color: textTertiary),
-                  ),
-                ),
-              ),
-
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             // ── Scrollable body ──
             Expanded(
@@ -340,130 +320,118 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
 
-                    // ── Hero stat: total workouts ──
-                    _KoBentoCard(
-                      glowColor: accentContainer,
+                    // ── Compact stat strip ──
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('SESSIONS',
-                                    style: KiStyles.label(color: textTertiary)),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '$_totalWorkouts',
-                                  style: KiStyles.monument(color: textPrimary),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${monthWorkouts.length} this month',
-                                  style: KiStyles.label(color: textSecondary),
-                                ),
-                              ],
-                            ),
+                          _MicroStat(
+                            value: '$_totalWorkouts',
+                            label: 'ALL TIME',
+                            valueColor: textPrimary,
+                            labelColor: textTertiary,
                           ),
-                          Icon(Icons.fitness_center_rounded,
-                              color: accentContainer.withValues(alpha: 0.4),
-                              size: 48),
+                          const SizedBox(width: 20),
+                          Container(
+                            width: 1,
+                            height: 30,
+                            color: AppColors.border(context),
+                          ),
+                          const SizedBox(width: 20),
+                          _MicroStat(
+                            value: '${monthWorkouts.length}',
+                            label: _monthLabel.split(' ').first.toUpperCase(),
+                            valueColor: accentContainer,
+                            labelColor: textTertiary,
+                          ),
+                          if (totalMonthSeconds > 0) ...[
+                            const SizedBox(width: 20),
+                            Container(
+                              width: 1,
+                              height: 30,
+                              color: AppColors.border(context),
+                            ),
+                            const SizedBox(width: 20),
+                            _MicroStat(
+                              value: DBHelper.formatDuration(totalMonthSeconds),
+                              label: 'LOGGED',
+                              valueColor: textPrimary,
+                              labelColor: textTertiary,
+                            ),
+                          ],
                         ],
                       ),
                     ),
 
-                    const SizedBox(height: 10),
-
-                    // ── Side-by-side: time + streak ──
-                    Row(
-                      children: [
-                        if (totalMonthSeconds > 0)
-                          Expanded(
-                            child: _KoBentoCard(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('TOTAL TIME',
-                                      style:
-                                          KiStyles.label(color: textTertiary)),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    DBHelper.formatDuration(totalMonthSeconds),
-                                    style: KiStyles.headlineLg(
-                                        color: textPrimary),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text('this month',
-                                      style:
-                                          KiStyles.labelSm(color: textTertiary)),
-                                ],
-                              ),
-                            ),
-                          ),
-                        if (totalMonthSeconds > 0) const SizedBox(width: 10),
-                        Expanded(
-                          child: _KoBentoCard(
-                            child: Column(
+                    // ── Streak card ──
+                    if (streak > 0)
+                      _KoBentoCard(
+                        radius: 14,
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                        child: Row(
+                          children: [
+                            Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text('STREAK',
                                     style: KiStyles.label(color: textTertiary)),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 6),
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
                                       '$streak',
                                       style: KiStyles.headlineLg(
-                                          color: streak > 0
-                                              ? accentContainer
-                                              : textPrimary),
+                                          color: accentContainer),
                                     ),
                                     Padding(
                                       padding: const EdgeInsets.only(
-                                          left: 4, bottom: 3),
+                                          left: 5, bottom: 3),
                                       child: Text(
-                                        streak == 1 ? 'DAY' : 'DAYS',
-                                        style: KiStyles.labelSm(
+                                        streak == 1 ? 'day' : 'days',
+                                        style: KiStyles.label(
                                             color: textTertiary),
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 6),
-                                // Streak dash indicators (up to 7)
-                                Row(
-                                  children: List.generate(7, (i) {
-                                    final filled = i < streak.clamp(0, 7);
-                                    return Expanded(
-                                      child: Container(
-                                        height: 3,
-                                        margin: EdgeInsets.only(
-                                            right: i < 6 ? 3 : 0),
-                                        decoration: BoxDecoration(
-                                          color: filled
-                                              ? accentContainer
-                                              : isDark
-                                                  ? const Color(0xFF282A32)
-                                                  : const Color(0xFFEEEEEE),
-                                          borderRadius:
-                                              BorderRadius.circular(2),
-                                        ),
-                                      ),
-                                    );
-                                  }),
-                                ),
                               ],
                             ),
-                          ),
+                            const SizedBox(width: 20),
+                            // Streak dash indicators (up to 7)
+                            Expanded(
+                              child: Row(
+                                children: List.generate(7, (i) {
+                                  final filled = i < streak.clamp(0, 7);
+                                  return Expanded(
+                                    child: Container(
+                                      height: 3,
+                                      margin: EdgeInsets.only(
+                                          right: i < 6 ? 4 : 0),
+                                      decoration: BoxDecoration(
+                                        color: filled
+                                            ? accentContainer
+                                            : isDark
+                                                ? const Color(0xFF282A32)
+                                                : const Color(0xFFEEEEEE),
+                                        borderRadius:
+                                            BorderRadius.circular(2),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
 
-                    const SizedBox(height: 10),
+                    if (streak > 0) const SizedBox(height: 10),
 
                     // ── Calendar card ──
                     _KoBentoCard(
+                      radius: 20,
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                       child: Column(
                         children: [
@@ -572,7 +540,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 ? FontWeight.w700
                                                 : FontWeight.w400,
                                             color: isToday
-                                                ? const Color(0xFF002469)
+                                                ? const Color(0xFF150400)
                                                 : hasWorkout
                                                     ? textPrimary
                                                     : isFuture
@@ -609,67 +577,81 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (_recentWorkouts.isNotEmpty) ...[
                       const SizedBox(height: 10),
                       _KoBentoCard(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        radius: 16,
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('RECENT ACTIVITY',
+                            Text('RECENT',
                                 style: KiStyles.label(color: textTertiary)),
-                            const SizedBox(height: 12),
-                            ..._recentWorkouts.map((w) {
+                            const SizedBox(height: 10),
+                            ..._recentWorkouts.asMap().entries.map((entry) {
+                              final i = entry.key;
+                              final w = entry.value;
                               final type = w['type'] as String? ??
                                   WorkoutTypes.weighted;
                               final typeColor = WorkoutTypes.color(type);
                               final secs =
                                   w['duration_seconds'] as int? ?? 0;
-                              return Padding(
-                                padding:
-                                    const EdgeInsets.only(bottom: 12),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 36,
-                                      height: 36,
-                                      decoration: BoxDecoration(
-                                        color: typeColor
-                                            .withValues(alpha: 0.12),
-                                        borderRadius:
-                                            BorderRadius.circular(10),
-                                      ),
-                                      child: Icon(
-                                          WorkoutTypes.icon(type),
-                                          size: 18,
-                                          color: typeColor),
+                              return Column(
+                                children: [
+                                  if (i > 0)
+                                    Divider(
+                                      height: 1,
+                                      thickness: 0.5,
+                                      color: AppColors.divider(context),
                                     ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 11),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        SizedBox(
+                                          width: 22,
+                                          child: Text(
+                                            (i + 1)
+                                                .toString()
+                                                .padLeft(2, '0'),
+                                            style: KiStyles.labelSm(
+                                                color: textTertiary),
+                                          ),
+                                        ),
+                                        Container(
+                                          width: 5,
+                                          height: 5,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: typeColor,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
                                             WorkoutTypes.label(type),
                                             style: KiStyles.bodySemibold(
                                                 color: textPrimary),
                                           ),
+                                        ),
+                                        if (secs > 0) ...[
                                           Text(
-                                            secs > 0
-                                                ? DBHelper.formatDuration(
-                                                    secs)
-                                                : '—',
+                                            DBHelper.formatDuration(secs),
                                             style: KiStyles.labelSm(
-                                                color: textTertiary),
+                                                color: textSecondary),
                                           ),
+                                          const SizedBox(width: 10),
                                         ],
-                                      ),
+                                        Text(
+                                          _relativeDate(
+                                              w['date'] as String),
+                                          style: KiStyles.labelSm(
+                                              color: textTertiary),
+                                        ),
+                                      ],
                                     ),
-                                    Text(
-                                      _relativeDate(w['date'] as String),
-                                      style: KiStyles.labelSm(
-                                          color: textTertiary),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                ],
                               );
                             }),
                           ],
@@ -680,24 +662,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     // ── Empty state ──
                     if (_workouts.isEmpty) ...[
                       const SizedBox(height: 10),
-                      _KoBentoCard(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 28),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(4, 16, 4, 16),
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.fitness_center_outlined,
-                                size: 40,
-                                color: accentContainer.withValues(alpha: 0.5)),
-                            const SizedBox(height: 14),
                             Text(
-                              'No workouts yet',
-                              style: KiStyles.headlineMd(color: textPrimary),
+                              'Start logging.',
+                              style: KiStyles.headlineLg(color: textPrimary),
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Tap any day or hit New Workout to begin',
-                              textAlign: TextAlign.center,
-                              style: KiStyles.label(color: textTertiary),
+                              'Tap any day in the calendar or use New Workout.',
+                              style: KiStyles.body(color: textTertiary),
                             ),
                           ],
                         ),
@@ -745,14 +722,14 @@ class _HomeScreenState extends State<HomeScreen> {
         child: FloatingActionButton.extended(
           onPressed: () => _startWorkout(DateTime.now()),
           backgroundColor: AppColors.accentContainer(context),
-          foregroundColor: const Color(0xFF002469),
+          foregroundColor: const Color(0xFF150400),
           elevation: isDark ? 0 : 4,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           icon: const Icon(Icons.add, size: 22),
           label: Text(
             'New Workout',
-            style: KiStyles.bodySemibold(color: const Color(0xFF002469)),
+            style: KiStyles.bodySemibold(color: const Color(0xFF150400)),
           ),
         ),
       ),
@@ -836,12 +813,12 @@ class _HomeScreenState extends State<HomeScreen> {
 class _KoBentoCard extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
-  final Color? glowColor;
+  final double radius;
 
   const _KoBentoCard({
     required this.child,
     this.padding = const EdgeInsets.all(20),
-    this.glowColor,
+    this.radius = 16,
   });
 
   @override
@@ -852,24 +829,42 @@ class _KoBentoCard extends StatelessWidget {
       padding: padding,
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF16161E) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(radius),
         border: Border.all(
           color: isDark
               ? const Color(0xFF434654).withValues(alpha: 0.6)
               : const Color(0xFFEEEEEE),
           width: 1,
         ),
-        boxShadow: glowColor != null && isDark
-            ? [
-                BoxShadow(
-                  color: glowColor!.withValues(alpha: 0.12),
-                  blurRadius: 20,
-                  spreadRadius: 0,
-                ),
-              ]
-            : null,
       ),
       child: child,
+    );
+  }
+}
+
+// ── Inline stat label+value pair ───────────────────────────────────────────────
+class _MicroStat extends StatelessWidget {
+  final String value;
+  final String label;
+  final Color valueColor;
+  final Color labelColor;
+
+  const _MicroStat({
+    required this.value,
+    required this.label,
+    required this.valueColor,
+    required this.labelColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(value, style: KiStyles.headlineMd(color: valueColor)),
+        const SizedBox(height: 1),
+        Text(label, style: KiStyles.labelSm(color: labelColor)),
+      ],
     );
   }
 }

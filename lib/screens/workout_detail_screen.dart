@@ -311,10 +311,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           onPressed: _saveAsTemplate,
           icon: const Icon(Icons.bookmark_outline_rounded, size: 18),
           label: Text('Save as Template',
-              style: KiStyles.bodySemibold(color: const Color(0xFF002469))),
+              style: KiStyles.bodySemibold(color: const Color(0xFF150400))),
           style: ElevatedButton.styleFrom(
             backgroundColor: accentContainer,
-            foregroundColor: const Color(0xFF002469),
+            foregroundColor: const Color(0xFF150400),
             minimumSize: const Size(double.infinity, 52),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14)),
@@ -325,10 +325,168 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     );
   }
 
+  // Parses notes stored as "Activity\navg_speed:X.X\nUser notes" into components.
+  ({String activity, double? avgSpeed, String userNotes}) _parseCardioNotes(String raw) {
+    final lines = raw.split('\n').where((l) => l.isNotEmpty).toList();
+    if (lines.isEmpty) return (activity: '', avgSpeed: null, userNotes: '');
+    final activity = lines.first;
+    double? avgSpeed;
+    final noteLines = <String>[];
+    for (final line in lines.skip(1)) {
+      if (line.startsWith('avg_speed:')) {
+        avgSpeed = double.tryParse(line.substring('avg_speed:'.length).trim());
+      } else {
+        noteLines.add(line);
+      }
+    }
+    return (activity: activity, avgSpeed: avgSpeed, userNotes: noteLines.join('\n'));
+  }
+
+  Future<void> _editNonWeightedWorkout() async {
+    final parsed = _parseCardioNotes(_notes);
+    final isCardio = widget.type == WorkoutTypes.cardio;
+
+    final activityCtrl = TextEditingController(text: parsed.activity);
+    final distCtrl = TextEditingController(
+        text: _distanceKm > 0 ? _distanceKm.toStringAsFixed(2) : '');
+    final speedCtrl = TextEditingController(
+        text: parsed.avgSpeed != null ? '${parsed.avgSpeed}' : '');
+    final notesCtrl = TextEditingController(text: parsed.userNotes);
+
+    final cardBg = AppColors.cardBg(context);
+    final textPrimary = AppColors.textPrimary(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final accentContainer = AppColors.accentContainer(context);
+
+    InputDecoration fieldDec(String label) => InputDecoration(
+          labelText: label,
+          labelStyle: TextStyle(color: textTertiary),
+          filled: true,
+          fillColor: AppColors.inputFill(context),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide.none),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: AppColors.border(context))),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: accentContainer, width: 2)),
+        );
+
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: cardBg,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            20, 16, 20, 24 + MediaQuery.of(ctx).viewInsets.bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                    color: AppColors.border(ctx),
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('Edit Session',
+                style: KiStyles.headlineMd(color: textPrimary)),
+            const SizedBox(height: 20),
+            TextField(
+              controller: activityCtrl,
+              style: KiStyles.body(color: textPrimary),
+              decoration: fieldDec('Activity'),
+            ),
+            if (isCardio) ...[
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(
+                  child: TextField(
+                    controller: distCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: KiStyles.body(color: textPrimary),
+                    decoration: fieldDec('Distance (km)'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: speedCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: KiStyles.body(color: textPrimary),
+                    decoration: fieldDec('Avg speed (km/h)'),
+                  ),
+                ),
+              ]),
+            ],
+            const SizedBox(height: 12),
+            TextField(
+              controller: notesCtrl,
+              maxLines: 3,
+              style: KiStyles.body(color: textPrimary),
+              decoration: fieldDec('Notes').copyWith(
+                  contentPadding: const EdgeInsets.all(14)),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accentContainer,
+                  foregroundColor: const Color(0xFF150400),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: Text('Save',
+                    style: KiStyles.bodySemibold(
+                        color: const Color(0xFF150400))),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (saved == true && mounted) {
+      final activity = activityCtrl.text.trim();
+      final avgSpeed = double.tryParse(speedCtrl.text.trim());
+      final userNotes = notesCtrl.text.trim();
+      final notesParts = <String>[
+        if (activity.isNotEmpty) activity,
+        if (avgSpeed != null && avgSpeed > 0) 'avg_speed:$avgSpeed',
+        if (userNotes.isNotEmpty) userNotes,
+      ];
+      final newNotes = notesParts.join('\n');
+      final newDistance = isCardio
+          ? (double.tryParse(distCtrl.text.trim()) ?? _distanceKm)
+          : null;
+
+      await DBHelper.updateWorkoutDetails(
+        widget.workoutId,
+        notes: newNotes,
+        distanceKm: newDistance,
+      );
+      await _load();
+    }
+  }
+
   Widget _buildNonWeightsBody() {
     final typeColor = WorkoutTypes.color(widget.type);
     final textPrimary = AppColors.textPrimary(context);
     final textSecondary = AppColors.textSecondary(context);
+    final textTertiary = AppColors.textTertiary(context);
     final cardBg = AppColors.cardBg(context);
     final isDark = AppColors.isDark(context);
     final hasPhoto = _photoExists;
@@ -355,6 +513,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         ),
       );
     }
+
+    final parsed = _parseCardioNotes(_notes);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -383,21 +543,40 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                         BoxDecoration(color: typeColor, shape: BoxShape.circle),
                   ),
                   const SizedBox(width: 8),
-                  Text(WorkoutTypes.label(widget.type),
-                      style: KiStyles.bodySemibold(color: textPrimary)),
+                  Text(
+                    parsed.activity.isNotEmpty
+                        ? parsed.activity
+                        : WorkoutTypes.label(widget.type),
+                    style: KiStyles.bodySemibold(color: textPrimary),
+                  ),
                 ]),
-                if (_distanceKm > 0) ...[
+                if (_distanceKm > 0 || parsed.avgSpeed != null) ...[
                   const SizedBox(height: 14),
                   Row(children: [
-                    Icon(Icons.straighten, size: 16, color: typeColor),
-                    const SizedBox(width: 8),
-                    Text('${_distanceKm.toStringAsFixed(2)} km',
-                        style: KiStyles.bodySemibold(color: textPrimary)),
+                    if (_distanceKm > 0) ...[
+                      Icon(Icons.straighten, size: 16, color: typeColor),
+                      const SizedBox(width: 6),
+                      Text('${_distanceKm.toStringAsFixed(2)} km',
+                          style: KiStyles.bodySemibold(color: textPrimary)),
+                    ],
+                    if (_distanceKm > 0 && parsed.avgSpeed != null)
+                      const SizedBox(width: 16),
+                    if (parsed.avgSpeed != null) ...[
+                      Icon(Icons.speed_outlined, size: 16, color: typeColor),
+                      const SizedBox(width: 6),
+                      Text('${parsed.avgSpeed} km/h',
+                          style: KiStyles.bodySemibold(color: textPrimary)),
+                    ],
                   ]),
                 ],
-                if (_notes.isNotEmpty) ...[
+                if (parsed.userNotes.isNotEmpty) ...[
                   const SizedBox(height: 14),
-                  Text(_notes, style: KiStyles.body(color: textSecondary)),
+                  Text(parsed.userNotes,
+                      style: KiStyles.body(color: textSecondary)),
+                ],
+                if (parsed.activity.isEmpty && _notes.isEmpty) ...[
+                  const SizedBox(height: 14),
+                  Text('No notes', style: KiStyles.label(color: textTertiary)),
                 ],
               ],
             ),
@@ -499,6 +678,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               onSelected: (value) async {
                 if (value == 'edit') {
                   setState(() => _editMode = true);
+                } else if (value == 'edit_session') {
+                  await _editNonWeightedWorkout();
                 } else if (value == 'share') {
                   await _shareWorkout();
                 } else if (value == 'delete') {
@@ -550,6 +731,17 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                           size: 18, color: textSecondary),
                       const SizedBox(width: 12),
                       Text('Edit sets',
+                          style: KiStyles.body(color: textPrimary)),
+                    ]),
+                  ),
+                if (!_isWeightedType)
+                  PopupMenuItem(
+                    value: 'edit_session',
+                    child: Row(children: [
+                      Icon(Icons.edit_outlined,
+                          size: 18, color: textSecondary),
+                      const SizedBox(width: 12),
+                      Text('Edit session',
                           style: KiStyles.body(color: textPrimary)),
                     ]),
                   ),
@@ -849,22 +1041,19 @@ class _SetBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark(context);
+    final accent = AppColors.accentContainer(context);
     return Container(
       width: 26,
       height: 26,
       decoration: BoxDecoration(
-        color: isDark
-            ? const Color(0xFF282A32)
-            : const Color(0xFFFFD700).withValues(alpha: 0.2),
+        color: accent.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Center(
         child: Text(
           '$number',
           style: KiStyles.labelSm(
-            color: isDark
-                ? const Color(0xFFB4C5FF)
-                : const Color(0xFF8B7500),
+            color: isDark ? accent : AppColors.accent(context),
           ),
         ),
       ),

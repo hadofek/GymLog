@@ -1,7 +1,6 @@
 import 'dart:ui' as ui;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
@@ -31,48 +30,49 @@ class _Region {
   const _Region(this.group, this.cx, this.cy, this.rx, this.ry);
 }
 
-// Positions as fractions of image dimensions (720×1280).
-// Front view occupies left half (x: 0–0.5), back view right half (x: 0.5–1.0).
+// Coordinates as fractions of canvas (w × h).
+// Front figure at cx=0.25w, back at cx=0.75w.
 const _regions = <_Region>[
   // ── Chest (front) ──
-  _Region('chest', 0.175, 0.255, 0.082, 0.062),
-  _Region('chest', 0.325, 0.255, 0.082, 0.062),
-  // ── Shoulders: front delts + rear delts ──
-  _Region('shoulders', 0.088, 0.210, 0.052, 0.048),
-  _Region('shoulders', 0.412, 0.210, 0.052, 0.048),
-  _Region('shoulders', 0.600, 0.210, 0.052, 0.048),
-  _Region('shoulders', 0.900, 0.210, 0.052, 0.048),
-  // ── Biceps (front) ──
-  _Region('biceps', 0.078, 0.325, 0.040, 0.068),
-  _Region('biceps', 0.422, 0.325, 0.040, 0.068),
-  // ── Triceps (back) ──
-  _Region('triceps', 0.578, 0.325, 0.040, 0.068),
-  _Region('triceps', 0.922, 0.325, 0.040, 0.068),
-  // ── Forearms ──
-  _Region('forearms', 0.068, 0.415, 0.035, 0.055),
-  _Region('forearms', 0.432, 0.415, 0.035, 0.055),
+  _Region('chest', 0.178, 0.256, 0.066, 0.057),
+  _Region('chest', 0.322, 0.256, 0.066, 0.057),
+  // ── Front delts ──
+  _Region('shoulders', 0.116, 0.204, 0.046, 0.042),
+  _Region('shoulders', 0.384, 0.204, 0.046, 0.042),
+  // ── Rear delts (back figure) ──
+  _Region('shoulders', 0.616, 0.204, 0.046, 0.042),
+  _Region('shoulders', 0.884, 0.204, 0.046, 0.042),
+  // ── Biceps (front arms) ──
+  _Region('biceps', 0.108, 0.295, 0.032, 0.062),
+  _Region('biceps', 0.392, 0.295, 0.032, 0.062),
+  // ── Triceps (back arms) ──
+  _Region('triceps', 0.608, 0.295, 0.032, 0.062),
+  _Region('triceps', 0.892, 0.295, 0.032, 0.062),
+  // ── Forearms (front) ──
+  _Region('forearms', 0.086, 0.474, 0.026, 0.050),
+  _Region('forearms', 0.414, 0.474, 0.026, 0.050),
   // ── Core / Abs (front) ──
-  _Region('core', 0.250, 0.405, 0.072, 0.082),
+  _Region('core', 0.250, 0.388, 0.061, 0.077),
   // ── Traps (back) ──
-  _Region('traps', 0.750, 0.205, 0.095, 0.042),
+  _Region('traps', 0.750, 0.210, 0.086, 0.038),
   // ── Lats + lower back ──
-  _Region('back', 0.628, 0.325, 0.065, 0.088),
-  _Region('back', 0.872, 0.325, 0.065, 0.088),
-  _Region('back', 0.750, 0.430, 0.072, 0.040),
+  _Region('back', 0.632, 0.330, 0.058, 0.083),
+  _Region('back', 0.868, 0.330, 0.058, 0.083),
+  _Region('back', 0.750, 0.432, 0.065, 0.036),
   // ── Quads (front) ──
-  _Region('quads', 0.193, 0.632, 0.065, 0.095),
-  _Region('quads', 0.307, 0.632, 0.065, 0.095),
+  _Region('quads', 0.202, 0.634, 0.054, 0.088),
+  _Region('quads', 0.298, 0.634, 0.054, 0.088),
   // ── Hamstrings (back) ──
-  _Region('hamstrings', 0.662, 0.642, 0.060, 0.092),
-  _Region('hamstrings', 0.838, 0.642, 0.060, 0.092),
+  _Region('hamstrings', 0.662, 0.644, 0.052, 0.086),
+  _Region('hamstrings', 0.838, 0.644, 0.052, 0.086),
   // ── Glutes (back) ──
-  _Region('glutes', 0.688, 0.528, 0.070, 0.055),
-  _Region('glutes', 0.812, 0.528, 0.070, 0.055),
-  // ── Calves (front + back) ──
-  _Region('calves', 0.188, 0.840, 0.040, 0.055),
-  _Region('calves', 0.312, 0.840, 0.040, 0.055),
-  _Region('calves', 0.662, 0.840, 0.040, 0.055),
-  _Region('calves', 0.838, 0.840, 0.040, 0.055),
+  _Region('glutes', 0.688, 0.530, 0.063, 0.050),
+  _Region('glutes', 0.812, 0.530, 0.063, 0.050),
+  // ── Calves ──
+  _Region('calves', 0.188, 0.836, 0.034, 0.050),
+  _Region('calves', 0.312, 0.836, 0.034, 0.050),
+  _Region('calves', 0.662, 0.836, 0.034, 0.050),
+  _Region('calves', 0.838, 0.836, 0.034, 0.050),
 ];
 
 const _groupColors = <String, Color>{
@@ -115,21 +115,12 @@ class MuscleMapScreen extends StatefulWidget {
 class _MuscleMapScreenState extends State<MuscleMapScreen> {
   _Period _period = _Period.allTime;
   Map<String, int> _counts = {};
-  ui.Image? _mapImage;
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadMapImage();
     _loadCounts();
-  }
-
-  Future<void> _loadMapImage() async {
-    final data = await rootBundle.load('assets/images/musclemap.png');
-    final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
-    final frame = await codec.getNextFrame();
-    if (mounted) setState(() => _mapImage = frame.image);
   }
 
   Future<void> _loadCounts() async {
@@ -284,20 +275,18 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                 children: [
-                  // Image + overlay
+                  // Body model (no image — fully drawn in code)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: AspectRatio(
                       aspectRatio: 720 / 1280,
-                      child: _mapImage != null
-                          ? CustomPaint(
-                              painter: _MuscleMapPainter(
-                                image: _mapImage!,
-                                counts: _counts,
-                                maxCount: maxCount,
-                              ),
-                            )
-                          : Container(color: Colors.black),
+                      child: CustomPaint(
+                        painter: _BodyModelPainter(
+                          counts: _counts,
+                          maxCount: maxCount,
+                          isDark: isDark,
+                        ),
+                      ),
                     ),
                   ),
 
@@ -348,7 +337,6 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
                     ),
                   ] else ...[
                     const SizedBox(height: 24),
-                    // Section header with legend
                     Row(
                       children: [
                         Text('BREAKDOWN',
@@ -361,7 +349,6 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    // Muscle rows
                     ...sortedGroups.map((entry) {
                       final group = entry.key;
                       final count = entry.value;
@@ -371,8 +358,7 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
                           (group.isNotEmpty
                               ? group[0].toUpperCase() + group.substring(1)
                               : group);
-                      final pct =
-                          maxCount > 0 ? count / maxCount : 0.0;
+                      final pct = maxCount > 0 ? count / maxCount : 0.0;
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 14),
@@ -432,69 +418,322 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
   }
 }
 
-// ── CustomPainter ──────────────────────────────────────────────────────────────
+// ── Body Model Painter ──────────────────────────────────────────────────────────
 
-class _MuscleMapPainter extends CustomPainter {
-  final ui.Image image;
+class _BodyModelPainter extends CustomPainter {
   final Map<String, int> counts;
   final int maxCount;
+  final bool isDark;
 
-  const _MuscleMapPainter({
-    required this.image,
+  const _BodyModelPainter({
     required this.counts,
     required this.maxCount,
+    required this.isDark,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw base muscle map
-    final src = Rect.fromLTWH(
-        0, 0, image.width.toDouble(), image.height.toDouble());
-    final dst = Offset.zero & size;
-    canvas.drawImageRect(
-        image, src, dst, Paint()..filterQuality = FilterQuality.medium);
+    final w = size.width;
+    final h = size.height;
 
-    if (maxCount == 0) return;
+    // Background
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..color = isDark ? const Color(0xFF090C14) : const Color(0xFFEBEEF7),
+    );
 
-    // Draw glowing overlays using screen blend mode
-    for (final region in _regions) {
-      final count = counts[region.group] ?? 0;
-      if (count == 0) continue;
+    // Subtle center divider
+    canvas.drawLine(
+      Offset(w * 0.5, h * 0.04),
+      Offset(w * 0.5, h * 0.93),
+      Paint()
+        ..color = (isDark ? Colors.white : Colors.black)
+            .withValues(alpha: isDark ? 0.055 : 0.07)
+        ..strokeWidth = 0.6,
+    );
 
-      final intensity =
-          (0.22 + 0.68 * (count / maxCount).clamp(0.0, 1.0));
-      final color = _groupColors[region.group] ?? Colors.white;
+    // Figures
+    _drawFigure(canvas, w, h, cx: w * 0.25);
+    _drawFigure(canvas, w, h, cx: w * 0.75);
 
-      final center =
-          Offset(region.cx * size.width, region.cy * size.height);
-      final outerRadius =
-          math.max(region.rx * size.width, region.ry * size.height);
-      final rect = Rect.fromCenter(
-        center: center,
-        width: region.rx * 2 * size.width,
-        height: region.ry * 2 * size.height,
-      );
+    // Anatomy construction lines
+    _constructionLines(canvas, w, h, cx: w * 0.25, isFront: true);
+    _constructionLines(canvas, w, h, cx: w * 0.75, isFront: false);
 
-      final paint = Paint()
-        ..shader = ui.Gradient.radial(
-          center,
-          outerRadius,
-          [
-            color.withValues(alpha: intensity),
-            color.withValues(alpha: intensity * 0.35),
-            Colors.transparent,
-          ],
-          [0.0, 0.5, 1.0],
-        )
-        ..blendMode = BlendMode.screen;
+    // Muscle glows
+    if (maxCount > 0) {
+      for (final region in _regions) {
+        final count = counts[region.group] ?? 0;
+        if (count == 0) continue;
+        _drawMuscleGlow(canvas, w, h, region, count);
+      }
+    }
 
-      canvas.drawOval(rect, paint);
+    // Labels
+    _drawLabel(canvas, 'FRONT', Offset(w * 0.25, h * 0.960));
+    _drawLabel(canvas, 'BACK', Offset(w * 0.75, h * 0.960));
+  }
+
+  // Diagonal gradient: upper-right lit → lower-left shadow, per figure.
+  Paint _fill(double cx, double w, double h) => Paint()
+    ..shader = ui.Gradient.linear(
+      Offset(cx + w * 0.20, h * 0.04),
+      Offset(cx - w * 0.20, h * 0.94),
+      isDark
+          ? const [Color(0xFF1C2A46), Color(0xFF101820), Color(0xFF080C16)]
+          : const [Color(0xFFD5DDEE), Color(0xFFBCC6DC), Color(0xFFA8B2C8)],
+      const [0.0, 0.48, 1.0],
+    )
+    ..style = PaintingStyle.fill;
+
+  Paint get _stroke => Paint()
+    ..color = isDark ? const Color(0xFF384E72) : const Color(0xFF7888A8)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 0.85
+    ..strokeJoin = StrokeJoin.round
+    ..strokeCap = StrokeCap.round;
+
+  void _drawFigure(Canvas canvas, double w, double h, {required double cx}) {
+    final fill = _fill(cx, w, h);
+    final stroke = _stroke;
+
+    void dp(Path p) {
+      canvas.drawPath(p, fill);
+      canvas.drawPath(p, stroke);
+    }
+
+    void dOval(Rect r) {
+      canvas.drawOval(r, fill);
+      canvas.drawOval(r, stroke);
+    }
+
+    // Head
+    dOval(Rect.fromCenter(
+        center: Offset(cx, h * 0.077), width: w * 0.076, height: h * 0.102));
+
+    // Torso
+    dp(_torso(cx, w, h));
+
+    // Upper arms
+    dp(_cap(Offset(cx - w * 0.112, h * 0.200), Offset(cx - w * 0.163, h * 0.388),
+        w * 0.030, w * 0.024));
+    dp(_cap(Offset(cx + w * 0.112, h * 0.200), Offset(cx + w * 0.163, h * 0.388),
+        w * 0.030, w * 0.024));
+
+    // Forearms
+    dp(_cap(Offset(cx - w * 0.163, h * 0.400), Offset(cx - w * 0.167, h * 0.548),
+        w * 0.023, w * 0.015));
+    dp(_cap(Offset(cx + w * 0.163, h * 0.400), Offset(cx + w * 0.167, h * 0.548),
+        w * 0.023, w * 0.015));
+
+    // Thighs
+    dp(_cap(Offset(cx - w * 0.048, h * 0.557), Offset(cx - w * 0.038, h * 0.735),
+        w * 0.048, w * 0.037));
+    dp(_cap(Offset(cx + w * 0.048, h * 0.557), Offset(cx + w * 0.038, h * 0.735),
+        w * 0.048, w * 0.037));
+
+    // Calves
+    dp(_cap(Offset(cx - w * 0.038, h * 0.748), Offset(cx - w * 0.036, h * 0.920),
+        w * 0.031, w * 0.017));
+    dp(_cap(Offset(cx + w * 0.038, h * 0.748), Offset(cx + w * 0.036, h * 0.920),
+        w * 0.031, w * 0.017));
+  }
+
+  Path _torso(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx + w * 0.022, h * 0.126);
+    // Right: neck → shoulder
+    p.cubicTo(cx + w * 0.022, h * 0.162,
+        cx + w * 0.075, h * 0.172, cx + w * 0.110, h * 0.192);
+    // Right: shoulder → armpit
+    p.cubicTo(cx + w * 0.097, h * 0.238,
+        cx + w * 0.081, h * 0.268, cx + w * 0.079, h * 0.294);
+    // Right: armpit → waist
+    p.cubicTo(cx + w * 0.077, h * 0.354,
+        cx + w * 0.063, h * 0.420, cx + w * 0.062, h * 0.459);
+    // Right: waist → hip flare
+    p.cubicTo(cx + w * 0.062, h * 0.493,
+        cx + w * 0.093, h * 0.513, cx + w * 0.093, h * 0.527);
+    // Right: hip → crotch
+    p.cubicTo(cx + w * 0.093, h * 0.547,
+        cx + w * 0.027, h * 0.561, cx, h * 0.561);
+    // Left: crotch → hip
+    p.cubicTo(cx - w * 0.027, h * 0.561,
+        cx - w * 0.093, h * 0.547, cx - w * 0.093, h * 0.527);
+    // Left: hip → waist
+    p.cubicTo(cx - w * 0.093, h * 0.513,
+        cx - w * 0.062, h * 0.493, cx - w * 0.062, h * 0.459);
+    // Left: waist → armpit
+    p.cubicTo(cx - w * 0.063, h * 0.420,
+        cx - w * 0.077, h * 0.354, cx - w * 0.079, h * 0.294);
+    // Left: armpit → shoulder
+    p.cubicTo(cx - w * 0.081, h * 0.268,
+        cx - w * 0.097, h * 0.238, cx - w * 0.110, h * 0.192);
+    // Left: shoulder → neck
+    p.cubicTo(cx - w * 0.075, h * 0.172,
+        cx - w * 0.022, h * 0.162, cx - w * 0.022, h * 0.126);
+    p.close();
+    return p;
+  }
+
+  // Tapered stadium (capsule) between two center points.
+  Path _cap(Offset a, Offset b, double ra, double rb) {
+    final d = b - a;
+    final len = d.distance;
+    if (len < 1) return Path();
+    final nx = d.dx / len;
+    final ny = d.dy / len;
+    final px = -ny;
+    final py = nx;
+
+    final p = Path();
+    p.moveTo(a.dx + px * ra, a.dy + py * ra);
+    p.lineTo(b.dx + px * rb, b.dy + py * rb);
+    p.arcToPoint(Offset(b.dx - px * rb, b.dy - py * rb),
+        radius: Radius.circular(rb), clockwise: true);
+    p.lineTo(a.dx - px * ra, a.dy - py * ra);
+    p.arcToPoint(Offset(a.dx + px * ra, a.dy + py * ra),
+        radius: Radius.circular(ra), clockwise: true);
+    p.close();
+    return p;
+  }
+
+  void _constructionLines(
+      Canvas canvas, double w, double h,
+      {required double cx, required bool isFront}) {
+    final paint = Paint()
+      ..color = (isDark ? Colors.white : Colors.black)
+          .withValues(alpha: isDark ? 0.10 : 0.08)
+      ..strokeWidth = 0.45
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    if (isFront) {
+      // Sternal split between pecs
+      canvas.drawLine(
+          Offset(cx, h * 0.202), Offset(cx, h * 0.296), paint);
+      // Ab center line
+      canvas.drawLine(
+          Offset(cx, h * 0.310), Offset(cx, h * 0.456), paint);
+      // Ab horizontal segments (4 rows, narrowing as they descend)
+      for (int i = 0; i < 4; i++) {
+        final y = 0.334 + i * 0.038;
+        final spread = w * (0.052 - i * 0.004);
+        canvas.drawLine(
+            Offset(cx - spread, h * y), Offset(cx + spread, h * y), paint);
+      }
+      // Collarbone hints
+      canvas.drawLine(
+          Offset(cx - w * 0.013, h * 0.140),
+          Offset(cx - w * 0.090, h * 0.188), paint);
+      canvas.drawLine(
+          Offset(cx + w * 0.013, h * 0.140),
+          Offset(cx + w * 0.090, h * 0.188), paint);
+      // Quad split hint
+      canvas.drawLine(
+          Offset(cx, h * 0.560), Offset(cx, h * 0.598), paint);
+    } else {
+      // Spine
+      canvas.drawLine(
+          Offset(cx, h * 0.198), Offset(cx, h * 0.456), paint);
+      // Scapula outlines (two-segment angle each side)
+      canvas.drawLine(
+          Offset(cx, h * 0.228), Offset(cx - w * 0.053, h * 0.270), paint);
+      canvas.drawLine(
+          Offset(cx - w * 0.053, h * 0.270),
+          Offset(cx - w * 0.069, h * 0.316), paint);
+      canvas.drawLine(
+          Offset(cx, h * 0.228), Offset(cx + w * 0.053, h * 0.270), paint);
+      canvas.drawLine(
+          Offset(cx + w * 0.053, h * 0.270),
+          Offset(cx + w * 0.069, h * 0.316), paint);
+      // Glute crease
+      canvas.drawLine(
+          Offset(cx, h * 0.518), Offset(cx, h * 0.558), paint);
+      // Hamstring split
+      canvas.drawLine(
+          Offset(cx, h * 0.572), Offset(cx, h * 0.618), paint);
     }
   }
 
+  void _drawMuscleGlow(
+      Canvas canvas, double w, double h, _Region region, int count) {
+    final intensity = 0.26 + 0.64 * (count / maxCount).clamp(0.0, 1.0);
+    final color = _groupColors[region.group] ?? Colors.white;
+    final center = Offset(region.cx * w, region.cy * h);
+    final rx = region.rx * w;
+    final ry = region.ry * h;
+    final outerR = math.max(rx, ry);
+
+    // Layer 1 — wide atmospheric halo
+    canvas.drawOval(
+      Rect.fromCenter(center: center, width: rx * 5.5, height: ry * 5.5),
+      Paint()
+        ..shader = ui.Gradient.radial(center, outerR * 2.8, [
+          color.withValues(alpha: intensity * 0.11),
+          Colors.transparent,
+        ], [
+          0.0,
+          1.0
+        ])
+        ..blendMode = BlendMode.screen,
+    );
+
+    // Layer 2 — mid bloom
+    canvas.drawOval(
+      Rect.fromCenter(center: center, width: rx * 3.0, height: ry * 3.0),
+      Paint()
+        ..shader = ui.Gradient.radial(center, outerR * 1.5, [
+          color.withValues(alpha: intensity * 0.50),
+          color.withValues(alpha: intensity * 0.20),
+          Colors.transparent,
+        ], [
+          0.0,
+          0.46,
+          1.0
+        ])
+        ..blendMode = BlendMode.screen,
+    );
+
+    // Layer 3 — tight bright core (white-shifted at peak)
+    canvas.drawOval(
+      Rect.fromCenter(center: center, width: rx * 1.15, height: ry * 1.15),
+      Paint()
+        ..shader = ui.Gradient.radial(center, outerR * 0.58, [
+          Color.lerp(color, Colors.white, 0.38)!
+              .withValues(alpha: intensity * 0.92),
+          color.withValues(alpha: intensity * 0.58),
+          Colors.transparent,
+        ], [
+          0.0,
+          0.40,
+          1.0
+        ])
+        ..blendMode = BlendMode.screen,
+    );
+  }
+
+  void _drawLabel(Canvas canvas, String text, Offset center) {
+    final tp = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(
+          color: isDark ? const Color(0xFF38506A) : const Color(0xFF7888A8),
+          fontSize: 8.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 2.8,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas,
+        Offset(center.dx - tp.width / 2, center.dy - tp.height / 2));
+  }
+
   @override
-  bool shouldRepaint(_MuscleMapPainter old) =>
+  bool shouldRepaint(_BodyModelPainter old) =>
       old.counts != counts ||
       old.maxCount != maxCount ||
-      old.image != image;
+      old.isDark != isDark;
 }

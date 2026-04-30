@@ -2,7 +2,25 @@
   "permissions": {
     "allow": [
       "Bash(flutter analyze:*)",
-      "Bash(flutter build:*)"
+      "Bash(flutter build:*)",
+      "Bash(flutter --version)",
+      "Bash(dart --version)",
+      "Bash(where flutter:*)",
+      "Bash(where dart:*)",
+      "Bash(git pull *)",
+      "Bash(git checkout *)",
+      "Bash(grep -n \"formatDuration\\\\|_durationAlpha\\\\|_parseDate\\\\|_greeting\" /c/Users/zvyon/AndroidStudioProjects/GymLog/lib/db/db_helper.dart /c/Users/zvyon/AndroidStudioProjects/GymLog/lib/screens/*.dart)",
+      "Bash(grep *)",
+      "Bash(xargs -I {} sh -c 'echo \"File: {}\"; grep -c \"Container.*boxDecoration\\\\|cardBg\" \"{}\" || echo \"0\"')",
+      "Bash(flutter pub *)",
+      "WebSearch",
+      "WebFetch(domain:impeccable.style)",
+      "WebFetch(domain:github.com)",
+      "Bash(npx skills *)",
+      "Bash(git *)",
+      "PowerShell(Add-Type -AssemblyName System.Drawing; $img = [System.Drawing.Image]::FromFile\\(\"C:\\\\Users\\\\zvyon\\\\OneDrive\\\\Desktop\\\\musclemap.png\"\\); \"$\\($img.Width\\) x $\\($img.Height\\)\"; $img.Dispose\\(\\))",
+      "Bash(node *)",
+      "PowerShell(Add-Type -AssemblyName System.Drawing; $img = [System.Drawing.Image]::FromFile\\(\"C:\\\\Users\\\\zvyon\\\\OneDrive\\\\Desktop\\\\ChatGPT Image Apr 29, 2026, 09_42_26 PM.png\"\\); \"$\\($img.Width\\) x $\\($img.Height\\)\"; $img.Dispose\\(\\))"
     ]
   }
 }

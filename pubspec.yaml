@@ -30,4 +30,5 @@ flutter:
 
   assets:
     - assets/images/musclemap.png
+    - assets/images/muscle_map.png
 

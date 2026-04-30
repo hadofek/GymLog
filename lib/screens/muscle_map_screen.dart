@@ -1,4 +1,3 @@
-import 'dart:ui' as ui;
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:gymlog/db/db_helper.dart';
@@ -24,70 +23,19 @@ extension _PeriodExt on _Period {
   }
 }
 
-class _Region {
-  final String group;
-  final double cx, cy, rx, ry;
-  const _Region(this.group, this.cx, this.cy, this.rx, this.ry);
-}
-
-// Coordinates as fractions of canvas (w × h).
-// Front figure at cx=0.25w, back at cx=0.75w.
-const _regions = <_Region>[
-  // ── Chest (front) ──
-  _Region('chest', 0.178, 0.256, 0.066, 0.057),
-  _Region('chest', 0.322, 0.256, 0.066, 0.057),
-  // ── Front delts ──
-  _Region('shoulders', 0.116, 0.204, 0.046, 0.042),
-  _Region('shoulders', 0.384, 0.204, 0.046, 0.042),
-  // ── Rear delts (back figure) ──
-  _Region('shoulders', 0.616, 0.204, 0.046, 0.042),
-  _Region('shoulders', 0.884, 0.204, 0.046, 0.042),
-  // ── Biceps (front arms) ──
-  _Region('biceps', 0.108, 0.295, 0.032, 0.062),
-  _Region('biceps', 0.392, 0.295, 0.032, 0.062),
-  // ── Triceps (back arms) ──
-  _Region('triceps', 0.608, 0.295, 0.032, 0.062),
-  _Region('triceps', 0.892, 0.295, 0.032, 0.062),
-  // ── Forearms (front) ──
-  _Region('forearms', 0.086, 0.474, 0.026, 0.050),
-  _Region('forearms', 0.414, 0.474, 0.026, 0.050),
-  // ── Core / Abs (front) ──
-  _Region('core', 0.250, 0.388, 0.061, 0.077),
-  // ── Traps (back) ──
-  _Region('traps', 0.750, 0.210, 0.086, 0.038),
-  // ── Lats + lower back ──
-  _Region('back', 0.632, 0.330, 0.058, 0.083),
-  _Region('back', 0.868, 0.330, 0.058, 0.083),
-  _Region('back', 0.750, 0.432, 0.065, 0.036),
-  // ── Quads (front) ──
-  _Region('quads', 0.202, 0.634, 0.054, 0.088),
-  _Region('quads', 0.298, 0.634, 0.054, 0.088),
-  // ── Hamstrings (back) ──
-  _Region('hamstrings', 0.662, 0.644, 0.052, 0.086),
-  _Region('hamstrings', 0.838, 0.644, 0.052, 0.086),
-  // ── Glutes (back) ──
-  _Region('glutes', 0.688, 0.530, 0.063, 0.050),
-  _Region('glutes', 0.812, 0.530, 0.063, 0.050),
-  // ── Calves ──
-  _Region('calves', 0.188, 0.836, 0.034, 0.050),
-  _Region('calves', 0.312, 0.836, 0.034, 0.050),
-  _Region('calves', 0.662, 0.836, 0.034, 0.050),
-  _Region('calves', 0.838, 0.836, 0.034, 0.050),
-];
-
 const _groupColors = <String, Color>{
-  'chest': Color(0xFF64B5F6),
-  'back': Color(0xFFCE93D8),
-  'shoulders': Color(0xFF80DEEA),
-  'biceps': Color(0xFFA5D6A7),
-  'triceps': Color(0xFFEF9A9A),
-  'core': Color(0xFFFFCC80),
-  'traps': Color(0xFF90CAF9),
-  'quads': Color(0xFF80CBC4),
-  'hamstrings': Color(0xFFF48FB1),
-  'glutes': Color(0xFFFFAB91),
-  'calves': Color(0xFFC5E1A5),
-  'forearms': Color(0xFFBCAAA4),
+  'chest':      Color(0xFF5B9BD5),
+  'back':       Color(0xFF9068C4),
+  'shoulders':  Color(0xFF38B2C8),
+  'biceps':     Color(0xFF48A870),
+  'triceps':    Color(0xFFCC5555),
+  'core':       Color(0xFFCBA038),
+  'traps':      Color(0xFF6088C8),
+  'quads':      Color(0xFF3EA898),
+  'hamstrings': Color(0xFFCC5878),
+  'glutes':     Color(0xFFCC7A48),
+  'calves':     Color(0xFF6EA838),
+  'forearms':   Color(0xFF906050),
 };
 
 const _groupDisplayNames = <String, String>{
@@ -163,14 +111,10 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
     if (s.contains('shoulder') || s.contains('delt')) return 'shoulders';
     if (s.contains('bicep')) return 'biceps';
     if (s.contains('tricep')) return 'triceps';
-    if (s.contains('core') || s.contains('abs') || s.contains('abdom')) {
-      return 'core';
-    }
+    if (s.contains('core') || s.contains('abs') || s.contains('abdom')) return 'core';
     if (s.contains('quad') || s == 'legs') return 'quads';
     if (s.contains('hamstring')) return 'hamstrings';
-    if (s.contains('glute') || s.contains('butt') || s.contains('hip')) {
-      return 'glutes';
-    }
+    if (s.contains('glute') || s.contains('butt') || s.contains('hip')) return 'glutes';
     if (s.contains('calf') || s.contains('calves')) return 'calves';
     if (s.contains('trap')) return 'traps';
     if (s.contains('forearm')) return 'forearms';
@@ -198,7 +142,6 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header ──
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
@@ -227,8 +170,6 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
                 ],
               ),
             ),
-
-            // ── Period chips ──
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
               child: SingleChildScrollView(
@@ -269,30 +210,46 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
                 ),
               ),
             ),
-
-            // ── Body ──
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                 children: [
-                  // Body model (no image — fully drawn in code)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
                     child: AspectRatio(
-                      aspectRatio: 720 / 1280,
-                      child: CustomPaint(
-                        painter: _BodyModelPainter(
-                          counts: _counts,
-                          maxCount: maxCount,
-                          isDark: isDark,
-                        ),
+                      aspectRatio: 1.0,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          isDark
+                              ? ColorFiltered(
+                                  colorFilter: const ColorFilter.matrix([
+                                    -1, 0, 0, 0, 255,
+                                     0,-1, 0, 0, 255,
+                                     0, 0,-1, 0, 255,
+                                     0, 0, 0, 1,   0,
+                                  ]),
+                                  child: Image.asset(
+                                    'assets/images/muscle_map.png',
+                                    fit: BoxFit.fill,
+                                  ),
+                                )
+                              : Image.asset(
+                                  'assets/images/muscle_map.png',
+                                  fit: BoxFit.fill,
+                                ),
+                          CustomPaint(
+                            painter: _BodyModelPainter(
+                              counts: _counts,
+                              maxCount: maxCount,
+                              isDark: isDark,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 8),
-
-                  // Caption
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
                     child: Row(
@@ -301,19 +258,19 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
                             size: 12,
                             color: textTertiary.withValues(alpha: 0.5)),
                         const SizedBox(width: 6),
-                        Text(
-                          'Only exercises with a muscle group assigned appear on the map',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: textTertiary.withValues(alpha: 0.5),
-                            height: 1.4,
+                        Expanded(
+                          child: Text(
+                            'Only exercises with a muscle group assigned appear on the map',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: textTertiary.withValues(alpha: 0.5),
+                              height: 1.4,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-
-                  // ── Breakdown ──
                   if (_loading) ...[
                     const SizedBox(height: 32),
                     Center(
@@ -418,7 +375,7 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
   }
 }
 
-// ── Body Model Painter ──────────────────────────────────────────────────────────
+// ── Body Model Painter ──────────────────────────────────────────────────────
 
 class _BodyModelPainter extends CustomPainter {
   final Map<String, int> counts;
@@ -436,282 +393,531 @@ class _BodyModelPainter extends CustomPainter {
     final w = size.width;
     final h = size.height;
 
-    // Background
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()
-        ..color = isDark ? const Color(0xFF090C14) : const Color(0xFFEBEEF7),
-    );
+    final frontCx = w * 0.25;
+    final backCx = w * 0.75;
 
-    // Subtle center divider
-    canvas.drawLine(
-      Offset(w * 0.5, h * 0.04),
-      Offset(w * 0.5, h * 0.93),
-      Paint()
-        ..color = (isDark ? Colors.white : Colors.black)
-            .withValues(alpha: isDark ? 0.055 : 0.07)
-        ..strokeWidth = 0.6,
-    );
+    _paintMuscleFills(canvas, w, h, frontCx, isFront: true);
+    _paintMuscleFills(canvas, w, h, backCx, isFront: false);
 
-    // Figures
-    _drawFigure(canvas, w, h, cx: w * 0.25);
-    _drawFigure(canvas, w, h, cx: w * 0.75);
+    _drawLabel(canvas, 'FRONT', Offset(w * 0.25, h * 0.962));
+    _drawLabel(canvas, 'BACK', Offset(w * 0.75, h * 0.962));
+  }
 
-    // Anatomy construction lines
-    _constructionLines(canvas, w, h, cx: w * 0.25, isFront: true);
-    _constructionLines(canvas, w, h, cx: w * 0.75, isFront: false);
+  // ── Muscle fills ─────────────────────────────────────────────────────────
 
-    // Muscle glows
-    if (maxCount > 0) {
-      for (final region in _regions) {
-        final count = counts[region.group] ?? 0;
-        if (count == 0) continue;
-        _drawMuscleGlow(canvas, w, h, region, count);
-      }
+  void _paintMuscleFills(
+      Canvas canvas, double w, double h, double cx, {required bool isFront}) {
+    if (maxCount == 0) return;
+
+    void fill(String group, Path path) {
+      final count = counts[group] ?? 0;
+      if (count == 0) return;
+      final color = _groupColors[group] ?? Colors.grey;
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = color.withValues(alpha: 0.52)
+          ..style = PaintingStyle.fill,
+      );
     }
-
-    // Labels
-    _drawLabel(canvas, 'FRONT', Offset(w * 0.25, h * 0.960));
-    _drawLabel(canvas, 'BACK', Offset(w * 0.75, h * 0.960));
-  }
-
-  // Diagonal gradient: upper-right lit → lower-left shadow, per figure.
-  Paint _fill(double cx, double w, double h) => Paint()
-    ..shader = ui.Gradient.linear(
-      Offset(cx + w * 0.20, h * 0.04),
-      Offset(cx - w * 0.20, h * 0.94),
-      isDark
-          ? const [Color(0xFF1C2A46), Color(0xFF101820), Color(0xFF080C16)]
-          : const [Color(0xFFD5DDEE), Color(0xFFBCC6DC), Color(0xFFA8B2C8)],
-      const [0.0, 0.48, 1.0],
-    )
-    ..style = PaintingStyle.fill;
-
-  Paint get _stroke => Paint()
-    ..color = isDark ? const Color(0xFF384E72) : const Color(0xFF7888A8)
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 0.85
-    ..strokeJoin = StrokeJoin.round
-    ..strokeCap = StrokeCap.round;
-
-  void _drawFigure(Canvas canvas, double w, double h, {required double cx}) {
-    final fill = _fill(cx, w, h);
-    final stroke = _stroke;
-
-    void dp(Path p) {
-      canvas.drawPath(p, fill);
-      canvas.drawPath(p, stroke);
-    }
-
-    void dOval(Rect r) {
-      canvas.drawOval(r, fill);
-      canvas.drawOval(r, stroke);
-    }
-
-    // Head
-    dOval(Rect.fromCenter(
-        center: Offset(cx, h * 0.077), width: w * 0.076, height: h * 0.102));
-
-    // Torso
-    dp(_torso(cx, w, h));
-
-    // Upper arms
-    dp(_cap(Offset(cx - w * 0.112, h * 0.200), Offset(cx - w * 0.163, h * 0.388),
-        w * 0.030, w * 0.024));
-    dp(_cap(Offset(cx + w * 0.112, h * 0.200), Offset(cx + w * 0.163, h * 0.388),
-        w * 0.030, w * 0.024));
-
-    // Forearms
-    dp(_cap(Offset(cx - w * 0.163, h * 0.400), Offset(cx - w * 0.167, h * 0.548),
-        w * 0.023, w * 0.015));
-    dp(_cap(Offset(cx + w * 0.163, h * 0.400), Offset(cx + w * 0.167, h * 0.548),
-        w * 0.023, w * 0.015));
-
-    // Thighs
-    dp(_cap(Offset(cx - w * 0.048, h * 0.557), Offset(cx - w * 0.038, h * 0.735),
-        w * 0.048, w * 0.037));
-    dp(_cap(Offset(cx + w * 0.048, h * 0.557), Offset(cx + w * 0.038, h * 0.735),
-        w * 0.048, w * 0.037));
-
-    // Calves
-    dp(_cap(Offset(cx - w * 0.038, h * 0.748), Offset(cx - w * 0.036, h * 0.920),
-        w * 0.031, w * 0.017));
-    dp(_cap(Offset(cx + w * 0.038, h * 0.748), Offset(cx + w * 0.036, h * 0.920),
-        w * 0.031, w * 0.017));
-  }
-
-  Path _torso(double cx, double w, double h) {
-    final p = Path();
-    p.moveTo(cx + w * 0.022, h * 0.126);
-    // Right: neck → shoulder
-    p.cubicTo(cx + w * 0.022, h * 0.162,
-        cx + w * 0.075, h * 0.172, cx + w * 0.110, h * 0.192);
-    // Right: shoulder → armpit
-    p.cubicTo(cx + w * 0.097, h * 0.238,
-        cx + w * 0.081, h * 0.268, cx + w * 0.079, h * 0.294);
-    // Right: armpit → waist
-    p.cubicTo(cx + w * 0.077, h * 0.354,
-        cx + w * 0.063, h * 0.420, cx + w * 0.062, h * 0.459);
-    // Right: waist → hip flare
-    p.cubicTo(cx + w * 0.062, h * 0.493,
-        cx + w * 0.093, h * 0.513, cx + w * 0.093, h * 0.527);
-    // Right: hip → crotch
-    p.cubicTo(cx + w * 0.093, h * 0.547,
-        cx + w * 0.027, h * 0.561, cx, h * 0.561);
-    // Left: crotch → hip
-    p.cubicTo(cx - w * 0.027, h * 0.561,
-        cx - w * 0.093, h * 0.547, cx - w * 0.093, h * 0.527);
-    // Left: hip → waist
-    p.cubicTo(cx - w * 0.093, h * 0.513,
-        cx - w * 0.062, h * 0.493, cx - w * 0.062, h * 0.459);
-    // Left: waist → armpit
-    p.cubicTo(cx - w * 0.063, h * 0.420,
-        cx - w * 0.077, h * 0.354, cx - w * 0.079, h * 0.294);
-    // Left: armpit → shoulder
-    p.cubicTo(cx - w * 0.081, h * 0.268,
-        cx - w * 0.097, h * 0.238, cx - w * 0.110, h * 0.192);
-    // Left: shoulder → neck
-    p.cubicTo(cx - w * 0.075, h * 0.172,
-        cx - w * 0.022, h * 0.162, cx - w * 0.022, h * 0.126);
-    p.close();
-    return p;
-  }
-
-  // Tapered stadium (capsule) between two center points.
-  Path _cap(Offset a, Offset b, double ra, double rb) {
-    final d = b - a;
-    final len = d.distance;
-    if (len < 1) return Path();
-    final nx = d.dx / len;
-    final ny = d.dy / len;
-    final px = -ny;
-    final py = nx;
-
-    final p = Path();
-    p.moveTo(a.dx + px * ra, a.dy + py * ra);
-    p.lineTo(b.dx + px * rb, b.dy + py * rb);
-    p.arcToPoint(Offset(b.dx - px * rb, b.dy - py * rb),
-        radius: Radius.circular(rb), clockwise: true);
-    p.lineTo(a.dx - px * ra, a.dy - py * ra);
-    p.arcToPoint(Offset(a.dx + px * ra, a.dy + py * ra),
-        radius: Radius.circular(ra), clockwise: true);
-    p.close();
-    return p;
-  }
-
-  void _constructionLines(
-      Canvas canvas, double w, double h,
-      {required double cx, required bool isFront}) {
-    final paint = Paint()
-      ..color = (isDark ? Colors.white : Colors.black)
-          .withValues(alpha: isDark ? 0.10 : 0.08)
-      ..strokeWidth = 0.45
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
 
     if (isFront) {
-      // Sternal split between pecs
-      canvas.drawLine(
-          Offset(cx, h * 0.202), Offset(cx, h * 0.296), paint);
-      // Ab center line
-      canvas.drawLine(
-          Offset(cx, h * 0.310), Offset(cx, h * 0.456), paint);
-      // Ab horizontal segments (4 rows, narrowing as they descend)
-      for (int i = 0; i < 4; i++) {
-        final y = 0.334 + i * 0.038;
-        final spread = w * (0.052 - i * 0.004);
-        canvas.drawLine(
-            Offset(cx - spread, h * y), Offset(cx + spread, h * y), paint);
-      }
-      // Collarbone hints
-      canvas.drawLine(
-          Offset(cx - w * 0.013, h * 0.140),
-          Offset(cx - w * 0.090, h * 0.188), paint);
-      canvas.drawLine(
-          Offset(cx + w * 0.013, h * 0.140),
-          Offset(cx + w * 0.090, h * 0.188), paint);
-      // Quad split hint
-      canvas.drawLine(
-          Offset(cx, h * 0.560), Offset(cx, h * 0.598), paint);
+      // Chest
+      fill('chest', _pecRight(cx, w, h));
+      fill('chest', _pecLeft(cx, w, h));
+      // Front shoulders
+      fill('shoulders', _frontDeltRight(cx, w, h));
+      fill('shoulders', _frontDeltLeft(cx, w, h));
+      // Biceps
+      fill('biceps', _bicepRight(cx, w, h));
+      fill('biceps', _bicepLeft(cx, w, h));
+      // Forearms front
+      fill('forearms', _forearmFrontRight(cx, w, h));
+      fill('forearms', _forearmFrontLeft(cx, w, h));
+      // Core / abs
+      fill('core', _coreRegion(cx, w, h));
+      // Quads
+      fill('quads', _quadRight(cx, w, h));
+      fill('quads', _quadLeft(cx, w, h));
+      // Calves front (tibialis)
+      fill('calves', _tibRight(cx, w, h));
+      fill('calves', _tibLeft(cx, w, h));
     } else {
-      // Spine
-      canvas.drawLine(
-          Offset(cx, h * 0.198), Offset(cx, h * 0.456), paint);
-      // Scapula outlines (two-segment angle each side)
-      canvas.drawLine(
-          Offset(cx, h * 0.228), Offset(cx - w * 0.053, h * 0.270), paint);
-      canvas.drawLine(
-          Offset(cx - w * 0.053, h * 0.270),
-          Offset(cx - w * 0.069, h * 0.316), paint);
-      canvas.drawLine(
-          Offset(cx, h * 0.228), Offset(cx + w * 0.053, h * 0.270), paint);
-      canvas.drawLine(
-          Offset(cx + w * 0.053, h * 0.270),
-          Offset(cx + w * 0.069, h * 0.316), paint);
-      // Glute crease
-      canvas.drawLine(
-          Offset(cx, h * 0.518), Offset(cx, h * 0.558), paint);
-      // Hamstring split
-      canvas.drawLine(
-          Offset(cx, h * 0.572), Offset(cx, h * 0.618), paint);
+      // Traps
+      fill('traps', _traps(cx, w, h));
+      // Rear shoulders
+      fill('shoulders', _rearDeltRight(cx, w, h));
+      fill('shoulders', _rearDeltLeft(cx, w, h));
+      // Triceps
+      fill('triceps', _tricepRight(cx, w, h));
+      fill('triceps', _tricepLeft(cx, w, h));
+      // Forearms back
+      fill('forearms', _forearmBackRight(cx, w, h));
+      fill('forearms', _forearmBackLeft(cx, w, h));
+      // Lats + back
+      fill('back', _latRight(cx, w, h));
+      fill('back', _latLeft(cx, w, h));
+      // Glutes
+      fill('glutes', _gluteRight(cx, w, h));
+      fill('glutes', _gluteLeft(cx, w, h));
+      // Hamstrings
+      fill('hamstrings', _hamRight(cx, w, h));
+      fill('hamstrings', _hamLeft(cx, w, h));
+      // Calves back (gastrocnemius)
+      fill('calves', _gastroRight(cx, w, h));
+      fill('calves', _gastroLeft(cx, w, h));
     }
   }
 
-  void _drawMuscleGlow(
-      Canvas canvas, double w, double h, _Region region, int count) {
-    final intensity = 0.26 + 0.64 * (count / maxCount).clamp(0.0, 1.0);
-    final color = _groupColors[region.group] ?? Colors.white;
-    final center = Offset(region.cx * w, region.cy * h);
-    final rx = region.rx * w;
-    final ry = region.ry * h;
-    final outerR = math.max(rx, ry);
+  // ── Muscle path definitions ───────────────────────────────────────────────
 
-    // Layer 1 — wide atmospheric halo
-    canvas.drawOval(
-      Rect.fromCenter(center: center, width: rx * 5.5, height: ry * 5.5),
-      Paint()
-        ..shader = ui.Gradient.radial(center, outerR * 2.8, [
-          color.withValues(alpha: intensity * 0.11),
-          Colors.transparent,
-        ], [
-          0.0,
-          1.0
-        ])
-        ..blendMode = BlendMode.screen,
-    );
+  // Right pec (fan shape from sternum to armpit)
+  Path _pecRight(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx + w * 0.014, h * 0.200);
+    p.cubicTo(cx + w * 0.052, h * 0.193, cx + w * 0.085, h * 0.210,
+        cx + w * 0.096, h * 0.236);
+    p.cubicTo(cx + w * 0.096, h * 0.256, cx + w * 0.083, h * 0.276,
+        cx + w * 0.079, h * 0.283);
+    p.cubicTo(cx + w * 0.054, h * 0.308, cx + w * 0.025, h * 0.310,
+        cx + w * 0.014, h * 0.308);
+    p.close();
+    return p;
+  }
 
-    // Layer 2 — mid bloom
-    canvas.drawOval(
-      Rect.fromCenter(center: center, width: rx * 3.0, height: ry * 3.0),
-      Paint()
-        ..shader = ui.Gradient.radial(center, outerR * 1.5, [
-          color.withValues(alpha: intensity * 0.50),
-          color.withValues(alpha: intensity * 0.20),
-          Colors.transparent,
-        ], [
-          0.0,
-          0.46,
-          1.0
-        ])
-        ..blendMode = BlendMode.screen,
-    );
+  Path _pecLeft(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx - w * 0.014, h * 0.200);
+    p.cubicTo(cx - w * 0.052, h * 0.193, cx - w * 0.085, h * 0.210,
+        cx - w * 0.096, h * 0.236);
+    p.cubicTo(cx - w * 0.096, h * 0.256, cx - w * 0.083, h * 0.276,
+        cx - w * 0.079, h * 0.283);
+    p.cubicTo(cx - w * 0.054, h * 0.308, cx - w * 0.025, h * 0.310,
+        cx - w * 0.014, h * 0.308);
+    p.close();
+    return p;
+  }
 
-    // Layer 3 — tight bright core (white-shifted at peak)
-    canvas.drawOval(
-      Rect.fromCenter(center: center, width: rx * 1.15, height: ry * 1.15),
-      Paint()
-        ..shader = ui.Gradient.radial(center, outerR * 0.58, [
-          Color.lerp(color, Colors.white, 0.38)!
-              .withValues(alpha: intensity * 0.92),
-          color.withValues(alpha: intensity * 0.58),
-          Colors.transparent,
-        ], [
-          0.0,
-          0.40,
-          1.0
-        ])
-        ..blendMode = BlendMode.screen,
-    );
+  // Front deltoid (shoulder cap, front view)
+  Path _frontDeltRight(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx + w * 0.084, h * 0.194);
+    p.cubicTo(cx + w * 0.097, h * 0.180, cx + w * 0.116, h * 0.177,
+        cx + w * 0.128, h * 0.189);
+    p.cubicTo(cx + w * 0.136, h * 0.203, cx + w * 0.133, h * 0.232,
+        cx + w * 0.118, h * 0.250);
+    p.cubicTo(cx + w * 0.104, h * 0.260, cx + w * 0.092, h * 0.254,
+        cx + w * 0.084, h * 0.244);
+    p.cubicTo(cx + w * 0.083, h * 0.228, cx + w * 0.083, h * 0.208,
+        cx + w * 0.084, h * 0.194);
+    p.close();
+    return p;
+  }
+
+  Path _frontDeltLeft(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx - w * 0.084, h * 0.194);
+    p.cubicTo(cx - w * 0.097, h * 0.180, cx - w * 0.116, h * 0.177,
+        cx - w * 0.128, h * 0.189);
+    p.cubicTo(cx - w * 0.136, h * 0.203, cx - w * 0.133, h * 0.232,
+        cx - w * 0.118, h * 0.250);
+    p.cubicTo(cx - w * 0.104, h * 0.260, cx - w * 0.092, h * 0.254,
+        cx - w * 0.084, h * 0.244);
+    p.cubicTo(cx - w * 0.083, h * 0.228, cx - w * 0.083, h * 0.208,
+        cx - w * 0.084, h * 0.194);
+    p.close();
+    return p;
+  }
+
+  // Bicep (front of upper arm)
+  Path _bicepRight(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx + w * 0.112, h * 0.258);
+    p.cubicTo(cx + w * 0.126, h * 0.264, cx + w * 0.138, h * 0.290,
+        cx + w * 0.140, h * 0.328);
+    p.cubicTo(cx + w * 0.141, h * 0.360, cx + w * 0.137, h * 0.385,
+        cx + w * 0.130, h * 0.400);
+    p.lineTo(cx + w * 0.096, h * 0.400);
+    p.cubicTo(cx + w * 0.088, h * 0.385, cx + w * 0.085, h * 0.358,
+        cx + w * 0.087, h * 0.326);
+    p.cubicTo(cx + w * 0.090, h * 0.290, cx + w * 0.100, h * 0.264,
+        cx + w * 0.112, h * 0.258);
+    p.close();
+    return p;
+  }
+
+  Path _bicepLeft(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx - w * 0.112, h * 0.258);
+    p.cubicTo(cx - w * 0.126, h * 0.264, cx - w * 0.138, h * 0.290,
+        cx - w * 0.140, h * 0.328);
+    p.cubicTo(cx - w * 0.141, h * 0.360, cx - w * 0.137, h * 0.385,
+        cx - w * 0.130, h * 0.400);
+    p.lineTo(cx - w * 0.096, h * 0.400);
+    p.cubicTo(cx - w * 0.088, h * 0.385, cx - w * 0.085, h * 0.358,
+        cx - w * 0.087, h * 0.326);
+    p.cubicTo(cx - w * 0.090, h * 0.290, cx - w * 0.100, h * 0.264,
+        cx - w * 0.112, h * 0.258);
+    p.close();
+    return p;
+  }
+
+  // Forearm (front)
+  Path _forearmFrontRight(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx + w * 0.130, h * 0.408);
+    p.cubicTo(cx + w * 0.143, h * 0.432, cx + w * 0.148, h * 0.474,
+        cx + w * 0.144, h * 0.512);
+    p.cubicTo(cx + w * 0.140, h * 0.536, cx + w * 0.132, h * 0.550,
+        cx + w * 0.126, h * 0.554);
+    p.lineTo(cx + w * 0.098, h * 0.554);
+    p.cubicTo(cx + w * 0.092, h * 0.550, cx + w * 0.086, h * 0.536,
+        cx + w * 0.083, h * 0.512);
+    p.cubicTo(cx + w * 0.079, h * 0.474, cx + w * 0.084, h * 0.432,
+        cx + w * 0.096, h * 0.408);
+    p.close();
+    return p;
+  }
+
+  Path _forearmFrontLeft(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx - w * 0.130, h * 0.408);
+    p.cubicTo(cx - w * 0.143, h * 0.432, cx - w * 0.148, h * 0.474,
+        cx - w * 0.144, h * 0.512);
+    p.cubicTo(cx - w * 0.140, h * 0.536, cx - w * 0.132, h * 0.550,
+        cx - w * 0.126, h * 0.554);
+    p.lineTo(cx - w * 0.098, h * 0.554);
+    p.cubicTo(cx - w * 0.092, h * 0.550, cx - w * 0.086, h * 0.536,
+        cx - w * 0.083, h * 0.512);
+    p.cubicTo(cx - w * 0.079, h * 0.474, cx - w * 0.084, h * 0.432,
+        cx - w * 0.096, h * 0.408);
+    p.close();
+    return p;
+  }
+
+  // Core (rectus abdominis + obliques)
+  Path _coreRegion(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx - w * 0.060, h * 0.312);
+    p.lineTo(cx + w * 0.060, h * 0.312);
+    p.lineTo(cx + w * 0.062, h * 0.456);
+    p.cubicTo(cx + w * 0.052, h * 0.490, cx + w * 0.040, h * 0.495,
+        cx + w * 0.030, h * 0.494);
+    p.lineTo(cx - w * 0.030, h * 0.494);
+    p.cubicTo(cx - w * 0.040, h * 0.495, cx - w * 0.052, h * 0.490,
+        cx - w * 0.062, h * 0.456);
+    p.close();
+    return p;
+  }
+
+  // Quads (front thigh)
+  Path _quadRight(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx + w * 0.020, h * 0.500);
+    p.cubicTo(cx + w * 0.040, h * 0.498, cx + w * 0.075, h * 0.500,
+        cx + w * 0.105, h * 0.507);
+    p.cubicTo(cx + w * 0.103, h * 0.575, cx + w * 0.096, h * 0.638,
+        cx + w * 0.086, h * 0.700);
+    p.lineTo(cx + w * 0.022, h * 0.704);
+    p.cubicTo(cx + w * 0.016, h * 0.638, cx + w * 0.016, h * 0.573,
+        cx + w * 0.020, h * 0.500);
+    p.close();
+    return p;
+  }
+
+  Path _quadLeft(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx - w * 0.020, h * 0.500);
+    p.cubicTo(cx - w * 0.040, h * 0.498, cx - w * 0.075, h * 0.500,
+        cx - w * 0.105, h * 0.507);
+    p.cubicTo(cx - w * 0.103, h * 0.575, cx - w * 0.096, h * 0.638,
+        cx - w * 0.086, h * 0.700);
+    p.lineTo(cx - w * 0.022, h * 0.704);
+    p.cubicTo(cx - w * 0.016, h * 0.638, cx - w * 0.016, h * 0.573,
+        cx - w * 0.020, h * 0.500);
+    p.close();
+    return p;
+  }
+
+  // Tibialis anterior (front of calf, narrow strip)
+  Path _tibRight(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx + w * 0.022, h * 0.710);
+    p.cubicTo(cx + w * 0.032, h * 0.710, cx + w * 0.044, h * 0.718,
+        cx + w * 0.050, h * 0.738);
+    p.cubicTo(cx + w * 0.053, h * 0.785, cx + w * 0.050, h * 0.830,
+        cx + w * 0.042, h * 0.862);
+    p.lineTo(cx + w * 0.025, h * 0.868);
+    p.cubicTo(cx + w * 0.020, h * 0.834, cx + w * 0.018, h * 0.788,
+        cx + w * 0.018, h * 0.752);
+    p.cubicTo(cx + w * 0.018, h * 0.728, cx + w * 0.018, h * 0.712,
+        cx + w * 0.022, h * 0.710);
+    p.close();
+    return p;
+  }
+
+  Path _tibLeft(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx - w * 0.022, h * 0.710);
+    p.cubicTo(cx - w * 0.032, h * 0.710, cx - w * 0.044, h * 0.718,
+        cx - w * 0.050, h * 0.738);
+    p.cubicTo(cx - w * 0.053, h * 0.785, cx - w * 0.050, h * 0.830,
+        cx - w * 0.042, h * 0.862);
+    p.lineTo(cx - w * 0.025, h * 0.868);
+    p.cubicTo(cx - w * 0.020, h * 0.834, cx - w * 0.018, h * 0.788,
+        cx - w * 0.018, h * 0.752);
+    p.cubicTo(cx - w * 0.018, h * 0.728, cx - w * 0.018, h * 0.712,
+        cx - w * 0.022, h * 0.710);
+    p.close();
+    return p;
+  }
+
+  // Trapezius (full diamond, back view)
+  Path _traps(double cx, double w, double h) {
+    final p = Path();
+    // Start at top center (base of skull)
+    p.moveTo(cx, h * 0.130);
+    // Right shoulder
+    p.cubicTo(cx + w * 0.038, h * 0.152, cx + w * 0.082, h * 0.175,
+        cx + w * 0.108, h * 0.197);
+    // Down right side to mid-back point
+    p.cubicTo(cx + w * 0.078, h * 0.262, cx + w * 0.038, h * 0.338,
+        cx + w * 0.003, h * 0.392);
+    // Bottom point of diamond
+    p.lineTo(cx - w * 0.003, h * 0.392);
+    // Up left side from mid-back
+    p.cubicTo(cx - w * 0.038, h * 0.338, cx - w * 0.078, h * 0.262,
+        cx - w * 0.108, h * 0.197);
+    // Left shoulder to top
+    p.cubicTo(cx - w * 0.082, h * 0.175, cx - w * 0.038, h * 0.152,
+        cx, h * 0.130);
+    p.close();
+    return p;
+  }
+
+  // Rear deltoid (back view)
+  Path _rearDeltRight(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx + w * 0.086, h * 0.196);
+    p.cubicTo(cx + w * 0.098, h * 0.182, cx + w * 0.116, h * 0.179,
+        cx + w * 0.128, h * 0.191);
+    p.cubicTo(cx + w * 0.138, h * 0.204, cx + w * 0.136, h * 0.234,
+        cx + w * 0.120, h * 0.256);
+    p.cubicTo(cx + w * 0.106, h * 0.266, cx + w * 0.092, h * 0.260,
+        cx + w * 0.084, h * 0.250);
+    p.cubicTo(cx + w * 0.083, h * 0.232, cx + w * 0.084, h * 0.212,
+        cx + w * 0.086, h * 0.196);
+    p.close();
+    return p;
+  }
+
+  Path _rearDeltLeft(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx - w * 0.086, h * 0.196);
+    p.cubicTo(cx - w * 0.098, h * 0.182, cx - w * 0.116, h * 0.179,
+        cx - w * 0.128, h * 0.191);
+    p.cubicTo(cx - w * 0.138, h * 0.204, cx - w * 0.136, h * 0.234,
+        cx - w * 0.120, h * 0.256);
+    p.cubicTo(cx - w * 0.106, h * 0.266, cx - w * 0.092, h * 0.260,
+        cx - w * 0.084, h * 0.250);
+    p.cubicTo(cx - w * 0.083, h * 0.232, cx - w * 0.084, h * 0.212,
+        cx - w * 0.086, h * 0.196);
+    p.close();
+    return p;
+  }
+
+  // Triceps (back of upper arm)
+  Path _tricepRight(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx + w * 0.110, h * 0.260);
+    p.cubicTo(cx + w * 0.124, h * 0.268, cx + w * 0.136, h * 0.295,
+        cx + w * 0.140, h * 0.330);
+    p.cubicTo(cx + w * 0.142, h * 0.360, cx + w * 0.138, h * 0.386,
+        cx + w * 0.130, h * 0.402);
+    p.lineTo(cx + w * 0.095, h * 0.402);
+    p.cubicTo(cx + w * 0.086, h * 0.386, cx + w * 0.084, h * 0.358,
+        cx + w * 0.086, h * 0.328);
+    p.cubicTo(cx + w * 0.089, h * 0.294, cx + w * 0.100, h * 0.266,
+        cx + w * 0.110, h * 0.260);
+    p.close();
+    return p;
+  }
+
+  Path _tricepLeft(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx - w * 0.110, h * 0.260);
+    p.cubicTo(cx - w * 0.124, h * 0.268, cx - w * 0.136, h * 0.295,
+        cx - w * 0.140, h * 0.330);
+    p.cubicTo(cx - w * 0.142, h * 0.360, cx - w * 0.138, h * 0.386,
+        cx - w * 0.130, h * 0.402);
+    p.lineTo(cx - w * 0.095, h * 0.402);
+    p.cubicTo(cx - w * 0.086, h * 0.386, cx - w * 0.084, h * 0.358,
+        cx - w * 0.086, h * 0.328);
+    p.cubicTo(cx - w * 0.089, h * 0.294, cx - w * 0.100, h * 0.266,
+        cx - w * 0.110, h * 0.260);
+    p.close();
+    return p;
+  }
+
+  // Forearm (back)
+  Path _forearmBackRight(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx + w * 0.130, h * 0.410);
+    p.cubicTo(cx + w * 0.142, h * 0.434, cx + w * 0.147, h * 0.476,
+        cx + w * 0.143, h * 0.514);
+    p.cubicTo(cx + w * 0.139, h * 0.538, cx + w * 0.131, h * 0.552,
+        cx + w * 0.125, h * 0.556);
+    p.lineTo(cx + w * 0.097, h * 0.556);
+    p.cubicTo(cx + w * 0.091, h * 0.552, cx + w * 0.086, h * 0.538,
+        cx + w * 0.082, h * 0.514);
+    p.cubicTo(cx + w * 0.079, h * 0.476, cx + w * 0.084, h * 0.434,
+        cx + w * 0.095, h * 0.410);
+    p.close();
+    return p;
+  }
+
+  Path _forearmBackLeft(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx - w * 0.130, h * 0.410);
+    p.cubicTo(cx - w * 0.142, h * 0.434, cx - w * 0.147, h * 0.476,
+        cx - w * 0.143, h * 0.514);
+    p.cubicTo(cx - w * 0.139, h * 0.538, cx - w * 0.131, h * 0.552,
+        cx - w * 0.125, h * 0.556);
+    p.lineTo(cx - w * 0.097, h * 0.556);
+    p.cubicTo(cx - w * 0.091, h * 0.552, cx - w * 0.086, h * 0.538,
+        cx - w * 0.082, h * 0.514);
+    p.cubicTo(cx - w * 0.079, h * 0.476, cx - w * 0.084, h * 0.434,
+        cx - w * 0.095, h * 0.410);
+    p.close();
+    return p;
+  }
+
+  // Lats (back, V-shape from armpit down)
+  Path _latRight(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx + w * 0.082, h * 0.262);
+    p.cubicTo(cx + w * 0.090, h * 0.298, cx + w * 0.088, h * 0.354,
+        cx + w * 0.070, h * 0.408);
+    p.cubicTo(cx + w * 0.053, h * 0.450, cx + w * 0.030, h * 0.468,
+        cx + w * 0.006, h * 0.470);
+    p.lineTo(cx + w * 0.005, h * 0.390);
+    p.cubicTo(cx + w * 0.028, h * 0.380, cx + w * 0.052, h * 0.350,
+        cx + w * 0.062, h * 0.296);
+    p.cubicTo(cx + w * 0.068, h * 0.272, cx + w * 0.075, h * 0.260,
+        cx + w * 0.082, h * 0.262);
+    p.close();
+    return p;
+  }
+
+  Path _latLeft(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx - w * 0.082, h * 0.262);
+    p.cubicTo(cx - w * 0.090, h * 0.298, cx - w * 0.088, h * 0.354,
+        cx - w * 0.070, h * 0.408);
+    p.cubicTo(cx - w * 0.053, h * 0.450, cx - w * 0.030, h * 0.468,
+        cx - w * 0.006, h * 0.470);
+    p.lineTo(cx - w * 0.005, h * 0.390);
+    p.cubicTo(cx - w * 0.028, h * 0.380, cx - w * 0.052, h * 0.350,
+        cx - w * 0.062, h * 0.296);
+    p.cubicTo(cx - w * 0.068, h * 0.272, cx - w * 0.075, h * 0.260,
+        cx - w * 0.082, h * 0.262);
+    p.close();
+    return p;
+  }
+
+  // Glutes (back)
+  Path _gluteRight(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx + w * 0.007, h * 0.454);
+    p.cubicTo(cx + w * 0.028, h * 0.450, cx + w * 0.057, h * 0.453,
+        cx + w * 0.082, h * 0.463);
+    p.cubicTo(cx + w * 0.090, h * 0.472, cx + w * 0.092, h * 0.486,
+        cx + w * 0.088, h * 0.498);
+    p.cubicTo(cx + w * 0.078, h * 0.510, cx + w * 0.055, h * 0.513,
+        cx + w * 0.030, h * 0.511);
+    p.cubicTo(cx + w * 0.016, h * 0.509, cx + w * 0.007, h * 0.502,
+        cx + w * 0.007, h * 0.495);
+    p.close();
+    return p;
+  }
+
+  Path _gluteLeft(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx - w * 0.007, h * 0.454);
+    p.cubicTo(cx - w * 0.028, h * 0.450, cx - w * 0.057, h * 0.453,
+        cx - w * 0.082, h * 0.463);
+    p.cubicTo(cx - w * 0.090, h * 0.472, cx - w * 0.092, h * 0.486,
+        cx - w * 0.088, h * 0.498);
+    p.cubicTo(cx - w * 0.078, h * 0.510, cx - w * 0.055, h * 0.513,
+        cx - w * 0.030, h * 0.511);
+    p.cubicTo(cx - w * 0.016, h * 0.509, cx - w * 0.007, h * 0.502,
+        cx - w * 0.007, h * 0.495);
+    p.close();
+    return p;
+  }
+
+  // Hamstrings (back thigh)
+  Path _hamRight(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx + w * 0.020, h * 0.507);
+    p.cubicTo(cx + w * 0.042, h * 0.503, cx + w * 0.075, h * 0.505,
+        cx + w * 0.105, h * 0.510);
+    p.cubicTo(cx + w * 0.103, h * 0.577, cx + w * 0.096, h * 0.641,
+        cx + w * 0.082, h * 0.702);
+    p.lineTo(cx + w * 0.020, h * 0.706);
+    p.cubicTo(cx + w * 0.014, h * 0.641, cx + w * 0.014, h * 0.577,
+        cx + w * 0.020, h * 0.507);
+    p.close();
+    return p;
+  }
+
+  Path _hamLeft(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx - w * 0.020, h * 0.507);
+    p.cubicTo(cx - w * 0.042, h * 0.503, cx - w * 0.075, h * 0.505,
+        cx - w * 0.105, h * 0.510);
+    p.cubicTo(cx - w * 0.103, h * 0.577, cx - w * 0.096, h * 0.641,
+        cx - w * 0.082, h * 0.702);
+    p.lineTo(cx - w * 0.020, h * 0.706);
+    p.cubicTo(cx - w * 0.014, h * 0.641, cx - w * 0.014, h * 0.577,
+        cx - w * 0.020, h * 0.507);
+    p.close();
+    return p;
+  }
+
+  // Gastrocnemius (back of calf)
+  Path _gastroRight(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx + w * 0.032, h * 0.714);
+    p.cubicTo(cx + w * 0.044, h * 0.720, cx + w * 0.054, h * 0.752,
+        cx + w * 0.056, h * 0.790);
+    p.cubicTo(cx + w * 0.057, h * 0.816, cx + w * 0.050, h * 0.842,
+        cx + w * 0.040, h * 0.858);
+    p.cubicTo(cx + w * 0.032, h * 0.868, cx + w * 0.021, h * 0.868,
+        cx + w * 0.012, h * 0.858);
+    p.cubicTo(cx + w * 0.004, h * 0.844, cx + w * 0.002, h * 0.816,
+        cx + w * 0.004, h * 0.790);
+    p.cubicTo(cx + w * 0.007, h * 0.752, cx + w * 0.018, h * 0.720,
+        cx + w * 0.032, h * 0.714);
+    p.close();
+    return p;
+  }
+
+  Path _gastroLeft(double cx, double w, double h) {
+    final p = Path();
+    p.moveTo(cx - w * 0.032, h * 0.714);
+    p.cubicTo(cx - w * 0.044, h * 0.720, cx - w * 0.054, h * 0.752,
+        cx - w * 0.056, h * 0.790);
+    p.cubicTo(cx - w * 0.057, h * 0.816, cx - w * 0.050, h * 0.842,
+        cx - w * 0.040, h * 0.858);
+    p.cubicTo(cx - w * 0.032, h * 0.868, cx - w * 0.021, h * 0.868,
+        cx - w * 0.012, h * 0.858);
+    p.cubicTo(cx - w * 0.004, h * 0.844, cx - w * 0.002, h * 0.816,
+        cx - w * 0.004, h * 0.790);
+    p.cubicTo(cx - w * 0.007, h * 0.752, cx - w * 0.018, h * 0.720,
+        cx - w * 0.032, h * 0.714);
+    p.close();
+    return p;
   }
 
   void _drawLabel(Canvas canvas, String text, Offset center) {
@@ -719,7 +925,7 @@ class _BodyModelPainter extends CustomPainter {
       text: TextSpan(
         text: text,
         style: TextStyle(
-          color: isDark ? const Color(0xFF38506A) : const Color(0xFF7888A8),
+          color: isDark ? const Color(0xFF7090B8) : const Color(0xFF8898B8),
           fontSize: 8.5,
           fontWeight: FontWeight.w700,
           letterSpacing: 2.8,
@@ -727,8 +933,8 @@ class _BodyModelPainter extends CustomPainter {
       ),
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas,
-        Offset(center.dx - tp.width / 2, center.dy - tp.height / 2));
+    tp.paint(
+        canvas, Offset(center.dx - tp.width / 2, center.dy - tp.height / 2));
   }
 
   @override

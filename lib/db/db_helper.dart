@@ -503,6 +503,81 @@ class DBHelper {
     return counts;
   }
 
+  // ── Share-card data ────────────────────────────────────────────────────────
+
+  /// Returns volumes (weight × reps) for the [n] workouts before [workoutId],
+  /// in chronological order, excluding bodyweight sets (weight = 0).
+  static Future<List<double>> getLastNWorkoutVolumes(
+      int workoutId, int n) async {
+    final d = await db;
+    final idRes = await d.rawQuery('''
+      SELECT id FROM workouts WHERE id < ?
+      ORDER BY id DESC LIMIT ?
+    ''', [workoutId, n]);
+    if (idRes.isEmpty) return [];
+    final ids = idRes.map((r) => r['id'] as int).toList();
+    final placeholders = List.filled(ids.length, '?').join(',');
+    final volRes = await d.rawQuery('''
+      SELECT workout_id, SUM(weight * reps) as volume
+      FROM sets
+      WHERE workout_id IN ($placeholders)
+      GROUP BY workout_id
+    ''', ids);
+    // Build a map so workouts with no sets resolve to 0.0 rather than being dropped.
+    final volMap = <int, double>{};
+    for (final r in volRes) {
+      volMap[r['workout_id'] as int] =
+          (r['volume'] as num?)?.toDouble() ?? 0.0;
+    }
+    // ids is already DESC (most-recent-first); reverse to get chronological order.
+    return ids.reversed.map((id) => volMap[id] ?? 0.0).toList();
+  }
+
+  /// Returns muscle-group → total volume (weight × reps) for a single workout.
+  static Future<Map<String, double>> getMuscleVolumeForWorkout(
+      int workoutId) async {
+    final d = await db;
+    final res = await d.rawQuery('''
+      SELECT e.muscle_group, SUM(s.weight * s.reps) as volume
+      FROM sets s
+      INNER JOIN exercises e ON s.exercise_name = e.name
+      WHERE s.workout_id = ? AND e.muscle_group IS NOT NULL
+      GROUP BY e.muscle_group
+    ''', [workoutId]);
+    final breakdown = <String, double>{};
+    for (final row in res) {
+      final group = row['muscle_group'] as String;
+      breakdown[group] = (row['volume'] as num?)?.toDouble() ?? 0.0;
+    }
+    return breakdown;
+  }
+
+  /// Returns exercise names that achieved a new all-time weight PR in [workoutId].
+  static Future<List<String>> getPersonalBestsInWorkout(
+      int workoutId) async {
+    final d = await db;
+    final currentRes = await d.rawQuery('''
+      SELECT exercise_name, MAX(weight) as max_weight
+      FROM sets WHERE workout_id = ? AND weight > 0
+      GROUP BY exercise_name
+    ''', [workoutId]);
+    final pbs = <String>[];
+    for (final row in currentRes) {
+      final name = row['exercise_name'] as String;
+      final currentMax = (row['max_weight'] as num?)?.toDouble() ?? 0.0;
+      if (currentMax <= 0) continue;
+      final histRes = await d.rawQuery('''
+        SELECT MAX(weight) as max_weight FROM sets
+        WHERE exercise_name = ? AND workout_id != ? AND weight > 0
+      ''', [name, workoutId]);
+      final histMax = histRes.isEmpty
+          ? 0.0
+          : (histRes.first['max_weight'] as num?)?.toDouble() ?? 0.0;
+      if (currentMax > histMax) pbs.add(name);
+    }
+    return pbs;
+  }
+
   // ── All-time stats ─────────────────────────────────────────────────────────
 
   static Future<Map<String, dynamic>> getAllTimeStats() async {

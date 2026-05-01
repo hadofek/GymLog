@@ -33,6 +33,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   String _photoPath = '';
   bool _photoExists = false;
   bool _editMode = false;
+  bool _isSharing = false;
   final GlobalKey _shareCardKey = GlobalKey();
 
   bool get _isWeightedType =>
@@ -68,14 +69,33 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Future<void> _shareWorkout() async {
+    if (_isSharing) return;
+    _isSharing = true;
+    try {
+      await _doShareWorkout();
+    } finally {
+      if (mounted) setState(() => _isSharing = false);
+    }
+  }
+
+  Future<void> _doShareWorkout() async {
     final totalSets = _grouped.values.fold(0, (s, v) => s + v.length);
     final totalReps = _grouped.values
         .expand((v) => v)
         .fold(0, (s, e) => s + (e['reps'] as int));
     final totalWeight = _grouped.values
         .expand((v) => v)
-        .fold(0.0, (s, e) => s + (e['weight'] as double) * (e['reps'] as int));
+        .fold(0.0, (s, e) => s + (e['weight'] as num).toDouble() * (e['reps'] as int));
 
+    final pbs =
+        await DBHelper.getPersonalBestsInWorkout(widget.workoutId);
+    final muscleBreakdown =
+        await DBHelper.getMuscleVolumeForWorkout(widget.workoutId);
+    final prevVolumes =
+        await DBHelper.getLastNWorkoutVolumes(widget.workoutId, 4);
+    final volumeTrend = [...prevVolumes, totalWeight];
+
+    if (!mounted) return; // ignore: use_build_context_synchronously
     await showDialog(
       context: context,
       barrierColor: Colors.black87,
@@ -87,6 +107,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         totalSets: totalSets,
         totalReps: totalReps,
         totalWeight: totalWeight,
+        photoPath: _photoExists ? _photoPath : null,
+        personalBests: pbs,
+        muscleBreakdown: muscleBreakdown,
+        volumeTrend: volumeTrend,
       ),
     );
   }
@@ -1069,6 +1093,10 @@ class _SharePreviewDialog extends StatefulWidget {
   final int totalSets;
   final int totalReps;
   final double totalWeight;
+  final String? photoPath;
+  final List<String> personalBests;
+  final Map<String, double> muscleBreakdown;
+  final List<double> volumeTrend;
 
   const _SharePreviewDialog({
     required this.shareCardKey,
@@ -1078,6 +1106,10 @@ class _SharePreviewDialog extends StatefulWidget {
     required this.totalSets,
     required this.totalReps,
     required this.totalWeight,
+    this.photoPath,
+    this.personalBests = const [],
+    this.muscleBreakdown = const {},
+    this.volumeTrend = const [],
   });
 
   @override
@@ -1124,60 +1156,66 @@ class _SharePreviewDialogState extends State<_SharePreviewDialog> {
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          RepaintBoundary(
-            key: widget.shareCardKey,
-            child: WorkoutShareCard(
-              date: widget.date,
-              durationSeconds: widget.durationSeconds,
-              exerciseCount: widget.exerciseCount,
-              totalSets: widget.totalSets,
-              totalReps: widget.totalReps,
-              totalWeight: widget.totalWeight,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            RepaintBoundary(
+              key: widget.shareCardKey,
+              child: WorkoutShareCard(
+                date: widget.date,
+                durationSeconds: widget.durationSeconds,
+                exerciseCount: widget.exerciseCount,
+                totalSets: widget.totalSets,
+                totalReps: widget.totalReps,
+                totalWeight: widget.totalWeight,
+                photoPath: widget.photoPath,
+                personalBests: widget.personalBests,
+                muscleBreakdown: widget.muscleBreakdown,
+                volumeTrend: widget.volumeTrend,
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.white70,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  child: const Text('Close'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: ElevatedButton.icon(
-                  onPressed: _sharing ? null : _doShare,
-                  icon: _sharing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.black))
-                      : const Icon(Icons.download_outlined),
-                  label: Text(_sharing ? 'Saving...' : 'Save to Gallery'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFD700),
-                    foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    textStyle:
-                        const TextStyle(fontWeight: FontWeight.bold),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.white70,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text('Close'),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton.icon(
+                    onPressed: _sharing ? null : _doShare,
+                    icon: _sharing
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.black))
+                        : const Icon(Icons.download_outlined),
+                    label: Text(_sharing ? 'Saving...' : 'Save to Gallery'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE07B3E),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      textStyle:
+                          const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

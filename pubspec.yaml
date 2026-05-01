@@ -1,7 +1,7 @@
 name: gymlog
 description: "GymLog - Track your workouts, monitor progress, and crush your goals."
 
-version: 1.2.0+35
+version: 1.2.1+36
 
 environment:
   sdk: ^3.9.2
@@ -24,6 +24,24 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.6
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/app_icon.png"
+  adaptive_icon_background: "#f0f4f8"
+  adaptive_icon_foreground: "assets/images/app_icon.png"
+  min_sdk_android: 21
+
+flutter_native_splash:
+  color: "#ffffff"
+  image: assets/images/splash_logo.png
+  android_12:
+    image: assets/images/app_icon.png
+    color: "#ffffff"
+    icon_background_color: "#f0f4f8"
 
 flutter:
 
@@ -32,4 +50,6 @@ flutter:
   assets:
     - assets/images/musclemap.png
     - assets/images/muscle_map.png
+    - assets/images/splash_logo.png
+    - assets/images/app_icon.png
 

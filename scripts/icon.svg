@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Black background -->
+  <rect width="1024" height="1024" fill="#000000"/>
+
+  <!-- GL wordmark: italic skew applied manually, vertically centred -->
+  <!-- Cap height ~70% of font-size. font-size=460 → cap=322px
+       Visual centre: y = 512 + 322/2 = 673 -->
+  <text
+    x="532" y="676"
+    text-anchor="middle"
+    font-family="Arial Black, Arial, Helvetica, sans-serif"
+    font-size="460"
+    font-weight="900"
+    fill="#E8E8E8"
+    transform="skewX(-10)"
+  >GL</text>
+</svg>

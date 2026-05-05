@@ -192,13 +192,13 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
                           horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: selected
-                            ? const Color(0xFFFFD700)
+                            ? const Color(0xFFE8E8E8)
                                 .withValues(alpha: 0.25)
                             : AppColors.inputFill(ctx),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: selected
-                              ? const Color(0xFFFFD700)
+                              ? const Color(0xFFE8E8E8)
                               : AppColors.border(ctx),
                           width: 1.5,
                         ),
@@ -305,13 +305,13 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
                             horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
                           color: sel
-                              ? const Color(0xFFFFD700)
+                              ? const Color(0xFFE8E8E8)
                                   .withValues(alpha: 0.25)
                               : AppColors.inputFill(ctx),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: sel
-                                ? const Color(0xFFFFD700)
+                                ? const Color(0xFFE8E8E8)
                                 : AppColors.border(ctx),
                             width: 1.5,
                           ),
@@ -466,7 +466,7 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
                           height: 36,
                           decoration: BoxDecoration(
                               color: isBw
-                                  ? const Color(0xFFFFD700)
+                                  ? const Color(0xFFE8E8E8)
                                       .withValues(alpha: 0.2)
                                   : border.withValues(alpha: 0.5),
                               shape: BoxShape.circle),
@@ -524,7 +524,7 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
                                     horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
                                     color: isBw
-                                        ? const Color(0xFFFFD700)
+                                        ? const Color(0xFFE8E8E8)
                                             .withValues(alpha: 0.15)
                                         : border.withValues(alpha: 0.5),
                                     borderRadius:

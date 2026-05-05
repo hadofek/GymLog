@@ -326,7 +326,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
 
   Widget _buildSaveTemplateBar() {
     final accentContainer = AppColors.accentContainer(context);
-    final isDark = AppColors.isDark(context);
     return SafeArea(
       top: false,
       child: Padding(
@@ -335,14 +334,14 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           onPressed: _saveAsTemplate,
           icon: const Icon(Icons.bookmark_outline_rounded, size: 18),
           label: Text('Save as Template',
-              style: KiStyles.bodySemibold(color: const Color(0xFF150400))),
+              style: KiStyles.bodySemibold(color: const Color(0xFF000000))),
           style: ElevatedButton.styleFrom(
             backgroundColor: accentContainer,
-            foregroundColor: const Color(0xFF150400),
+            foregroundColor: const Color(0xFF000000),
             minimumSize: const Size(double.infinity, 52),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14)),
-            elevation: isDark ? 0 : 2,
+            elevation: 0,
           ),
         ),
       ),
@@ -467,7 +466,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 onPressed: () => Navigator.pop(ctx, true),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: accentContainer,
-                  foregroundColor: const Color(0xFF150400),
+                  foregroundColor: const Color(0xFF000000),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
@@ -475,7 +474,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 ),
                 child: Text('Save',
                     style: KiStyles.bodySemibold(
-                        color: const Color(0xFF150400))),
+                        color: const Color(0xFF000000))),
               ),
             ),
           ],
@@ -507,12 +506,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   }
 
   Widget _buildNonWeightsBody() {
-    final typeColor = WorkoutTypes.color(widget.type);
+    final typeColor = WorkoutTypes.color(widget.type, context);
     final textPrimary = AppColors.textPrimary(context);
     final textSecondary = AppColors.textSecondary(context);
     final textTertiary = AppColors.textTertiary(context);
-    final cardBg = AppColors.cardBg(context);
-    final isDark = AppColors.isDark(context);
     final hasPhoto = _photoExists;
     final hasContent = _notes.isNotEmpty || _distanceKm > 0 || hasPhoto;
 
@@ -545,18 +542,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       children: [
         if (hasPhoto) _buildPhotoCard(),
         if (hasPhoto) const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            color: cardBg,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isDark
-                  ? const Color(0xFF434654).withValues(alpha: 0.6)
-                  : const Color(0xFFEEEEEE),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
+        Padding(
+            padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -605,7 +592,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               ],
             ),
           ),
-        ),
       ],
     );
   }
@@ -633,9 +619,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final textSecondary = AppColors.textSecondary(context);
     final textTertiary = AppColors.textTertiary(context);
     final borderColor = AppColors.border(context);
-    final accentContainer = AppColors.accentContainer(context);
-    final isDark = AppColors.isDark(context);
-    final typeColor = WorkoutTypes.color(widget.type);
+    final typeColor = WorkoutTypes.color(widget.type, context);
 
     return Scaffold(
       backgroundColor: bg,
@@ -649,40 +633,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         // Title: GYMLOG wordmark + type badge side by side
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'GYMLOG',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                fontStyle: FontStyle.italic,
-                letterSpacing: 3,
-                color: accentContainer,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: typeColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(WorkoutTypes.icon(widget.type),
-                      size: 12, color: typeColor),
-                  const SizedBox(width: 4),
-                  Text(WorkoutTypes.label(widget.type),
-                      style: KiStyles.labelSm(color: typeColor)),
-                ],
-              ),
-            ),
-          ],
+        title: Text(
+          'GYMLOG',
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            fontStyle: FontStyle.italic,
+            letterSpacing: 3,
+            color: Color(0xFFE8E8E8),
+          ),
         ),
         // Single overflow menu replaces the crowded action buttons
         actions: [
@@ -833,23 +793,12 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                             );
                           }
 
-                          widgets.add(Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            decoration: BoxDecoration(
-                              color: cardBg,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: isInSuperset
-                                    ? typeColor.withValues(alpha: 0.5)
-                                    : isDark
-                                        ? const Color(0xFF434654)
-                                            .withValues(alpha: 0.6)
-                                        : const Color(0xFFEEEEEE),
-                                width: isInSuperset ? 1.5 : 1,
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
+                          widgets.add(Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                            Divider(height: 1, thickness: 0.5, color: borderColor),
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(0, 14, 0, 14),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -867,43 +816,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                               color: textPrimary)),
                                     ),
                                     if (isInSuperset)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color:
-                                              typeColor.withValues(alpha: 0.12),
-                                          borderRadius:
-                                              BorderRadius.circular(6),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(Icons.link_rounded,
-                                                size: 11, color: typeColor),
-                                            const SizedBox(width: 3),
-                                            Text('SS',
-                                                style: KiStyles.labelSm(
-                                                    color: typeColor)),
-                                          ],
-                                        ),
-                                      )
+                                      Text('SS', style: KiStyles.labelSm(color: typeColor))
                                     else
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8, vertical: 3),
-                                        decoration: BoxDecoration(
-                                          color: isDark
-                                              ? const Color(0xFF282A32)
-                                              : const Color(0xFFF5F5F5),
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                        ),
-                                        child: Text(
-                                          '${sets.length} set${sets.length > 1 ? 's' : ''}',
-                                          style: KiStyles.labelSm(
-                                              color: textTertiary),
-                                        ),
+                                      Text(
+                                        '${sets.length} set${sets.length > 1 ? 's' : ''}',
+                                        style: KiStyles.labelSm(color: textTertiary),
                                       ),
                                   ]),
                                   const SizedBox(height: 12),
@@ -950,37 +867,14 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                         if (_editMode) ...[
                                           GestureDetector(
                                             onTap: () => _editSet(s),
-                                            child: Container(
-                                              width: 30, height: 30,
-                                              decoration: BoxDecoration(
-                                                color: isDark
-                                                    ? const Color(0xFF282A32)
-                                                    : const Color(0xFF111111)
-                                                        .withValues(alpha: 0.06),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              child: Icon(Icons.edit_outlined,
-                                                  size: 15,
-                                                  color: textSecondary),
-                                            ),
+                                            child: Icon(Icons.edit_outlined,
+                                                size: 16, color: textSecondary),
                                           ),
-                                          const SizedBox(width: 6),
+                                          const SizedBox(width: 14),
                                           GestureDetector(
-                                            onTap: () =>
-                                                _deleteSet(s['id'] as int),
-                                            child: Container(
-                                              width: 30, height: 30,
-                                              decoration: BoxDecoration(
-                                                color: const Color(0xFFFFB4AB)
-                                                    .withValues(alpha: 0.10),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                              ),
-                                              child: const Icon(Icons.close,
-                                                  size: 15,
-                                                  color: Color(0xFFFFB4AB)),
-                                            ),
+                                            onTap: () => _deleteSet(s['id'] as int),
+                                            child: const Icon(Icons.close,
+                                                size: 16, color: Color(0xFFFFB4AB)),
                                           ),
                                         ],
                                       ]),
@@ -1020,19 +914,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
                                         children: [
-                                          Container(
-                                            width: 22, height: 22,
-                                            decoration: BoxDecoration(
-                                              color: AppColors.accentContainer(
-                                                      context)
-                                                  .withValues(alpha: 0.12),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: Icon(Icons.add,
-                                                size: 14,
-                                                color: AppColors.accentContainer(
-                                                    context)),
-                                          ),
+                                          Icon(Icons.add,
+                                              size: 14,
+                                              color: AppColors.accentContainer(context)),
                                           const SizedBox(width: 6),
                                           Text('Add set',
                                               style: KiStyles.label(
@@ -1044,6 +928,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                 ],
                               ),
                             ),
+                            ],
                           ));
                         }
                         return widgets;
@@ -1064,22 +949,11 @@ class _SetBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = AppColors.isDark(context);
-    final accent = AppColors.accentContainer(context);
-    return Container(
+    return SizedBox(
       width: 26,
-      height: 26,
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Center(
-        child: Text(
-          '$number',
-          style: KiStyles.labelSm(
-            color: isDark ? accent : AppColors.accent(context),
-          ),
-        ),
+      child: Text(
+        '$number',
+        style: KiStyles.labelSm(color: AppColors.textTertiary(context)),
       ),
     );
   }
@@ -1202,8 +1076,8 @@ class _SharePreviewDialogState extends State<_SharePreviewDialog> {
                         : const Icon(Icons.download_outlined),
                     label: Text(_sharing ? 'Saving...' : 'Save to Gallery'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE07B3E),
-                      foregroundColor: Colors.white,
+                      backgroundColor: const Color(0xFFE8E8E8),
+                      foregroundColor: Colors.black,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),

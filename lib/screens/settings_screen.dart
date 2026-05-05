@@ -208,7 +208,7 @@ class _ThemeOption extends StatelessWidget {
                   height: 22,
                   decoration: BoxDecoration(color: ac, shape: BoxShape.circle),
                   child: const Icon(Icons.check,
-                      size: 14, color: Color(0xFF002469)),
+                      size: 14, color: Color(0xFF000000)),
                 );
               })
             else

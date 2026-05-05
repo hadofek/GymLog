@@ -289,7 +289,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(Icons.camera_alt,
-                                color: Color(0xFF002469), size: 17),
+                                color: Color(0xFF000000), size: 17),
                           );
                         }),
                       ],

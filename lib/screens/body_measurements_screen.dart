@@ -527,7 +527,7 @@ class _WeightChart extends StatelessWidget {
 class _ChartPainter extends CustomPainter {
   final List<double> values;
   final Color cardColor;
-  static const _lineColor = Color(0xFFFFD700);
+  static const _lineColor = Color(0xFFE8E8E8);
 
   const _ChartPainter({required this.values, required this.cardColor});
 

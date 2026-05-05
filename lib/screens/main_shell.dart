@@ -56,7 +56,7 @@ class _MainShellState extends State<MainShell> {
           border: Border(
             top: BorderSide(
               color: isDark
-                  ? const Color(0xFF434654).withValues(alpha: 0.5)
+                  ? const Color(0xFF1A1A1A).withValues(alpha: 0.5)
                   : const Color(0xFFEEEEEE),
               width: 0.5,
             ),

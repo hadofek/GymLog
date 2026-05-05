@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:gymlog/utils/app_colors.dart';
 
 class WorkoutTypes {
   static const String weighted = 'weighted';
@@ -8,19 +9,8 @@ class WorkoutTypes {
 
   static const List<String> all = [weighted, cardio, bodyweight, flexibility];
 
-  // Kinetic Obsidian workout-type colors
-  static Color color(String type) {
-    switch (type) {
-      case cardio:
-        return const Color(0xFF4AE176);
-      case flexibility:
-        return const Color(0xFFEC6A06);
-      case bodyweight:
-        return const Color(0xFF608BFF);
-      default: // weighted
-        return const Color(0xFF608BFF);
-    }
-  }
+  static Color color(String type, BuildContext ctx) =>
+      AppColors.accentContainer(ctx);
 
   static IconData icon(String type) {
     switch (type) {

@@ -60,7 +60,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     return h > 0 ? '$h:$m:$s' : '$m:$s';
   }
 
-  Color get _accentColor => WorkoutTypes.color(widget.type);
+  Color _accentColor(BuildContext ctx) => WorkoutTypes.color(widget.type, ctx);
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
@@ -373,12 +373,10 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     }();
 
     final bg = AppColors.background(context);
-    final cardBg = AppColors.cardBg(context);
     final textPrimary = AppColors.textPrimary(context);
     final textSecondary = AppColors.textSecondary(context);
     final textTertiary = AppColors.textTertiary(context);
     final accentContainer = AppColors.accentContainer(context);
-    final isDark = AppColors.isDark(context);
 
     return Scaffold(
       backgroundColor: bg,
@@ -410,161 +408,75 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                       ),
                     ),
                   ),
-                  // Live session badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF4AE176).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 6, height: 6,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFF4AE176),
-                            boxShadow: [
-                              BoxShadow(
-                                  color: const Color(0xFF4AE176)
-                                      .withValues(alpha: 0.6),
-                                  blurRadius: 6),
-                            ],
-                          ),
+                  // Live indicator
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 5, height: 5,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFF4AE176),
                         ),
-                        const SizedBox(width: 6),
-                        Text('LIVE',
-                            style: KiStyles.labelSm(
-                                color: const Color(0xFF4AE176))),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 5),
+                      Text('LIVE', style: KiStyles.labelSm(color: textTertiary)),
+                    ],
                   ),
                   if (_exercises.isNotEmpty) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 16),
                     GestureDetector(
                       onTap: _saveWorkout,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: accentContainer,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text('Save',
-                            style: KiStyles.bodySemibold(
-                                color: const Color(0xFF150400))),
-                      ),
+                      child: Text('Save', style: KiStyles.bodySemibold(color: accentContainer)),
                     ),
                   ],
                 ],
               ),
             ),
 
-            const SizedBox(height: 12),
-
-            // ── Timer bento cards ──
+            // ── Timer + date flat strip ──
+            Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // Workout time
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: cardBg,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isDark
-                              ? const Color(0xFF434654).withValues(alpha: 0.6)
-                              : const Color(0xFFEEEEEE),
-                        ),
-                        boxShadow: isDark
-                            ? [
-                                BoxShadow(
-                                  color: accentContainer
-                                      .withValues(alpha: 0.10),
-                                  blurRadius: 16,
-                                ),
-                              ]
-                            : null,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('TIME', style: KiStyles.labelSm(color: textTertiary)),
+                      const SizedBox(height: 4),
+                      Text(_elapsedDisplay, style: KiStyles.headlineLg(color: accentContainer)),
+                      Text(
+                        isToday
+                            ? WorkoutTypes.label(widget.type).toUpperCase()
+                            : '${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}',
+                        style: KiStyles.labelSm(color: textTertiary),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(children: [
-                            Icon(Icons.timer_outlined,
-                                size: 14, color: accentContainer),
-                            const SizedBox(width: 6),
-                            Text('WORKOUT TIME',
-                                style: KiStyles.labelSm(
-                                    color: textTertiary)),
-                          ]),
-                          const SizedBox(height: 8),
-                          Text(_elapsedDisplay,
-                              style: KiStyles.headlineLg(
-                                  color: accentContainer)),
-                          const SizedBox(height: 2),
-                          Text(
-                            isToday
-                                ? WorkoutTypes.label(widget.type)
-                                    .toUpperCase()
-                                : '${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}',
-                            style: KiStyles.labelSm(color: textTertiary),
-                          ),
-                        ],
-                      ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  // Date selector
+                  const SizedBox(width: 24),
+                  Container(width: 1, height: 36, color: AppColors.border(context)),
+                  const SizedBox(width: 24),
                   GestureDetector(
                     onTap: _pickDate,
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: cardBg,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isDark
-                              ? const Color(0xFF434654).withValues(alpha: 0.6)
-                              : const Color(0xFFEEEEEE),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('DATE', style: KiStyles.labelSm(color: textTertiary)),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}',
+                          style: KiStyles.headlineMd(color: textPrimary),
                         ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(children: [
-                            Icon(Icons.event_outlined,
-                                size: 14, color: textTertiary),
-                            const SizedBox(width: 6),
-                            Text('DATE',
-                                style: KiStyles.labelSm(
-                                    color: textTertiary)),
-                          ]),
-                          const SizedBox(height: 8),
-                          Text(
-                            isToday
-                                ? 'Today'
-                                : '${_workoutDate.day}/${_workoutDate.month}',
-                            style:
-                                KiStyles.headlineMd(color: textPrimary),
-                          ),
-                          const SizedBox(height: 2),
-                          Text('TAP TO CHANGE',
-                              style: KiStyles.labelSm(
-                                  color: textTertiary)),
-                        ],
-                      ),
+                        Text('TAP TO CHANGE', style: KiStyles.labelSm(color: textTertiary)),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(height: 12),
+            Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
 
             // ── Exercise counter ──
             if (_exercises.isNotEmpty)
@@ -591,7 +503,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                         children: [
                           Icon(WorkoutTypes.icon(widget.type),
                               size: 44,
-                              color: _accentColor.withValues(alpha: 0.4)),
+                              color: _accentColor(context).withValues(alpha: 0.4)),
                           const SizedBox(height: 16),
                           Text('No exercises yet',
                               style: KiStyles.headlineMd(
@@ -618,7 +530,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                               groupA != null && groupA == groupB;
                           return _SupersetConnector(
                             isLinked: isLinked,
-                            accentColor: _accentColor,
+                            accentColor: _accentColor(context),
                             onTap: () => _toggleSuperset(i, i + 1),
                           );
                         }
@@ -628,23 +540,12 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                         final supersetGroup =
                             ex['supersetGroup'] as int?;
                         final isLinked = supersetGroup != null;
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 4),
-                          decoration: BoxDecoration(
-                            color: cardBg,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isLinked
-                                  ? _accentColor.withValues(alpha: 0.5)
-                                  : isDark
-                                      ? const Color(0xFF434654)
-                                          .withValues(alpha: 0.6)
-                                      : const Color(0xFFEEEEEE),
-                              width: isLinked ? 1.5 : 1,
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
+                            Padding(
+                            padding: const EdgeInsets.fromLTRB(0, 14, 0, 14),
                             child: Column(
                               crossAxisAlignment:
                                   CrossAxisAlignment.start,
@@ -653,7 +554,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                                   Container(
                                     width: 8, height: 8,
                                     decoration: BoxDecoration(
-                                        color: _accentColor,
+                                        color: _accentColor(context),
                                         shape: BoxShape.circle),
                                   ),
                                   const SizedBox(width: 8),
@@ -665,28 +566,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                                     ),
                                   ),
                                   if (isLinked)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: _accentColor
-                                            .withValues(alpha: 0.12),
-                                        borderRadius:
-                                            BorderRadius.circular(6),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.link_rounded,
-                                              size: 11,
-                                              color: _accentColor),
-                                          const SizedBox(width: 3),
-                                          Text('SS',
-                                              style: KiStyles.labelSm(
-                                                  color: _accentColor)),
-                                        ],
-                                      ),
-                                    ),
+                                    Text('SS', style: KiStyles.labelSm(color: _accentColor(context))),
                                 ]),
                                 const SizedBox(height: 10),
                                 ...sets.asMap().entries.map((e) {
@@ -700,7 +580,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                                     child: Row(children: [
                                       _SetBadge(
                                           number: e.key + 1,
-                                          color: _accentColor),
+                                          color: _accentColor(context)),
                                       const SizedBox(width: 10),
                                       Text(
                                         isBW
@@ -723,22 +603,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                                       ),
                                       if (e.value['isPR'] == true) ...[
                                         const SizedBox(width: 8),
-                                        Container(
-                                          padding:
-                                              const EdgeInsets.symmetric(
-                                                  horizontal: 5,
-                                                  vertical: 1),
-                                          decoration: BoxDecoration(
-                                            color:
-                                                const Color(0xFFFFD700),
-                                            borderRadius:
-                                                BorderRadius.circular(5),
-                                          ),
-                                          child: Text('PR',
-                                              style: KiStyles.labelSm(
-                                                  color: const Color(
-                                                      0xFF111111))),
-                                        ),
+                                        Text('PR', style: KiStyles.labelSm(color: accentContainer)),
                                       ],
                                       // Remove set button
                                       const Spacer(),
@@ -764,14 +629,14 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                                     children: [
                                       Icon(Icons.add_circle_outline,
                                           size: 15,
-                                          color: _accentColor),
+                                          color: _accentColor(context)),
                                       const SizedBox(width: 6),
                                       Text(
                                         sets.isEmpty
                                             ? 'ADD FIRST SET'
                                             : 'ADD SET',
                                         style: KiStyles.label(
-                                            color: _accentColor),
+                                            color: _accentColor(context)),
                                       ),
                                     ],
                                   ),
@@ -779,6 +644,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                               ],
                             ),
                           ),
+                        ],
                         );
                       }),
             ),
@@ -790,7 +656,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                 child: Column(
                   children: [
-                    // Add Exercise ghost button
+                    // Add Exercise button
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
@@ -801,11 +667,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                             style: KiStyles.bodySemibold(
                                 color: textPrimary)),
                         style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                              color: isDark
-                                  ? const Color(0xFF434654)
-                                      .withValues(alpha: 0.8)
-                                  : const Color(0xFFDDDDDD)),
+                          side: BorderSide(color: AppColors.border(context)),
                           padding:
                               const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
@@ -824,18 +686,16 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                               size: 20),
                           label: Text('Finish Workout',
                               style: KiStyles.bodySemibold(
-                                  color: const Color(0xFF150400))),
+                                  color: const Color(0xFF000000))),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: accentContainer,
-                            foregroundColor: const Color(0xFF002469),
+                            foregroundColor: const Color(0xFF000000),
                             padding:
                                 const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                                 borderRadius:
                                     BorderRadius.circular(14)),
-                            elevation: isDark ? 0 : 2,
-                            shadowColor: accentContainer
-                                .withValues(alpha: 0.4),
+                            elevation: 0,
                           ),
                         ),
                       ),
@@ -866,58 +726,27 @@ class _SupersetConnector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          const SizedBox(width: 24),
-          if (isLinked)
-            Container(
-              width: 2,
-              height: 24,
-              color: accentColor.withValues(alpha: 0.5),
-            )
-          else
-            const SizedBox(width: 2),
-          const SizedBox(width: 12),
-          GestureDetector(
-            onTap: onTap,
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: isLinked
-                    ? accentColor.withValues(alpha: 0.12)
-                    : const Color(0xFF111111).withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(20),
-                border: isLinked
-                    ? Border.all(
-                        color: accentColor.withValues(alpha: 0.3), width: 1)
-                    : null,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    isLinked ? Icons.link_rounded : Icons.link_outlined,
-                    size: 14,
-                    color: isLinked ? accentColor : const Color(0xFF999999),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(
-                    isLinked ? 'Superset — tap to unlink' : 'Link as Superset',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color:
-                          isLinked ? accentColor : const Color(0xFF999999),
-                    ),
-                  ),
-                ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            if (isLinked)
+              Container(width: 1, height: 16, color: accentColor.withValues(alpha: 0.4))
+            else
+              const SizedBox(width: 1),
+            const SizedBox(width: 14),
+            Text(
+              isLinked ? 'SUPERSET — tap to unlink' : 'Link as superset',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: isLinked ? accentColor : const Color(0xFF444444),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -932,21 +761,14 @@ class _SetBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 26,
-      height: 26,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Center(
-        child: Text(
-          '$number',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: color.withValues(alpha: 0.8),
-          ),
+    return SizedBox(
+      width: 22,
+      child: Text(
+        '$number',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color.withValues(alpha: 0.6),
         ),
       ),
     );

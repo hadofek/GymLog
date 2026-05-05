@@ -4,22 +4,35 @@
 // ViewBox: 0 0 1460 1360
 // Front body centred ~x=365 | Back body centred ~x=1090
 
-// ── Colour maps ─────────────────────────────────────────────────────────────
+// ── Heat map colour scale ────────────────────────────────────────────────────
+// Interpolates blue → violet → pink → red based on training intensity (0→1).
 
-const _groupHex = <String, String>{
-  'chest': '#5B9BD5',
-  'back': '#9068C4',
-  'shoulders': '#38B2C8',
-  'biceps': '#48A870',
-  'triceps': '#CC5555',
-  'core': '#CBA038',
-  'traps': '#6088C8',
-  'quads': '#3EA898',
-  'hamstrings': '#CC5878',
-  'glutes': '#CC7A48',
-  'calves': '#6EA838',
-  'forearms': '#906050',
-};
+String _heatHex(double t) {
+  final tt = t.clamp(0.0, 1.0);
+  int r, g, b;
+  if (tt < 0.33) {
+    final f = tt / 0.33;
+    r = _lerpC(0x28, 0x72, f);
+    g = _lerpC(0x68, 0x38, f);
+    b = _lerpC(0xD4, 0xCC, f);
+  } else if (tt < 0.67) {
+    final f = (tt - 0.33) / 0.34;
+    r = _lerpC(0x72, 0xCC, f);
+    g = _lerpC(0x38, 0x2E, f);
+    b = _lerpC(0xCC, 0x7A, f);
+  } else {
+    final f = (tt - 0.67) / 0.33;
+    r = _lerpC(0xCC, 0xD8, f);
+    g = _lerpC(0x2E, 0x36, f);
+    b = _lerpC(0x7A, 0x38, f);
+  }
+  return '#${r.toRadixString(16).padLeft(2, '0')}'
+      '${g.toRadixString(16).padLeft(2, '0')}'
+      '${b.toRadixString(16).padLeft(2, '0')}';
+}
+
+int _lerpC(int a, int b, double t) =>
+    (a + (b - a) * t).round().clamp(0, 255);
 
 // Front SVG slug → app muscle-group key
 const _frontSlug = <String, String>{
@@ -366,7 +379,7 @@ const _back = <String, Map<String, List<String>>>{
 
 String buildBodySvg({
   required Map<String, int> counts,
-  required int maxCount,
+  required int totalCount,
   required bool isDark,
 }) {
   final bodyBase = isDark ? '#1E2436' : '#D4D8E4';
@@ -382,8 +395,8 @@ String buildBodySvg({
     final slug = entry.key;
     final paths = entry.value;
     final group = _frontSlug[slug];
-    final fill = _resolveFill(group, counts, maxCount, bodyBase, muscleBase);
-    final opacity = _resolveOpacity(group, counts, maxCount);
+    final fill = _resolveFill(group, counts, totalCount, bodyBase, muscleBase);
+    final opacity = _resolveOpacity(group, counts, totalCount);
     sb.write('<g fill="$fill" fill-opacity="$opacity">');
     _appendPaths(sb, paths);
     sb.write('</g>');
@@ -394,8 +407,8 @@ String buildBodySvg({
     final slug = entry.key;
     final paths = entry.value;
     final group = _backSlug[slug];
-    final fill = _resolveFill(group, counts, maxCount, bodyBase, muscleBase);
-    final opacity = _resolveOpacity(group, counts, maxCount);
+    final fill = _resolveFill(group, counts, totalCount, bodyBase, muscleBase);
+    final opacity = _resolveOpacity(group, counts, totalCount);
     sb.write('<g fill="$fill" fill-opacity="$opacity">');
     _appendPaths(sb, paths);
     sb.write('</g>');
@@ -419,25 +432,26 @@ String buildBodySvg({
 String _resolveFill(
   String? group,
   Map<String, int> counts,
-  int maxCount,
+  int totalCount,
   String bodyBase,
   String muscleBase,
 ) {
   if (group == null) return bodyBase;
   final count = counts[group] ?? 0;
-  if (count == 0) return muscleBase;
-  return _groupHex[group] ?? muscleBase;
+  if (count == 0 || totalCount == 0) return muscleBase;
+  // share = fraction of total training volume this muscle represents
+  return _heatHex(count / totalCount);
 }
 
 double _resolveOpacity(
   String? group,
   Map<String, int> counts,
-  int maxCount,
+  int totalCount,
 ) {
   if (group == null) return 1.0;
   final count = counts[group] ?? 0;
-  if (count == 0 || maxCount == 0) return 1.0;
-  return 0.45 + 0.55 * (count / maxCount);
+  if (count == 0 || totalCount == 0) return 1.0;
+  return 1.0;
 }
 
 void _appendPaths(StringBuffer sb, Map<String, List<String>> paths) {

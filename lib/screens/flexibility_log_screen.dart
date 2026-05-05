@@ -206,18 +206,7 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
     final textPrimary = AppColors.textPrimary(context);
     final textTertiary = AppColors.textTertiary(context);
     final accentContainer = AppColors.accentContainer(context);
-    final flexColor = WorkoutTypes.color(WorkoutTypes.flexibility);
-    final isDark = AppColors.isDark(context);
-    final cardBorder = isDark
-        ? const Color(0xFF434654).withValues(alpha: 0.6)
-        : const Color(0xFFEEEEEE);
-
-    final bool isToday = () {
-      final now = DateTime.now();
-      return _workoutDate.year == now.year &&
-          _workoutDate.month == now.month &&
-          _workoutDate.day == now.day;
-    }();
+    final flexColor = WorkoutTypes.color(WorkoutTypes.flexibility, context);
 
     return Scaffold(
       backgroundColor: bg,
@@ -245,26 +234,9 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: flexColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                    color: flexColor.withValues(alpha: 0.4), width: 1),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(WorkoutTypes.icon(WorkoutTypes.flexibility),
-                      size: 11, color: flexColor),
-                  const SizedBox(width: 4),
-                  Text(
-                    WorkoutTypes.label(WorkoutTypes.flexibility).toUpperCase(),
-                    style: KiStyles.labelSm(color: flexColor),
-                  ),
-                ],
-              ),
+            Text(
+              WorkoutTypes.label(WorkoutTypes.flexibility).toUpperCase(),
+              style: KiStyles.label(color: AppColors.textTertiary(context)),
             ),
           ],
         ),
@@ -276,7 +248,7 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
                 onPressed: _save,
                 style: TextButton.styleFrom(
                   backgroundColor: accentContainer,
-                  foregroundColor: const Color(0xFF002469),
+                  foregroundColor: const Color(0xFF000000),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   shape: RoundedRectangleBorder(
@@ -285,7 +257,7 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text('SAVE',
-                    style: KiStyles.label(color: const Color(0xFF002469))),
+                    style: KiStyles.label(color: const Color(0xFF000000))),
               ),
             ),
         ],
@@ -296,25 +268,18 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Date selector
+            Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
             GestureDetector(
               onTap: _pickDate,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF16161E) : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: cardBorder, width: 1),
-                ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
                 child: Row(
                   children: [
                     Icon(Icons.calendar_today_outlined,
-                        size: 16, color: textTertiary),
+                        size: 14, color: textTertiary),
                     const SizedBox(width: 10),
                     Text(
-                      isToday
-                          ? 'Today'
-                          : '${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}',
+                      '${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}',
                       style: KiStyles.bodySemibold(color: textPrimary),
                     ),
                     const Spacer(),
@@ -323,6 +288,7 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
                 ),
               ),
             ),
+            Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
 
             const SizedBox(height: 20),
 

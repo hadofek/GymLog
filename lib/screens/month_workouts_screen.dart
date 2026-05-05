@@ -83,10 +83,7 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
     final textPrimary = AppColors.textPrimary(context);
     final textTertiary = AppColors.textTertiary(context);
     final accentContainer = AppColors.accentContainer(context);
-    final isDark = AppColors.isDark(context);
-    final cardBorder = isDark
-        ? const Color(0xFF434654).withValues(alpha: 0.6)
-        : const Color(0xFFEEEEEE);
+    final cardBorder = AppColors.border(context);
 
     return Scaffold(
       backgroundColor: bg,
@@ -121,16 +118,8 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: accentContainer.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.fitness_center_outlined,
-                        size: 32, color: accentContainer),
-                  ),
+                  Icon(Icons.fitness_center_outlined,
+                      size: 40, color: accentContainer),
                   const SizedBox(height: 16),
                   Text('No workouts this month',
                       style: KiStyles.headlineMd(color: textPrimary)),
@@ -154,20 +143,14 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
                     _formatDisplayDate(w['date'] as String);
                 final type =
                     w['type'] as String? ?? WorkoutTypes.weighted;
-                final typeColor = WorkoutTypes.color(type);
+                final typeColor = WorkoutTypes.color(type, context);
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF16161E) : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: cardBorder, width: 1),
-                  ),
-                  child: Material(
+                return Column(
+                  children: [
+                  Divider(height: 1, thickness: 0.5, color: cardBorder),
+                  Material(
                     color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(16),
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
                       onTap: () async {
                         final deleted = await Navigator.push<bool>(
                             context,
@@ -187,19 +170,8 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
                             horizontal: 16, vertical: 14),
                         child: Row(
                           children: [
-                            Container(
-                              width: 44,
-                              height: 44,
-                              decoration: BoxDecoration(
-                                color: typeColor.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                    color: typeColor.withValues(alpha: 0.3),
-                                    width: 1),
-                              ),
-                              child: Icon(WorkoutTypes.icon(type),
-                                  size: 20, color: typeColor),
-                            ),
+                            Icon(WorkoutTypes.icon(type),
+                                size: 22, color: typeColor),
                             const SizedBox(width: 14),
                             Expanded(
                               child: Column(
@@ -233,6 +205,7 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
                       ),
                     ),
                   ),
+                  ],
                 );
               },
             ),

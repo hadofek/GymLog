@@ -17,41 +17,92 @@ class AddExerciseScreen extends StatefulWidget {
 }
 
 class _AddExerciseScreenState extends State<AddExerciseScreen> {
-  final _nameController = TextEditingController();
+  // ── Browse phase ──
+  String? _selectedExercise;
+  String? _expandedCategory;
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  // ── Log sets phase ──
   final _weightController = TextEditingController();
   final _repsController = TextEditingController();
   final List<Map<String, dynamic>> _sets = [];
-  List<String> _suggestions = [];
   List<Map<String, dynamic>> _lastSets = [];
   bool? _isBodyweight;
   bool _isWeightedExercise = false;
   double _exercisePR = 0;
 
-  void _onNameChanged(String val) {
-    setState(() {
-      _suggestions = val.isEmpty
-          ? []
-          : widget.allExercises
-              .where((e) => e.toLowerCase().contains(val.toLowerCase()))
-              .toList();
-      _isBodyweight = null;
-      _lastSets = [];
-      _isWeightedExercise = false;
-      _exercisePR = 0;
-    });
+  // ── Exercise library ──
+  static const Map<String, List<String>> _library = {
+    'Chest': [
+      'Bench Press', 'Incline Bench Press', 'Decline Bench Press',
+      'Dumbbell Bench Press', 'Incline Dumbbell Press',
+      'Dumbbell Fly', 'Cable Fly', 'Push Up', 'Chest Dip', 'Pec Deck',
+    ],
+    'Back': [
+      'Deadlift', 'Pull Up', 'Chin Up', 'Lat Pulldown',
+      'Barbell Row', 'Dumbbell Row', 'Cable Row', 'T-Bar Row',
+      'Face Pull', 'Straight-Arm Pulldown', 'Hyperextension',
+    ],
+    'Shoulders': [
+      'Overhead Press', 'Dumbbell Shoulder Press', 'Arnold Press',
+      'Lateral Raise', 'Front Raise', 'Rear Delt Fly',
+      'Upright Row', 'Shrug', 'Cable Lateral Raise',
+    ],
+    'Biceps': [
+      'Barbell Curl', 'Dumbbell Curl', 'Hammer Curl',
+      'Preacher Curl', 'Concentration Curl', 'Cable Curl', 'Spider Curl',
+    ],
+    'Triceps': [
+      'Tricep Pushdown', 'Skull Crusher', 'Close-Grip Bench Press',
+      'Overhead Tricep Extension', 'Tricep Dip', 'Diamond Push Up',
+    ],
+    'Legs': [
+      'Squat', 'Front Squat', 'Hack Squat', 'Goblet Squat',
+      'Leg Press', 'Leg Extension', 'Leg Curl', 'Romanian Deadlift',
+      'Lunge', 'Bulgarian Split Squat', 'Calf Raise',
+    ],
+    'Glutes': [
+      'Hip Thrust', 'Glute Bridge', 'Sumo Deadlift',
+      'Sumo Squat', 'Cable Kickback', 'Donkey Kick',
+    ],
+    'Core': [
+      'Plank', 'Side Plank', 'Crunch', 'Sit Up', 'Leg Raise',
+      'Russian Twist', 'Ab Wheel Rollout', 'Cable Crunch',
+      'Hanging Knee Raise', 'Bicycle Crunch',
+    ],
+  };
+
+  List<String> get _allLibraryNames =>
+      _library.values.expand((e) => e).toList();
+
+  List<String> get _customExercises => widget.allExercises
+      .where((e) => !_allLibraryNames
+          .any((l) => l.toLowerCase() == e.toLowerCase()))
+      .toList();
+
+  List<String> get _searchResults {
+    final q = _searchQuery.toLowerCase();
+    if (q.isEmpty) return [];
+    final all = [..._allLibraryNames, ..._customExercises];
+    final seen = <String>{};
+    return all
+        .where((e) => e.toLowerCase().contains(q) && seen.add(e.toLowerCase()))
+        .toList();
   }
 
-  Future<void> _selectExercise(String name) async {
-    _nameController.text = name;
+  Future<void> _pickExercise(String name) async {
     final last = await DBHelper.getLastSets(name);
     final isBw = await DBHelper.isExerciseBodyweight(name);
     final pr = await DBHelper.getMaxWeightForExercise(name);
+    if (!mounted) return;
     setState(() {
-      _suggestions = [];
+      _selectedExercise = name;
       _lastSets = last;
       _isBodyweight = isBw ? true : null;
       _exercisePR = pr;
       _isWeightedExercise = false;
+      _sets.clear();
     });
   }
 
@@ -92,7 +143,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
         });
         return;
       }
-      final name = _nameController.text.trim();
+      final name = _selectedExercise ?? '';
       if (name.isNotEmpty) {
         final isBw = await DBHelper.isExerciseBodyweight(name);
         if (isBw) {
@@ -110,32 +161,20 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: AppColors.cardBg(ctx),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text('Bodyweight exercise?',
-              style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary(ctx))),
+              style: KiStyles.headlineMd(color: AppColors.textPrimary(ctx))),
           content: Text('You entered 0 kg. Is this a bodyweight exercise?',
-              style: TextStyle(color: AppColors.textSecondary(ctx))),
+              style: KiStyles.body(color: AppColors.textSecondary(ctx))),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                        content: Text('Please enter a valid weight amount')),
-                  );
-                }
-              },
-              child: Text('No',
-                  style: TextStyle(color: AppColors.textSecondary(ctx))),
+              onPressed: () => Navigator.pop(ctx),
+              child: Text('No', style: KiStyles.label(color: AppColors.textSecondary(ctx))),
             ),
             TextButton(
               onPressed: () async {
                 Navigator.pop(ctx);
-                final exerciseName = _nameController.text.trim();
+                final exerciseName = _selectedExercise ?? '';
                 setState(() {
                   _isBodyweight = true;
                   _sets.add({'weight': w, 'reps': r});
@@ -146,14 +185,8 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                   await DBHelper.setExerciseBodyweight(exerciseName, true);
                 }
               },
-              style: TextButton.styleFrom(
-                backgroundColor: const Color(0xFF111111).withValues(alpha: 0.06),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8)),
-              ),
-              child: const Text('Yes, bodyweight',
-                  style: TextStyle(
-                      color: Color(0xFF111111), fontWeight: FontWeight.bold)),
+              child: Text('Yes, bodyweight',
+                  style: KiStyles.label(color: AppColors.accentContainer(ctx))),
             ),
           ],
         ),
@@ -171,18 +204,15 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Row(children: [
-            Icon(Icons.emoji_events_rounded,
-                color: Color(0xFFFFD700), size: 20),
+            Icon(Icons.emoji_events_rounded, color: Color(0xFFE8E8E8), size: 20),
             SizedBox(width: 8),
             Text('New Personal Record!',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold, color: Colors.white)),
+                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
           ]),
           backgroundColor: const Color(0xFF111111),
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         ),
       );
@@ -190,21 +220,13 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   }
 
   void _done() {
-    final name = _nameController.text.trim();
-    if (name.isEmpty || _sets.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text('Please enter an exercise name and at least one set')),
-      );
-      return;
-    }
-    Navigator.pop(context, {'name': name, 'sets': _sets});
+    if (_selectedExercise == null || _sets.isEmpty) return;
+    Navigator.pop(context, {'name': _selectedExercise!, 'sets': _sets});
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _searchController.dispose();
     _weightController.dispose();
     _repsController.dispose();
     super.dispose();
@@ -213,467 +235,396 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   @override
   Widget build(BuildContext context) {
     final bg = AppColors.background(context);
-    final card = AppColors.cardBg(context);
     final textPrimary = AppColors.textPrimary(context);
     final textSecondary = AppColors.textSecondary(context);
-    final border = AppColors.border(context);
 
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: bg,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: textSecondary),
+          onPressed: () {
+            if (_selectedExercise != null) {
+              setState(() {
+                _selectedExercise = null;
+                _sets.clear();
+              });
+            } else {
+              Navigator.pop(context);
+            }
+          },
+        ),
         title: Text(
-          'Add Exercise',
+          _selectedExercise ?? 'Add Exercise',
           style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 16,
             fontWeight: FontWeight.w700,
-            fontSize: 18,
             color: textPrimary,
-            letterSpacing: -0.3,
           ),
         ),
+        actions: [
+          if (_selectedExercise != null && _sets.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: GestureDetector(
+                onTap: _done,
+                child: Text('Done', style: KiStyles.bodySemibold(color: textPrimary)),
+              ),
+            ),
+        ],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Exercise name field ──
-                  Text(
-                    'Exercise name',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: textSecondary,
-                      letterSpacing: 0.3,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _nameController,
-                    onChanged: _onNameChanged,
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: textPrimary),
-                    decoration: InputDecoration(
-                      hintText: 'e.g. Bench Press',
-                      hintStyle: TextStyle(color: AppColors.hintText(context)),
-                      filled: true,
-                      fillColor: AppColors.inputFill(context),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: border, width: 1.5),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: textPrimary, width: 2),
-                      ),
-                    ),
-                  ),
+      body: _selectedExercise == null
+          ? _buildBrowse(context)
+          : _buildLogSets(context),
+    );
+  }
 
-                  // ── Autocomplete suggestions ──
-                  if (_suggestions.isNotEmpty)
-                    Container(
-                      margin: const EdgeInsets.only(top: 4),
-                      decoration: BoxDecoration(
-                        color: card,
-                        borderRadius: BorderRadius.circular(12),
-                        border:
-                            Border.all(color: border, width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+  // ── Phase 1: Browse ────────────────────────────────────────────────────────
+
+  Widget _buildBrowse(BuildContext context) {
+    final textPrimary = AppColors.textPrimary(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final borderColor = AppColors.border(context);
+    final inputFill = AppColors.inputFill(context);
+    final hasSearch = _searchQuery.isNotEmpty;
+    final results = _searchResults;
+    final custom = _customExercises;
+
+    return Column(
+      children: [
+        // ── Search bar ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Container(
+            decoration: BoxDecoration(
+              color: inputFill,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: borderColor, width: 1),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                Icon(Icons.search_rounded, size: 17, color: textTertiary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (v) => setState(() => _searchQuery = v),
+                    style: KiStyles.body(color: textPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'Search exercises',
+                      hintStyle: KiStyles.body(color: textTertiary),
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ),
+                if (_searchQuery.isNotEmpty)
+                  _Pressable(
+                    onTap: () {
+                      _searchController.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                    child: Icon(Icons.close_rounded, size: 16, color: textTertiary),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        Divider(height: 1, thickness: 0.5, color: borderColor),
+
+        // ── Exercise list ──
+        Expanded(
+          child: ListView(
+            children: hasSearch
+                ? results.isEmpty
+                    ? [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 32, 20, 0),
+                          child: Text('No exercises found',
+                              style: KiStyles.body(color: textTertiary)),
+                        ),
+                      ]
+                    : results.map((name) => _exerciseRow(name, context)).toList()
+                : [
+                    if (custom.isNotEmpty) ...[
+                      _categoryHeader('MY EXERCISES', context),
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 280),
+                        curve: Curves.easeInOutCubic,
+                        child: _expandedCategory == 'MY EXERCISES'
+                            ? Column(children: custom.map((n) => _exerciseRow(n, context)).toList())
+                            : const SizedBox.shrink(),
+                      ),
+                    ],
+                    ..._library.entries.map((entry) {
+                      final key = entry.key;
+                      return Column(
+                        children: [
+                          _categoryHeader(key, context),
+                          AnimatedSize(
+                            duration: const Duration(milliseconds: 280),
+                            curve: Curves.easeInOutCubic,
+                            child: _expandedCategory == key
+                                ? Column(children: entry.value.map((n) => _exerciseRow(n, context)).toList())
+                                : const SizedBox.shrink(),
                           ),
                         ],
-                      ),
-                      child: Column(
-                        children:
-                            _suggestions.asMap().entries.map((entry) {
-                          final isLast =
-                              entry.key == _suggestions.length - 1;
-                          return Column(
-                            children: [
-                              ListTile(
-                                dense: true,
-                                leading: Icon(
-                                    Icons.fitness_center_outlined,
-                                    size: 18,
-                                    color: textSecondary),
-                                title: Text(
-                                  entry.value,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                    color: textPrimary,
-                                  ),
-                                ),
-                                onTap: () =>
-                                    _selectExercise(entry.value),
-                              ),
-                              if (!isLast)
-                                Divider(
-                                    height: 1,
-                                    indent: 16,
-                                    endIndent: 16,
-                                    color: AppColors.divider(context)),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
-
-                  // ── Last time reference ──
-                  if (_lastSets.isNotEmpty) ...[
-                    const SizedBox(height: 14),
-                    Builder(builder: (context) {
-                      final isDark = AppColors.isDark(context);
-                      final refBg = isDark
-                          ? AppColors.gold.withValues(alpha: 0.08)
-                          : const Color(0xFFFFF8DC);
-                      final refText = isDark
-                          ? AppColors.gold
-                          : const Color(0xFF8B7500);
-                      return Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: refBg,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: AppColors.gold.withValues(alpha: 0.3),
-                              width: 1.5),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.history, size: 14, color: refText),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'LAST SESSION',
-                                  style: KiStyles.labelSm(color: refText),
-                                ),
-                                if (_exercisePR > 0) ...[
-                                  const Spacer(),
-                                  Icon(Icons.emoji_events_rounded,
-                                      size: 12, color: refText),
-                                  const SizedBox(width: 3),
-                                  Text(
-                                    'PR: ${_exercisePR % 1 == 0 ? _exercisePR.toInt() : _exercisePR}kg',
-                                    style: KiStyles.labelSm(color: refText),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            ..._lastSets.map((s) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 3),
-                                  child: Text(
-                                    'Set ${s['set_number']}:  ${s['weight']}kg × ${s['reps']} reps',
-                                    style: TextStyle(
-                                      color: refText,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                )),
-                          ],
-                        ),
                       );
                     }),
                   ],
+          ),
+        ),
+      ],
+    );
+  }
 
-                  const SizedBox(height: 24),
+  Widget _categoryHeader(String label, BuildContext context) {
+    final textPrimary = AppColors.textPrimary(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final borderColor = AppColors.border(context);
+    final isExpanded = _expandedCategory == label;
 
-                  // ── Logged sets list ──
-                  if (_sets.isNotEmpty) ...[
-                    Row(
-                      children: [
-                        Text(
-                          'Sets logged',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                            color: textSecondary,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: AppColors.accentContainer(context)
-                                .withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '${_sets.length}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.accentContainer(context),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: card,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: border, width: 1.5),
-                      ),
-                      child: Column(
-                        children: _sets.asMap().entries.map((e) {
-                          final isLast = e.key == _sets.length - 1;
-                          return Column(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 14, vertical: 10),
-                                child: Row(children: [
-                                  _SetBadge(number: e.key + 1),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    e.value['bodyweight'] == true
-                                        ? 'BW  ×  ${e.value['reps']} reps'
-                                        : '${e.value['weight']}kg  ×  ${e.value['reps']} reps',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: textPrimary,
-                                    ),
-                                  ),
-                                  if (e.value['isPR'] == true) ...[
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFFD700),
-                                        borderRadius:
-                                            BorderRadius.circular(6),
-                                      ),
-                                      child: const Text('PR',
-                                          style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w800,
-                                              color: Color(0xFF111111))),
-                                    ),
-                                  ],
-                                  const Spacer(),
-                                  GestureDetector(
-                                    onTap: () => setState(
-                                        () => _sets.removeAt(e.key)),
-                                    child: Container(
-                                      width: 28,
-                                      height: 28,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFE53935)
-                                            .withValues(alpha: 0.08),
-                                        borderRadius:
-                                            BorderRadius.circular(8),
-                                      ),
-                                      child: const Icon(
-                                        Icons.close,
-                                        size: 15,
-                                        color: Color(0xFFE53935),
-                                      ),
-                                    ),
-                                  ),
-                                ]),
-                              ),
-                              if (!isLast)
-                                Divider(
-                                    height: 1,
-                                    indent: 14,
-                                    endIndent: 14,
-                                    color: AppColors.divider(context)),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
-
-                  // ── New set input ──
-                  Text(
-                    _sets.isEmpty ? 'First set' : 'Set ${_sets.length + 1}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13,
-                      color: textSecondary,
-                      letterSpacing: 0.3,
-                    ),
+    return _Pressable(
+      onTap: () => setState(() => _expandedCategory = isExpanded ? null : label),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+            child: SizedBox(
+              height: 48,
+              child: Row(
+                children: [
+                  Text(label, style: KiStyles.body(color: textPrimary)),
+                  const Spacer(),
+                  AnimatedRotation(
+                    turns: isExpanded ? 0.25 : 0,
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
+                    child: Icon(Icons.chevron_right_rounded, size: 18, color: textTertiary),
                   ),
-                  if (widget.workoutType == WorkoutTypes.bodyweight) ...[
-                    const SizedBox(height: 10),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: card,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: border, width: 1.5),
-                      ),
-                      child: SwitchListTile(
-                        dense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 2),
-                        title: Text(
-                          'Add weight',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: textPrimary,
-                          ),
-                        ),
-                        subtitle: Text(
-                          'e.g. weighted vest or dip belt',
-                          style: TextStyle(
-                              fontSize: 12, color: textSecondary),
-                        ),
-                        value: _isWeightedExercise,
-                        activeThumbColor: const Color(0xFF2196F3),
-                        activeTrackColor:
-                            const Color(0xFF2196F3).withValues(alpha: 0.4),
-                        onChanged: (v) =>
-                            setState(() => _isWeightedExercise = v),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 10),
-                  Row(children: [
-                    if (widget.workoutType != WorkoutTypes.bodyweight ||
-                        _isWeightedExercise) ...[
-                      Expanded(
-                        child: TextField(
-                          controller: _weightController,
-                          keyboardType:
-                              const TextInputType.numberWithOptions(
-                                  decimal: true),
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: textPrimary,
-                          ),
-                          decoration: InputDecoration(
-                            labelText: 'Weight (kg)',
-                            labelStyle:
-                                TextStyle(color: textSecondary),
-                            filled: true,
-                            fillColor: AppColors.inputFill(context),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 14),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide:
-                                  BorderSide(color: border, width: 1.5),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                  color: textPrimary, width: 2),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                    ],
-                    Expanded(
-                      child: TextField(
-                        controller: _repsController,
-                        keyboardType: TextInputType.number,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: textPrimary,
-                        ),
-                        decoration: InputDecoration(
-                          labelText: 'Reps',
-                          labelStyle: TextStyle(color: textSecondary),
-                          filled: true,
-                          fillColor: AppColors.inputFill(context),
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 14),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide:
-                                BorderSide(color: border, width: 1.5),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide(
-                                color: textPrimary, width: 2),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ]),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _saveSet,
-                      icon: const Icon(Icons.check, size: 18),
-                      label: const Text(
-                        'Log Set',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.accentContainer(context),
-                        foregroundColor: const Color(0xFF002469),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                 ],
               ),
             ),
           ),
+          Divider(height: 1, thickness: 0.5, color: borderColor),
+        ],
+      ),
+    );
+  }
 
-          // ── Done button ──
-          if (_sets.isNotEmpty)
-            SafeArea(
-              top: false,
-              child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                decoration: BoxDecoration(
-                  color: AppColors.bottomBarBg(context),
-                  border: Border(
-                    top: BorderSide(color: border, width: 1),
+  Widget _exerciseRow(String name, BuildContext context) {
+    final textPrimary = AppColors.textPrimary(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final borderColor = AppColors.border(context);
+
+    return _Pressable(
+      onTap: () => _pickExercise(name),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(36, 0, 20, 0),
+            child: SizedBox(
+              height: 44,
+              child: Row(
+                children: [
+                  Expanded(child: Text(name, style: KiStyles.body(color: textPrimary))),
+                  Icon(Icons.add_rounded, size: 16, color: textTertiary),
+                ],
+              ),
+            ),
+          ),
+          Divider(height: 1, thickness: 0.5, color: borderColor),
+        ],
+      ),
+    );
+  }
+
+  // ── Phase 2: Log sets ──────────────────────────────────────────────────────
+
+  Widget _buildLogSets(BuildContext context) {
+    final textPrimary = AppColors.textPrimary(context);
+    final textSecondary = AppColors.textSecondary(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final accentContainer = AppColors.accentContainer(context);
+    final borderColor = AppColors.border(context);
+
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+
+                // ── Last session reference ──
+                if (_lastSets.isNotEmpty) ...[
+                  Divider(height: 1, thickness: 0.5, color: borderColor),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Text('LAST SESSION',
+                              style: KiStyles.labelSm(color: textTertiary)),
+                          if (_exercisePR > 0) ...[
+                            const Spacer(),
+                            Text(
+                              'PR  ${_exercisePR % 1 == 0 ? _exercisePR.toInt() : _exercisePR}kg',
+                              style: KiStyles.labelSm(color: textTertiary),
+                            ),
+                          ],
+                        ]),
+                        const SizedBox(height: 8),
+                        ..._lastSets.map((s) => Padding(
+                              padding: const EdgeInsets.only(bottom: 3),
+                              child: Text(
+                                'Set ${s['set_number']}  ·  ${s['weight']}kg × ${s['reps']} reps',
+                                style: KiStyles.body(color: textSecondary),
+                              ),
+                            )),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // ── Logged sets ──
+                if (_sets.isNotEmpty) ...[
+                  Divider(height: 1, thickness: 0.5, color: borderColor),
+                  ..._sets.asMap().entries.map((e) => Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            child: Row(children: [
+                              Text(
+                                '${e.key + 1}',
+                                style: KiStyles.labelSm(color: textTertiary),
+                              ),
+                              const SizedBox(width: 16),
+                              Text(
+                                e.value['bodyweight'] == true
+                                    ? 'BW  ×  ${e.value['reps']} reps'
+                                    : '${e.value['weight']}kg  ×  ${e.value['reps']} reps',
+                                style: KiStyles.bodySemibold(color: textPrimary),
+                              ),
+                              if (e.value['isPR'] == true) ...[
+                                const SizedBox(width: 8),
+                                Text('PR',
+                                    style: KiStyles.labelSm(color: textTertiary)),
+                              ],
+                              const Spacer(),
+                              GestureDetector(
+                                onTap: () =>
+                                    setState(() => _sets.removeAt(e.key)),
+                                child: Icon(Icons.close,
+                                    size: 16, color: textTertiary),
+                              ),
+                            ]),
+                          ),
+                          Divider(height: 1, thickness: 0.5, color: borderColor),
+                        ],
+                      )),
+                ],
+
+                if (_sets.isEmpty)
+                  Divider(height: 1, thickness: 0.5, color: borderColor),
+
+                // ── Set number label ──
+                Padding(
+                  padding: const EdgeInsets.only(top: 20, bottom: 12),
+                  child: Text(
+                    _sets.isEmpty ? 'First set' : 'Set ${_sets.length + 1}',
+                    style: KiStyles.label(color: textTertiary),
                   ),
                 ),
+
+                // ── Bodyweight toggle ──
+                if (widget.workoutType == WorkoutTypes.bodyweight) ...[
+                  Row(children: [
+                    Text('Add weight',
+                        style: KiStyles.body(color: textPrimary)),
+                    const Spacer(),
+                    Switch(
+                      value: _isWeightedExercise,
+                      activeThumbColor: accentContainer,
+                      onChanged: (v) =>
+                          setState(() => _isWeightedExercise = v),
+                    ),
+                  ]),
+                  const SizedBox(height: 12),
+                ],
+
+                // ── Weight + reps inputs ──
+                Row(children: [
+                  if (widget.workoutType != WorkoutTypes.bodyweight ||
+                      _isWeightedExercise) ...[
+                    Expanded(
+                      child: _flatField(
+                        controller: _weightController,
+                        label: 'Weight (kg)',
+                        keyboard: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        textPrimary: textPrimary,
+                        textTertiary: textTertiary,
+                        borderColor: borderColor,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                  ],
+                  Expanded(
+                    child: _flatField(
+                      controller: _repsController,
+                      label: 'Reps',
+                      keyboard: TextInputType.number,
+                      textPrimary: textPrimary,
+                      textTertiary: textTertiary,
+                      borderColor: borderColor,
+                    ),
+                  ),
+                ]),
+
+                const SizedBox(height: 20),
+
+                // ── Log set button ──
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: _saveSet,
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: borderColor),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Text('Log Set',
+                        style: KiStyles.bodySemibold(color: textPrimary)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // ── Done bar ──
+        if (_sets.isNotEmpty)
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+              child: SizedBox(
+                width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _done,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBtnBg(context),
-                    foregroundColor: AppColors.primaryBtnFg(context),
+                    backgroundColor: accentContainer,
+                    foregroundColor: const Color(0xFF000000),
                     minimumSize: const Size(double.infinity, 52),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14)),
@@ -686,34 +637,91 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                 ),
               ),
             ),
-        ],
-      ),
+          ),
+      ],
+    );
+  }
+
+  Widget _flatField({
+    required TextEditingController controller,
+    required String label,
+    required TextInputType keyboard,
+    required Color textPrimary,
+    required Color textTertiary,
+    required Color borderColor,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: KiStyles.labelSm(color: textTertiary)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          keyboardType: keyboard,
+          style: KiStyles.headlineMd(color: textPrimary),
+          decoration: InputDecoration(
+            border: UnderlineInputBorder(
+                borderSide: BorderSide(color: borderColor, width: 1)),
+            enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: borderColor, width: 1)),
+            focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: textPrimary, width: 1.5)),
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(vertical: 6),
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _SetBadge extends StatelessWidget {
-  final int number;
-  const _SetBadge({required this.number});
+// ── Spring-press widget (iOS-like) ────────────────────────────────────────────
+class _Pressable extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+  const _Pressable({required this.child, required this.onTap});
+  @override
+  State<_Pressable> createState() => _PressableState();
+}
+
+class _PressableState extends State<_Pressable>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 80),
+      reverseDuration: const Duration(milliseconds: 300),
+    );
+    _scale = Tween(begin: 1.0, end: 0.96).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut, reverseCurve: Curves.elasticOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 26,
-      height: 26,
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFD700).withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Center(
-        child: Text(
-          '$number',
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF8B7500),
-          ),
-        ),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => _ctrl.forward(),
+      onTapUp: (_) {
+        _ctrl.reverse();
+        widget.onTap();
+      },
+      onTapCancel: () => _ctrl.reverse(),
+      child: AnimatedBuilder(
+        animation: _scale,
+        builder: (_, child) => Transform.scale(scale: _scale.value, child: child),
+        child: widget.child,
       ),
     );
   }

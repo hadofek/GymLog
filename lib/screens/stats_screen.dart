@@ -102,9 +102,7 @@ class _StatsScreenState extends State<StatsScreen> {
   }
 
   Widget _buildSkeleton(BuildContext context) {
-    final isDark = AppColors.isDark(context);
-    final skeletonColor =
-        isDark ? const Color(0xFF282A32) : const Color(0xFFEEEEEE);
+    const skeletonColor = Color(0xFF111111);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
@@ -178,8 +176,7 @@ class _StatsScreenState extends State<StatsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text('$longestStreak',
-                          style: KiStyles.headlineLg(
-                              color: const Color(0xFFFFB690))),
+                          style: KiStyles.headlineLg(color: textPrimary)),
                       Padding(
                         padding:
                             const EdgeInsets.only(left: 4, bottom: 3),
@@ -321,7 +318,7 @@ class _StatsScreenState extends State<StatsScreen> {
                   final count = typeBreakdown[type] ?? 0;
                   final pct =
                       totalWorkouts > 0 ? count / totalWorkouts : 0.0;
-                  final typeColor = WorkoutTypes.color(type);
+                  final typeColor = WorkoutTypes.color(type, context);
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 14),
                     child: Column(
@@ -462,11 +459,9 @@ class _PodiumRow extends StatelessWidget {
                 Container(
                   height: heights[col],
                   decoration: BoxDecoration(
-                    color: colors[col].withValues(alpha: 0.15),
-                    borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(8)),
-                    border: Border.all(
-                        color: colors[col].withValues(alpha: 0.3), width: 1),
+                    border: Border(
+                      bottom: BorderSide(color: colors[col], width: 1),
+                    ),
                   ),
                   child: Center(
                     child: Text(labels[col],
@@ -482,7 +477,7 @@ class _PodiumRow extends StatelessWidget {
   }
 }
 
-// ── KO Bento Card ──────────────────────────────────────────────────────────────
+// ── Flat section card (no box) ────────────────────────────────────────────────
 class _KoBentoCard extends StatelessWidget {
   final Widget child;
   final bool isDark;
@@ -496,20 +491,12 @@ class _KoBentoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF16161E) : Colors.white,
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(
-          color: isDark
-              ? const Color(0xFF434654).withValues(alpha: 0.6)
-              : const Color(0xFFEEEEEE),
-          width: 1,
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: child,
       ),
-      child: child,
     );
   }
 }

@@ -240,7 +240,7 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
     final accentContainer = AppColors.accentContainer(context);
     final isDark = AppColors.isDark(context);
     final cardBorder = isDark
-        ? const Color(0xFF434654).withValues(alpha: 0.6)
+        ? const Color(0xFF1A1A1A).withValues(alpha: 0.6)
         : const Color(0xFFEEEEEE);
 
     return Scaffold(
@@ -308,7 +308,7 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                     final tmpl = _templates[i];
                     final type =
                         tmpl['type'] as String? ?? WorkoutTypes.weighted;
-                    final typeColor = WorkoutTypes.color(type);
+                    final typeColor = WorkoutTypes.color(type, context);
                     return GestureDetector(
                       onTap: () => _startWorkout(tmpl),
                       onLongPress: () => _showTemplateOptions(tmpl),

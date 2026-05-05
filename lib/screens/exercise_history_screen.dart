@@ -152,17 +152,8 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      color: AppColors.border(context)
-                          .withValues(alpha: 0.5),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.fitness_center_outlined,
-                        size: 32, color: textSecondary),
-                  ),
+                  Icon(Icons.fitness_center_outlined,
+                      size: 40, color: textSecondary),
                   const SizedBox(height: 16),
                   Text(
                     'No sessions logged yet',
@@ -213,160 +204,72 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
 
                 // ── 1RM card (weighted only) ──
                 if (!_isBodyweight && best1RM > 0) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.cardBg(context),
-                      border: Border.all(
-                          color: AppColors.gold.withValues(alpha: 0.4),
-                          width: 1.5),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
+                  const SizedBox(height: 16),
+                  Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     child: Row(children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: AppColors.gold.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.emoji_events_rounded,
-                            color: AppColors.gold, size: 22),
-                      ),
-                      const SizedBox(width: 14),
+                      Icon(Icons.emoji_events_rounded,
+                          color: AppColors.accentContainer(context), size: 20),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Est. 1 Rep Max',
+                              'Est. 1 Rep Max (Epley)',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: AppColors.isDark(context)
-                                    ? AppColors.textSecondary(context)
-                                    : const Color(0xFFAAAAAA),
+                                color: AppColors.textTertiary(context),
                                 fontWeight: FontWeight.w600,
-                                letterSpacing: 0.5,
                               ),
                             ),
                             Text(
                               _rmLabel(best1RM),
-                              style: const TextStyle(
-                                fontSize: 24,
+                              style: TextStyle(
+                                fontSize: 22,
                                 fontWeight: FontWeight.w900,
-                                color: AppColors.gold,
+                                color: AppColors.textPrimary(context),
                                 letterSpacing: -0.5,
-                                height: 1.1,
+                                height: 1.2,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      Text(
-                        'Epley\nformula',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: AppColors.textTertiary(context),
-                          height: 1.4,
-                        ),
-                      ),
                     ]),
                   ),
+                  Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
                 ],
 
                 const SizedBox(height: 20),
 
                 // ── Chart ──
                 if ((_isBodyweight ? chartReps : chartWeights).length >= 2) ...[
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.cardBg(context),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _isBodyweight
-                                ? 'Total Reps Progress'
-                                : 'Max Weight Progress',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                              color: textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${chartHistory.length} most recent sessions',
-                            style: TextStyle(
-                                fontSize: 12, color: textSecondary),
-                          ),
-                          const SizedBox(height: 16),
-                          SizedBox(
-                            height: 140,
-                            child: _WeightChart(
-                                values: _isBodyweight
-                                    ? chartReps
-                                    : chartWeights),
-                          ),
-                        ],
-                      ),
-                    ),
+                  const SizedBox(height: 20),
+                  Text(
+                    _isBodyweight ? 'Total Reps Progress' : 'Max Weight Progress',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: textPrimary),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${chartHistory.length} most recent sessions',
+                    style: TextStyle(fontSize: 12, color: textSecondary),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: 140,
+                    child: _WeightChart(values: _isBodyweight ? chartReps : chartWeights),
                   ),
                   const SizedBox(height: 20),
                 ],
 
                 // ── Sessions list ──
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBg(context),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-                        child: Row(
-                          children: [
-                            Text(
-                              'All Sessions',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                                color: textPrimary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                Column(
+                  children: [
                       Divider(
                           height: 1,
+                          thickness: 0.5,
                           color: AppColors.divider(context)),
                       ...List.generate(_history.length, (i) {
                         final session =
@@ -414,23 +317,12 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     if (isPR) ...[
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFFFFD700),
-                                          borderRadius:
-                                              BorderRadius.circular(6),
-                                        ),
-                                        child: const Text(
-                                          'PR',
+                                      Text('PR',
                                           style: TextStyle(
                                             fontSize: 10,
                                             fontWeight: FontWeight.w800,
-                                            color: Color(0xFF111111),
-                                          ),
-                                        ),
-                                      ),
+                                            color: AppColors.textTertiary(context),
+                                          )),
                                       const SizedBox(width: 8),
                                     ],
                                     Text(
@@ -440,9 +332,7 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                                       style: TextStyle(
                                         fontWeight: FontWeight.w700,
                                         fontSize: 15,
-                                        color: isPR
-                                            ? AppColors.gold
-                                            : textPrimary,
+                                        color: textPrimary,
                                       ),
                                     ),
                                   ],
@@ -460,7 +350,6 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                       }),
                     ],
                   ),
-                ),
               ],
             ),
     );
@@ -480,43 +369,29 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppColors.cardBg(context),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: AppColors.textTertiary(context),
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.2,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary(context),
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.2,
-            ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: smallValue ? 14 : 18,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary(context),
+            letterSpacing: -0.3,
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: smallValue ? 14 : 18,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary(context),
-              letterSpacing: -0.3,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -538,7 +413,7 @@ class _WeightChart extends StatelessWidget {
 class _ChartPainter extends CustomPainter {
   final List<double> values;
   final Color dotCenter;
-  static const _lineColor = Color(0xFFFFD700);
+  static const _lineColor = Color(0xFFE8E8E8);
 
   const _ChartPainter({required this.values, required this.dotCenter});
 

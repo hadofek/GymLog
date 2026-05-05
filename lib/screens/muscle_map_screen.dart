@@ -25,20 +25,21 @@ extension _PeriodExt on _Period {
   }
 }
 
-const _groupColors = <String, Color>{
-  'chest': Color(0xFF5B9BD5),
-  'back': Color(0xFF9068C4),
-  'shoulders': Color(0xFF38B2C8),
-  'biceps': Color(0xFF48A870),
-  'triceps': Color(0xFFCC5555),
-  'core': Color(0xFFCBA038),
-  'traps': Color(0xFF6088C8),
-  'quads': Color(0xFF3EA898),
-  'hamstrings': Color(0xFFCC5878),
-  'glutes': Color(0xFFCC7A48),
-  'calves': Color(0xFF6EA838),
-  'forearms': Color(0xFF906050),
-};
+// Heat map: blue → violet → pink → red (same stops as body_svg_paths.dart)
+Color _heatColor(double t) {
+  final tt = t.clamp(0.0, 1.0);
+  const stops = [
+    Color(0xFF2868D4),
+    Color(0xFF7238CC),
+    Color(0xFFCC2E7A),
+    Color(0xFFD83638),
+  ];
+  if (tt <= 0) return stops[0];
+  if (tt >= 1) return stops[3];
+  final scaled = tt * 3;
+  final idx = scaled.floor().clamp(0, 2);
+  return Color.lerp(stops[idx], stops[idx + 1], scaled - idx)!;
+}
 
 const _groupDisplayNames = <String, String>{
   'chest': 'Chest',
@@ -139,12 +140,14 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
 
     final maxCount =
         _counts.values.isEmpty ? 0 : _counts.values.reduce(math.max);
+    final totalCount =
+        _counts.values.isEmpty ? 0 : _counts.values.fold(0, (a, b) => a + b);
     final sortedGroups = _counts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
     final svgString = buildBodySvg(
       counts: _counts,
-      maxCount: maxCount,
+      totalCount: totalCount,
       isDark: isDark,
     );
 
@@ -301,13 +304,15 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
                     ...sortedGroups.map((entry) {
                       final group = entry.key;
                       final count = entry.value;
-                      final color =
-                          _groupColors[group] ?? const Color(0xFF888888);
+                      // bar width = relative to most-trained muscle
+                      final pct = maxCount > 0 ? count / maxCount : 0.0;
+                      // color = proportion of total training volume
+                      final share = totalCount > 0 ? count / totalCount : 0.0;
+                      final color = _heatColor(share);
                       final displayName = _groupDisplayNames[group] ??
                           (group.isNotEmpty
                               ? group[0].toUpperCase() + group.substring(1)
                               : group);
-                      final pct = maxCount > 0 ? count / maxCount : 0.0;
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 14),
@@ -318,9 +323,7 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
                                 width: 10,
                                 height: 10,
                                 decoration: BoxDecoration(
-                                  color: isDark
-                                      ? color
-                                      : color.withValues(alpha: 0.85),
+                                  color: color,
                                   shape: BoxShape.circle,
                                 ),
                               ),

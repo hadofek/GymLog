@@ -1,75 +1,62 @@
 import 'package:flutter/material.dart';
 
-// Kinetic Obsidian palette
 class AppColors {
   static bool isDark(BuildContext ctx) =>
       Theme.of(ctx).brightness == Brightness.dark;
 
   // ── Surfaces ──
   static Color background(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF11131B) : const Color(0xFFF5F5F5);
-
+      isDark(ctx) ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
   static Color cardBg(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF16161E) : Colors.white;
-
+      isDark(ctx) ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
   static Color surfaceContainer(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF1D1F27) : const Color(0xFFF9F9F9);
-
+      isDark(ctx) ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
   static Color surfaceContainerHigh(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF282A32) : const Color(0xFFF0F0F0);
-
+      isDark(ctx) ? const Color(0xFF0A0A0A) : const Color(0xFFF5F5F5);
   static Color surfaceContainerHighest(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF33343D) : const Color(0xFFE8E8E8);
-
+      isDark(ctx) ? const Color(0xFF111111) : const Color(0xFFEEEEEE);
   static Color cardElevated(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF1D1F27) : const Color(0xFFF9F9F9);
+      isDark(ctx) ? const Color(0xFF0A0A0A) : const Color(0xFFF5F5F5);
 
   // ── Text ──
   static Color textPrimary(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFFE1E2ED) : const Color(0xFF111111);
-
+      isDark(ctx) ? const Color(0xFFE8E8E8) : const Color(0xFF111111);
   static Color textSecondary(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFFC3C6D7) : const Color(0xFF666666);
-
+      isDark(ctx) ? const Color(0xFF888888) : const Color(0xFF666666);
   static Color textTertiary(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF8D90A0) : const Color(0xFFAAAAAA);
+      isDark(ctx) ? const Color(0xFF444444) : const Color(0xFFAAAAAA);
 
-  // ── Borders ──
+  // ── Borders / Dividers ──
   static Color border(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF434654) : const Color(0xFFEEEEEE);
-
+      isDark(ctx) ? const Color(0xFF1A1A1A) : const Color(0xFFE0E0E0);
   static Color divider(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF282A32) : const Color(0xFFF5F5F5);
+      isDark(ctx) ? const Color(0xFF1A1A1A) : const Color(0xFFE0E0E0);
 
   // ── Inputs ──
   static Color inputFill(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF1D1F27) : Colors.white;
-
+      isDark(ctx) ? const Color(0xFF0A0A0A) : const Color(0xFFF8F8F8);
   static Color hintText(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF434654) : const Color(0xFFCCCCCC);
+      isDark(ctx) ? const Color(0xFF333333) : const Color(0xFFBBBBBB);
 
   // ── Nav ──
   static Color bottomBarBg(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF16161E) : Colors.white;
+      isDark(ctx) ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
 
-  // ── Primary (warm amber-orange) ──
+  // ── Accent (soft white dark / soft black light) ──
   static Color accent(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFFE07B3E) : const Color(0xFFB83C08);
-
+      isDark(ctx) ? const Color(0xFFE8E8E8) : const Color(0xFF111111);
   static Color accentContainer(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFFCB601A) : const Color(0xFFA03208);
-
+      isDark(ctx) ? const Color(0xFFE8E8E8) : const Color(0xFF111111);
   static Color accentMuted(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0x26E07B3E) : const Color(0x1AB83C08);
+      isDark(ctx) ? const Color(0x22E8E8E8) : const Color(0x22111111);
 
   // ── Primary button ──
   static Color primaryBtnBg(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFFCB601A) : const Color(0xFF111111);
-
+      isDark(ctx) ? const Color(0xFFE8E8E8) : const Color(0xFF111111);
   static Color primaryBtnFg(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF150400) : Colors.white;
+      isDark(ctx) ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
 
   // ── Legacy constants ──
-  static const Color gold = Color(0xFFFFD700);
-  static const Color goldDark = Color(0xFF8B7500);
+  static const Color gold = Color(0xFFE8E8E8);
+  static const Color goldDark = Color(0xFF888888);
 }

@@ -50,38 +50,44 @@ class _GymLogAppState extends State<GymLogApp> {
 
   void setThemeMode(ThemeMode mode) => setState(() => _themeMode = mode);
 
-  static ThemeData get _lightTheme => ThemeData(
-        brightness: Brightness.light,
+  static ThemeData get _darkTheme => ThemeData(
+        brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.black,
-          brightness: Brightness.light,
+          seedColor: const Color(0xFFE8E8E8),
+          brightness: Brightness.dark,
+        ).copyWith(
+          surface: const Color(0xFF000000),
+          onSurface: const Color(0xFFE8E8E8),
         ),
-        scaffoldBackgroundColor: const Color(0xFFF5F5F5),
-        cardColor: Colors.white,
+        scaffoldBackgroundColor: const Color(0xFF000000),
+        cardColor: const Color(0xFF000000),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFFF5F5F5),
+          backgroundColor: Color(0xFF000000),
           surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
-          foregroundColor: Color(0xFF111111),
+          foregroundColor: Color(0xFFE8E8E8),
         ),
         useMaterial3: true,
       );
 
-  static ThemeData get _darkTheme => ThemeData(
-        brightness: Brightness.dark,
+  static ThemeData get _lightTheme => ThemeData(
+        brightness: Brightness.light,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF608BFF),
-          brightness: Brightness.dark,
+          seedColor: const Color(0xFF111111),
+          brightness: Brightness.light,
+        ).copyWith(
+          surface: const Color(0xFFFFFFFF),
+          onSurface: const Color(0xFF111111),
         ),
-        scaffoldBackgroundColor: const Color(0xFF11131B),
-        cardColor: const Color(0xFF16161E),
+        scaffoldBackgroundColor: const Color(0xFFFFFFFF),
+        cardColor: const Color(0xFFFFFFFF),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF11131B),
+          backgroundColor: Color(0xFFFFFFFF),
           surfaceTintColor: Colors.transparent,
           elevation: 0,
           scrolledUnderElevation: 0,
-          foregroundColor: Color(0xFFE1E2ED),
+          foregroundColor: Color(0xFF111111),
         ),
         useMaterial3: true,
       );

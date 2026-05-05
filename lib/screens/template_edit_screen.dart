@@ -228,7 +228,7 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
               onPressed: _saving ? null : _save,
               style: TextButton.styleFrom(
                 backgroundColor: AppColors.accentContainer(context),
-                foregroundColor: const Color(0xFF002469),
+                foregroundColor: const Color(0xFF000000),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 shape: RoundedRectangleBorder(
@@ -238,7 +238,7 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
               ),
               child: Text('SAVE',
                   style:
-                      KiStyles.label(color: const Color(0xFF002469))),
+                      KiStyles.label(color: const Color(0xFF000000))),
             ),
           ),
         ],
@@ -434,7 +434,7 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
                         TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accentContainer(context),
-                  foregroundColor: const Color(0xFF002469),
+                  foregroundColor: const Color(0xFF000000),
                   minimumSize: const Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),

@@ -24,7 +24,7 @@ class AppColors {
   static Color textSecondary(BuildContext ctx) =>
       isDark(ctx) ? const Color(0xFF888888) : const Color(0xFF666666);
   static Color textTertiary(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF444444) : const Color(0xFFAAAAAA);
+      isDark(ctx) ? const Color(0xFF6A6A6A) : const Color(0xFFAAAAAA);
 
   // ── Borders / Dividers ──
   static Color border(BuildContext ctx) =>

@@ -182,6 +182,13 @@ class DBHelper {
     return res.map((e) => e['name'] as String).toList();
   }
 
+  /// Exercise names that have at least one logged set.
+  static Future<Set<String>> getExerciseNamesWithSets() async {
+    final d = await db;
+    final res = await d.rawQuery('SELECT DISTINCT exercise_name FROM sets');
+    return res.map((r) => (r['exercise_name'] as String).toLowerCase()).toSet();
+  }
+
   static Future<List<Map<String, dynamic>>> getExercisesWithType() async {
     final d = await db;
     return await d.query('exercises', orderBy: 'name');
@@ -454,6 +461,7 @@ class DBHelper {
   static Future<void> insertMeasurement({
     required String date,
     double? weightKg,
+    double? heightCm,
     double? bodyFatPct,
     String notes = '',
   }) async {
@@ -461,6 +469,7 @@ class DBHelper {
     await d.insert('measurements', {
       'date': date,
       if (weightKg != null) 'weight_kg': weightKg,
+      if (heightCm != null) 'height_cm': heightCm,
       if (bodyFatPct != null) 'body_fat_pct': bodyFatPct,
       'notes': notes,
     });

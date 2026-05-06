@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gymlog/screens/home_screen.dart';
 import 'package:gymlog/screens/stats_screen.dart';
-import 'package:gymlog/screens/exercise_library_screen.dart';
 import 'package:gymlog/screens/settings_screen.dart';
 import 'package:gymlog/utils/app_colors.dart';
 
@@ -32,9 +31,7 @@ class _MainShellState extends State<MainShell> {
     final navBg = AppColors.bottomBarBg(context);
     final unselected = AppColors.textTertiary(context);
     final selected = AppColors.accent(context);
-    final indicatorColor = isDark
-        ? const Color(0xFFCB601A).withValues(alpha: 0.18)
-        : const Color(0xFFB83C08).withValues(alpha: 0.10);
+    final indicatorColor = AppColors.accentContainer(context).withValues(alpha: 0.15);
 
     return Scaffold(
       body: IndexedStack(
@@ -44,10 +41,7 @@ class _MainShellState extends State<MainShell> {
           _visited.contains(1)
               ? StatsScreen(key: _statsKey)
               : const SizedBox(),
-          _visited.contains(2)
-              ? const ExerciseLibraryScreen()
-              : const SizedBox(),
-          _visited.contains(3) ? const SettingsScreen() : const SizedBox(),
+          _visited.contains(2) ? const SettingsScreen() : const SizedBox(),
         ],
       ),
       bottomNavigationBar: Container(
@@ -90,11 +84,6 @@ class _MainShellState extends State<MainShell> {
               icon: Icon(Icons.bar_chart_outlined, color: unselected),
               selectedIcon: Icon(Icons.bar_chart_rounded, color: selected),
               label: 'STATS',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.fitness_center_outlined, color: unselected),
-              selectedIcon: Icon(Icons.fitness_center_rounded, color: selected),
-              label: 'LIBRARY',
             ),
             NavigationDestination(
               icon: Icon(Icons.settings_outlined, color: unselected),

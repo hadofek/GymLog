@@ -155,19 +155,11 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                   Icon(Icons.fitness_center_outlined,
                       size: 40, color: textSecondary),
                   const SizedBox(height: 16),
-                  Text(
-                    'No sessions logged yet',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      color: textPrimary,
-                    ),
-                  ),
+                  Text('No sessions logged yet',
+                      style: KiStyles.headlineMd(color: textPrimary)),
                   const SizedBox(height: 6),
-                  Text(
-                    'Log this exercise to see your progress',
-                    style: TextStyle(fontSize: 14, color: textSecondary),
-                  ),
+                  Text('Log this exercise to see your progress',
+                      style: KiStyles.body(color: textSecondary)),
                 ],
               ),
             )
@@ -249,12 +241,12 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                   const SizedBox(height: 20),
                   Text(
                     _isBodyweight ? 'Total Reps Progress' : 'Max Weight Progress',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: textPrimary),
+                    style: KiStyles.bodySemibold(color: textPrimary),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${chartHistory.length} most recent sessions',
-                    style: TextStyle(fontSize: 12, color: textSecondary),
+                    style: KiStyles.labelSm(color: textSecondary),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
@@ -294,21 +286,13 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        _formatDate(
-                                            session['date'] as String),
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                          color: textPrimary,
-                                        ),
+                                        _formatDate(session['date'] as String),
+                                        style: KiStyles.bodySemibold(color: textPrimary),
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
                                         '$sets set${sets != 1 ? 's' : ''}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: textSecondary,
-                                        ),
+                                        style: KiStyles.labelSm(color: textSecondary),
                                       ),
                                     ],
                                   ),
@@ -318,22 +302,15 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                                   children: [
                                     if (isPR) ...[
                                       Text('PR',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.textTertiary(context),
-                                          )),
+                                          style: KiStyles.labelSm(
+                                              color: AppColors.accentContainer(context))),
                                       const SizedBox(width: 8),
                                     ],
                                     Text(
                                       _isBodyweight
                                           ? '$reps reps'
                                           : _weightLabel(w),
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 15,
-                                        color: textPrimary,
-                                      ),
+                                      style: KiStyles.bodySemibold(color: textPrimary),
                                     ),
                                   ],
                                 ),

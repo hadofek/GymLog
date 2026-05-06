@@ -8,6 +8,8 @@ import 'package:gymlog/screens/log_workout_screen.dart';
 import 'package:gymlog/screens/cardio_log_screen.dart';
 import 'package:gymlog/screens/flexibility_log_screen.dart';
 import 'package:gymlog/screens/templates_screen.dart';
+import 'package:gymlog/screens/workout_detail_screen.dart';
+import 'package:gymlog/screens/body_measurements_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
@@ -24,6 +26,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String _userName = '';
   String? _userImage;
   DateTime _currentMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  int _weeklyGoal = 3;
+  double? _latestWeight;
 
   Map<int, double> get _workedOutDays {
     final result = <int, double>{};
@@ -55,17 +59,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }).toList();
   }
 
-  List<Map<String, dynamic>> get _recentWorkouts {
-    final sorted = List<Map<String, dynamic>>.from(_workouts);
-    sorted.sort((a, b) {
-      final da = _parseDate(a['date'] as String);
-      final db = _parseDate(b['date'] as String);
-      if (da == null || db == null) return 0;
-      return db.compareTo(da);
-    });
-    return sorted.take(3).toList();
-  }
-
   DateTime? _parseDate(String dateStr) {
     try {
       final datePart = dateStr.trim().split(RegExp(r'\s+')).first;
@@ -77,19 +70,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  String _relativeDate(String dateStr) {
-    final date = _parseDate(dateStr);
-    if (date == null) return dateStr;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final d = DateTime(date.year, date.month, date.day);
-    final diff = today.difference(d).inDays;
-    if (diff == 0) return 'Today';
-    if (diff == 1) return 'Yesterday';
-    if (diff < 7) return '$diff days ago';
-    return '${d.day}/${d.month}/${d.year}';
-  }
-
   @override
   void initState() {
     super.initState();
@@ -97,12 +77,23 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _load() async {
-    final w = await DBHelper.getWorkouts();
-    final prefs = await SharedPreferences.getInstance();
+    final results = await Future.wait([
+      DBHelper.getWorkouts(),
+      DBHelper.getMeasurements(),
+      SharedPreferences.getInstance(),
+    ]);
+    final w = results[0] as List<Map<String, dynamic>>;
+    final measurements = results[1] as List<Map<String, dynamic>>;
+    final prefs = results[2] as SharedPreferences;
+    final latestWeight = measurements.isNotEmpty
+        ? (measurements.first['weight_kg'] as num?)?.toDouble()
+        : null;
     setState(() {
       _workouts = w;
       _userName = prefs.getString('user_name') ?? '';
       _userImage = prefs.getString('user_image');
+      _weeklyGoal = prefs.getInt('weekly_goal') ?? 3;
+      _latestWeight = latestWeight;
     });
   }
 
@@ -196,6 +187,31 @@ class _HomeScreenState extends State<HomeScreen> {
     return '${months[_currentMonth.month - 1]} ${_currentMonth.year}';
   }
 
+  Map<String, dynamic>? get _lastWorkout {
+    if (_workouts.isEmpty) return null;
+    final sorted = List<Map<String, dynamic>>.from(_workouts);
+    sorted.sort((a, b) {
+      final da = _parseDate(a['date'] as String);
+      final db = _parseDate(b['date'] as String);
+      if (da == null || db == null) return 0;
+      return db.compareTo(da);
+    });
+    return sorted.first;
+  }
+
+  String _relativeDate(String dateStr) {
+    final date = _parseDate(dateStr);
+    if (date == null) return dateStr;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final d = DateTime(date.year, date.month, date.day);
+    final diff = today.difference(d).inDays;
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    if (diff < 7) return '$diff days ago';
+    return '${d.day}/${d.month}';
+  }
+
   int get _currentStreak {
     if (_workouts.isEmpty) return 0;
     final today = DateTime.now();
@@ -213,7 +229,74 @@ class _HomeScreenState extends State<HomeScreen> {
     return streak;
   }
 
-  int get _totalWorkouts => _workouts.length;
+  int get _workoutsThisWeek {
+    final now = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final weekStart = DateTime(monday.year, monday.month, monday.day);
+    return _workouts.where((w) {
+      final date = _parseDate(w['date'] as String);
+      if (date == null) return false;
+      final d = DateTime(date.year, date.month, date.day);
+      return !d.isBefore(weekStart);
+    }).length;
+  }
+
+  Future<void> _showWeeklyGoalPicker() async {
+    final cardBg = AppColors.cardBg(context);
+    final textPrimary = AppColors.textPrimary(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final borderColor = AppColors.border(context);
+    final accentContainer = AppColors.accentContainer(context);
+    final currentGoal = _weeklyGoal;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: cardBg,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                    color: borderColor, borderRadius: BorderRadius.circular(2)),
+              ),
+              const SizedBox(height: 20),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Weekly goal', style: KiStyles.headlineMd(color: textPrimary)),
+              ),
+              const SizedBox(height: 4),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text('How many workouts per week?',
+                    style: KiStyles.label(color: textTertiary)),
+              ),
+              const SizedBox(height: 12),
+              ...[2, 3, 4, 5, 6, 7].map((n) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text('$n days / week', style: KiStyles.body(color: textPrimary)),
+                trailing: currentGoal == n
+                    ? Icon(Icons.check_rounded, color: accentContainer, size: 20)
+                    : null,
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setInt('weekly_goal', n);
+                  if (mounted) setState(() => _weeklyGoal = n);
+                },
+              )),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -314,16 +397,22 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     // ── Compact stat strip ──
                     Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
-                    Padding(
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.fromLTRB(4, 16, 4, 16),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          _MicroStat(
-                            value: '$_totalWorkouts',
-                            label: 'ALL TIME',
-                            valueColor: textPrimary,
-                            labelColor: textTertiary,
+                          GestureDetector(
+                            onTap: _showWeeklyGoalPicker,
+                            child: _MicroStat(
+                              value: '$_workoutsThisWeek/$_weeklyGoal',
+                              label: 'THIS WEEK',
+                              valueColor: _workoutsThisWeek >= _weeklyGoal
+                                  ? accentContainer
+                                  : textPrimary,
+                              labelColor: textTertiary,
+                            ),
                           ),
                           const SizedBox(width: 20),
                           Container(
@@ -353,70 +442,107 @@ class _HomeScreenState extends State<HomeScreen> {
                               labelColor: textTertiary,
                             ),
                           ],
+                          if (streak > 0) ...[
+                            const SizedBox(width: 20),
+                            Container(
+                              width: 1,
+                              height: 30,
+                              color: AppColors.border(context),
+                            ),
+                            const SizedBox(width: 20),
+                            _MicroStat(
+                              value: '$streak',
+                              label: 'STREAK',
+                              valueColor: accentContainer,
+                              labelColor: textTertiary,
+                            ),
+                          ],
+                          if (_latestWeight != null) ...[
+                            const SizedBox(width: 20),
+                            Container(
+                              width: 1,
+                              height: 30,
+                              color: AppColors.border(context),
+                            ),
+                            const SizedBox(width: 20),
+                            GestureDetector(
+                              onTap: () async {
+                                await Navigator.push(context,
+                                    fadeSlideRoute(const BodyMeasurementsScreen()));
+                                _load();
+                              },
+                              child: _MicroStat(
+                                value: '${_latestWeight!.toStringAsFixed(1)}kg',
+                                label: 'WEIGHT',
+                                valueColor: textPrimary,
+                                labelColor: textTertiary,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
 
-                    // ── Streak card ──
-                    if (streak > 0)
-                      _KoBentoCard(
-                        radius: 14,
-                        padding: const EdgeInsets.fromLTRB(4, 0, 4, 16),
-                        child: Row(
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('STREAK',
-                                    style: KiStyles.label(color: textTertiary)),
-                                const SizedBox(height: 6),
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      '$streak',
-                                      style: KiStyles.headlineLg(
-                                          color: accentContainer),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                          left: 5, bottom: 3),
-                                      child: Text(
-                                        streak == 1 ? 'day' : 'days',
-                                        style: KiStyles.label(
-                                            color: textTertiary),
-                                      ),
-                                    ),
-                                  ],
+                    // ── Last workout line ──
+                    if (_lastWorkout != null) ...[
+                      Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
+                      GestureDetector(
+                        onTap: () async {
+                          final w = _lastWorkout!;
+                          await Navigator.push(
+                            context,
+                            fadeSlideRoute(WorkoutDetailScreen(
+                              workoutId: w['id'] as int,
+                              date: w['date'] as String,
+                              durationSeconds: w['duration_seconds'] as int? ?? 0,
+                              type: w['type'] as String? ?? WorkoutTypes.weighted,
+                            )),
+                          );
+                          _load();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(4, 14, 4, 14),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 5,
+                                height: 5,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: WorkoutTypes.color(
+                                      _lastWorkout!['type'] as String? ??
+                                          WorkoutTypes.weighted,
+                                      context),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                WorkoutTypes.label(
+                                    _lastWorkout!['type'] as String? ??
+                                        WorkoutTypes.weighted),
+                                style: KiStyles.bodySemibold(color: textPrimary),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _relativeDate(_lastWorkout!['date'] as String),
+                                style: KiStyles.labelSm(color: textTertiary),
+                              ),
+                              if ((_lastWorkout!['duration_seconds'] as int? ?? 0) > 0) ...[
+                                const SizedBox(width: 8),
+                                Text(
+                                  DBHelper.formatDuration(
+                                      _lastWorkout!['duration_seconds'] as int),
+                                  style: KiStyles.labelSm(color: textTertiary),
                                 ),
                               ],
-                            ),
-                            const SizedBox(width: 20),
-                            // Streak dash indicators (up to 7)
-                            Expanded(
-                              child: Row(
-                                children: List.generate(7, (i) {
-                                  final filled = i < streak.clamp(0, 7);
-                                  return Expanded(
-                                    child: Container(
-                                      height: 3,
-                                      margin: EdgeInsets.only(
-                                          right: i < 6 ? 4 : 0),
-                                      decoration: BoxDecoration(
-                                        color: filled
-                                            ? const Color(0xFFE8E8E8)
-                                            : const Color(0xFF1A1A1A),
-                                        borderRadius:
-                                            BorderRadius.circular(2),
-                                      ),
-                                    ),
-                                  );
-                                }),
-                              ),
-                            ),
-                          ],
+                              const Spacer(),
+                              Icon(Icons.arrow_forward_rounded,
+                                  color: textTertiary, size: 14),
+                            ],
+                          ),
                         ),
                       ),
+                    ],
 
                     // ── Calendar card ──
                     Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
@@ -482,9 +608,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 7,
-                              mainAxisSpacing: 6,
+                              mainAxisSpacing: 4,
                               crossAxisSpacing: 0,
-                              childAspectRatio: 0.75,
+                              childAspectRatio: 1.05,
                             ),
                             itemCount: firstWeekday + daysInMonth,
                             itemBuilder: (ctx, index) {
@@ -563,92 +689,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
 
-                    // ── Recent Activity ──
-                    if (_recentWorkouts.isNotEmpty) ...[
-                      Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
-                      _KoBentoCard(
-                        radius: 16,
-                        padding: const EdgeInsets.fromLTRB(4, 16, 4, 4),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('RECENT',
-                                style: KiStyles.label(color: textTertiary)),
-                            const SizedBox(height: 10),
-                            ..._recentWorkouts.asMap().entries.map((entry) {
-                              final i = entry.key;
-                              final w = entry.value;
-                              final type = w['type'] as String? ??
-                                  WorkoutTypes.weighted;
-                              final typeColor = WorkoutTypes.color(type, context);
-                              final secs =
-                                  w['duration_seconds'] as int? ?? 0;
-                              return Column(
-                                children: [
-                                  if (i > 0)
-                                    Divider(
-                                      height: 1,
-                                      thickness: 0.5,
-                                      color: AppColors.divider(context),
-                                    ),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 11),
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        SizedBox(
-                                          width: 22,
-                                          child: Text(
-                                            (i + 1)
-                                                .toString()
-                                                .padLeft(2, '0'),
-                                            style: KiStyles.labelSm(
-                                                color: textTertiary),
-                                          ),
-                                        ),
-                                        Container(
-                                          width: 5,
-                                          height: 5,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color: typeColor,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Text(
-                                            WorkoutTypes.label(type),
-                                            style: KiStyles.bodySemibold(
-                                                color: textPrimary),
-                                          ),
-                                        ),
-                                        if (secs > 0) ...[
-                                          Text(
-                                            DBHelper.formatDuration(secs),
-                                            style: KiStyles.labelSm(
-                                                color: textSecondary),
-                                          ),
-                                          const SizedBox(width: 10),
-                                        ],
-                                        Text(
-                                          _relativeDate(
-                                              w['date'] as String),
-                                          style: KiStyles.labelSm(
-                                              color: textTertiary),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              );
-                            }),
-                          ],
-                        ),
-                      ),
-                    ],
-
                     // ── Empty state ──
                     if (_workouts.isEmpty) ...[
                       const SizedBox(height: 10),
@@ -671,34 +711,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
 
-                    // ── View all link ──
-                    if (monthWorkouts.isNotEmpty) ...[
-                      Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
-                      GestureDetector(
-                        onTap: () async {
-                          await Navigator.push(
-                              context,
-                              fadeSlideRoute(MonthWorkoutsScreen(
-                                  workouts: monthWorkouts,
-                                  monthLabel: _monthLabel)));
-                          _load();
-                        },
-                        child: _KoBentoCard(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 4, vertical: 16),
-                          child: Row(
-                            children: [
-                              Text('View all workouts this month',
-                                  style:
-                                      KiStyles.bodySemibold(color: textPrimary)),
-                              const Spacer(),
-                              Icon(Icons.arrow_forward_rounded,
-                                  color: textTertiary, size: 16),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),

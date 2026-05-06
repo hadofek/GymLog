@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gymlog/db/db_helper.dart';
+import 'package:gymlog/utils/exercise_data.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
@@ -20,6 +21,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   // ── Browse phase ──
   String? _selectedExercise;
   String? _expandedCategory;
+  String? _selectedFilter;
   final _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -32,64 +34,18 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   bool _isWeightedExercise = false;
   double _exercisePR = 0;
 
-  // ── Exercise library ──
-  static const Map<String, List<String>> _library = {
-    'Chest': [
-      'Bench Press', 'Incline Bench Press', 'Decline Bench Press',
-      'Dumbbell Bench Press', 'Incline Dumbbell Press',
-      'Dumbbell Fly', 'Cable Fly', 'Push Up', 'Chest Dip', 'Pec Deck',
-    ],
-    'Back': [
-      'Deadlift', 'Pull Up', 'Chin Up', 'Lat Pulldown',
-      'Barbell Row', 'Dumbbell Row', 'Cable Row', 'T-Bar Row',
-      'Face Pull', 'Straight-Arm Pulldown', 'Hyperextension',
-    ],
-    'Shoulders': [
-      'Overhead Press', 'Dumbbell Shoulder Press', 'Arnold Press',
-      'Lateral Raise', 'Front Raise', 'Rear Delt Fly',
-      'Upright Row', 'Shrug', 'Cable Lateral Raise',
-    ],
-    'Biceps': [
-      'Barbell Curl', 'Dumbbell Curl', 'Hammer Curl',
-      'Preacher Curl', 'Concentration Curl', 'Cable Curl', 'Spider Curl',
-    ],
-    'Triceps': [
-      'Tricep Pushdown', 'Skull Crusher', 'Close-Grip Bench Press',
-      'Overhead Tricep Extension', 'Tricep Dip', 'Diamond Push Up',
-    ],
-    'Legs': [
-      'Squat', 'Front Squat', 'Hack Squat', 'Goblet Squat',
-      'Leg Press', 'Leg Extension', 'Leg Curl', 'Romanian Deadlift',
-      'Lunge', 'Bulgarian Split Squat', 'Calf Raise',
-    ],
-    'Glutes': [
-      'Hip Thrust', 'Glute Bridge', 'Sumo Deadlift',
-      'Sumo Squat', 'Cable Kickback', 'Donkey Kick',
-    ],
-    'Core': [
-      'Plank', 'Side Plank', 'Crunch', 'Sit Up', 'Leg Raise',
-      'Russian Twist', 'Ab Wheel Rollout', 'Cable Crunch',
-      'Hanging Knee Raise', 'Bicycle Crunch',
-    ],
-  };
+  Map<String, List<String>> get _currentLibrary =>
+      widget.workoutType == WorkoutTypes.bodyweight
+          ? ExerciseData.bodyweight
+          : ExerciseData.weighted;
 
   List<String> get _allLibraryNames =>
-      _library.values.expand((e) => e).toList();
+      _currentLibrary.values.expand((e) => e).toList();
 
   List<String> get _customExercises => widget.allExercises
       .where((e) => !_allLibraryNames
           .any((l) => l.toLowerCase() == e.toLowerCase()))
       .toList();
-
-  List<String> get _searchResults {
-    final q = _searchQuery.toLowerCase();
-    if (q.isEmpty) return [];
-    final all = [..._allLibraryNames, ..._customExercises];
-    final seen = <String>{};
-    return all
-        .where((e) => e.toLowerCase().contains(q) && seen.add(e.toLowerCase()))
-        .toList();
-  }
 
   Future<void> _pickExercise(String name) async {
     final last = await DBHelper.getLastSets(name);
@@ -285,6 +241,16 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
 
   // ── Phase 1: Browse ────────────────────────────────────────────────────────
 
+  List<String> get _searchResults {
+    final q = _searchQuery.toLowerCase();
+    if (q.isEmpty) return [];
+    final all = [..._allLibraryNames, ..._customExercises];
+    final seen = <String>{};
+    return all
+        .where((e) => e.toLowerCase().contains(q) && seen.add(e.toLowerCase()))
+        .toList();
+  }
+
   Widget _buildBrowse(BuildContext context) {
     final textPrimary = AppColors.textPrimary(context);
     final textTertiary = AppColors.textTertiary(context);
@@ -338,49 +304,135 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
         ),
         Divider(height: 1, thickness: 0.5, color: borderColor),
 
+        // ── Category filter chips ──
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          child: Row(
+            children: _currentLibrary.keys.map((cat) {
+              final selected = _selectedFilter == cat;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GestureDetector(
+                  onTap: () => setState(() {
+                    _selectedFilter = selected ? null : cat;
+                    _expandedCategory = null;
+                  }),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? AppColors.accentContainer(context)
+                          : Colors.transparent,
+                      border: Border.all(
+                        color: selected
+                            ? AppColors.accentContainer(context)
+                            : borderColor,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      cat,
+                      style: KiStyles.labelSm(
+                          color: selected ? const Color(0xFF000000) : textPrimary),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        Divider(height: 1, thickness: 0.5, color: borderColor),
+
         // ── Exercise list ──
         Expanded(
           child: ListView(
             children: hasSearch
-                ? results.isEmpty
-                    ? [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 32, 20, 0),
-                          child: Text('No exercises found',
-                              style: KiStyles.body(color: textTertiary)),
-                        ),
-                      ]
-                    : results.map((name) => _exerciseRow(name, context)).toList()
-                : [
-                    if (custom.isNotEmpty) ...[
-                      _categoryHeader('MY EXERCISES', context),
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 280),
-                        curve: Curves.easeInOutCubic,
-                        child: _expandedCategory == 'MY EXERCISES'
-                            ? Column(children: custom.map((n) => _exerciseRow(n, context)).toList())
-                            : const SizedBox.shrink(),
-                      ),
-                    ],
-                    ..._library.entries.map((entry) {
-                      final key = entry.key;
-                      return Column(
-                        children: [
-                          _categoryHeader(key, context),
+                ? [
+                    ...results.map((name) => _exerciseRow(name, context)),
+                    if (!results.any((r) =>
+                        r.toLowerCase() == _searchQuery.trim().toLowerCase()))
+                      _addCustomRow(_searchQuery.trim(), context),
+                  ]
+                : _selectedFilter != null
+                    ? _currentLibrary[_selectedFilter]!
+                        .map((n) => _exerciseRow(n, context))
+                        .toList()
+                    : [
+                        if (custom.isNotEmpty) ...[
+                          _categoryHeader('MY EXERCISES', context),
                           AnimatedSize(
                             duration: const Duration(milliseconds: 280),
                             curve: Curves.easeInOutCubic,
-                            child: _expandedCategory == key
-                                ? Column(children: entry.value.map((n) => _exerciseRow(n, context)).toList())
+                            child: _expandedCategory == 'MY EXERCISES'
+                                ? Column(children: custom.map((n) => _exerciseRow(n, context)).toList())
                                 : const SizedBox.shrink(),
                           ),
                         ],
-                      );
-                    }),
-                  ],
+                        ..._currentLibrary.entries.map((entry) {
+                          final key = entry.key;
+                          return Column(
+                            children: [
+                              _categoryHeader(key, context),
+                              AnimatedSize(
+                                duration: const Duration(milliseconds: 280),
+                                curve: Curves.easeInOutCubic,
+                                child: _expandedCategory == key
+                                    ? Column(children: entry.value.map((n) => _exerciseRow(n, context)).toList())
+                                    : const SizedBox.shrink(),
+                              ),
+                            ],
+                          );
+                        }),
+                      ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _addCustomRow(String name, BuildContext context) {
+    if (name.isEmpty) return const SizedBox.shrink();
+    final textPrimary = AppColors.textPrimary(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final borderColor = AppColors.border(context);
+    final accent = AppColors.accentContainer(context);
+
+    return _Pressable(
+      onTap: () => _pickExercise(name),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+            child: SizedBox(
+              height: 52,
+              child: Row(
+                children: [
+                  Icon(Icons.add_circle_outline_rounded, size: 16, color: accent),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: RichText(
+                      text: TextSpan(
+                        children: [
+                          TextSpan(
+                            text: 'Add  ',
+                            style: KiStyles.labelSm(color: textTertiary),
+                          ),
+                          TextSpan(
+                            text: '"$name"',
+                            style: KiStyles.bodySemibold(color: textPrimary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Divider(height: 1, thickness: 0.5, color: borderColor),
+        ],
+      ),
     );
   }
 

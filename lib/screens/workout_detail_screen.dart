@@ -186,9 +186,38 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     }
   }
 
-  Future<void> _deleteSet(int setId) async {
+  Future<void> _deleteSet(Map<String, dynamic> setData) async {
+    final setId = setData['id'] as int;
     await DBHelper.deleteSet(setId);
     await _load();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Set removed',
+          style: KiStyles.body(color: const Color(0xFFE8E8E8)),
+        ),
+        backgroundColor: const Color(0xFF1A1A1A),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'Undo',
+          textColor: AppColors.accentContainer(context),
+          onPressed: () async {
+            await DBHelper.insertSet(
+              widget.workoutId,
+              setData['exercise_name'] as String,
+              setData['set_number'] as int,
+              (setData['weight'] as num).toDouble(),
+              setData['reps'] as int,
+              supersetGroup: setData['superset_group'] as int?,
+            );
+            await _load();
+          },
+        ),
+      ),
+    );
   }
 
   Future<void> _addSetToExercise(String exerciseName) async {
@@ -872,7 +901,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                           ),
                                           const SizedBox(width: 14),
                                           GestureDetector(
-                                            onTap: () => _deleteSet(s['id'] as int),
+                                            onTap: () => _deleteSet(s),
                                             child: const Icon(Icons.close,
                                                 size: 16, color: Color(0xFFFFB4AB)),
                                           ),
@@ -884,7 +913,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                       key: ValueKey('set-${s['id']}'),
                                       direction: DismissDirection.endToStart,
                                       onDismissed: (_) =>
-                                          _deleteSet(s['id'] as int),
+                                          _deleteSet(s),
                                       background: Container(
                                         alignment: Alignment.centerRight,
                                         padding: const EdgeInsets.only(

@@ -62,6 +62,60 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
 
   Color _accentColor(BuildContext ctx) => WorkoutTypes.color(widget.type, ctx);
 
+  Widget _buildDiscardSheet(BuildContext ctx) {
+    final setCount = _exercises.fold<int>(
+        0, (sum, ex) => sum + (ex['sets'] as List).length);
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('You have an ongoing workout',
+                style: KiStyles.headlineMd(color: AppColors.textPrimary(ctx))),
+            const SizedBox(height: 6),
+            Text(
+              '$setCount set${setCount != 1 ? 's' : ''} logged will be lost.',
+              style: KiStyles.body(color: AppColors.textTertiary(ctx)),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accentContainer(ctx),
+                  foregroundColor: AppColors.background(ctx),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: Text('Resume',
+                    style: KiStyles.bodySemibold(
+                        color: AppColors.background(ctx))),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: Text('Discard',
+                    style: KiStyles.bodySemibold(
+                        color: const Color(0xFFFFB4AB))),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _pickDate() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -345,6 +399,9 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
         }
       }
 
+      // Check PRs before leaving
+      final prs = await DBHelper.getPersonalBestsInWorkout(workoutId);
+
       // Progress photo
       if (!mounted) return;
       final source = await _showProgressPhotoDialog();
@@ -355,11 +412,63 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
         }
       }
 
+      // PR flash
+      if (prs.isNotEmpty && mounted) {
+        await showModalBottomSheet(
+          context: context,
+          backgroundColor: AppColors.cardBg(context),
+          shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+          builder: (ctx) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    prs.length == 1 ? 'New PR' : '${prs.length} New PRs',
+                    style: KiStyles.headlineMd(
+                        color: AppColors.accentContainer(ctx)),
+                  ),
+                  const SizedBox(height: 8),
+                  ...prs.map((name) => Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(name,
+                            style: KiStyles.body(
+                                color: AppColors.textPrimary(ctx))),
+                      )),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accentContainer(ctx),
+                        foregroundColor: AppColors.background(ctx),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      child: Text('Done',
+                          style: KiStyles.bodySemibold(
+                              color: AppColors.background(ctx))),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
+
+      // ignore: use_build_context_synchronously
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to save workout: $e')));
+            const SnackBar(content: Text('Could not save workout. Please try again.')));
       }
     }
   }
@@ -378,7 +487,23 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     final textTertiary = AppColors.textTertiary(context);
     final accentContainer = AppColors.accentContainer(context);
 
-    return Scaffold(
+    return PopScope(
+      canPop: _exercises.isEmpty,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final shouldDiscard = await showModalBottomSheet<bool>(
+          context: context,
+          backgroundColor: AppColors.cardBg(context),
+          shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+          builder: (ctx) => _buildDiscardSheet(ctx),
+        );
+        if (shouldDiscard == true && mounted) {
+          // ignore: use_build_context_synchronously
+          Navigator.pop(context);
+        }
+      },
+      child: Scaffold(
       backgroundColor: bg,
       body: SafeArea(
         child: Column(
@@ -390,7 +515,24 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                 children: [
                   IconButton(
                     icon: Icon(Icons.close, color: textSecondary),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () async {
+                      if (_exercises.isEmpty) {
+                        Navigator.pop(context);
+                        return;
+                      }
+                      final shouldDiscard = await showModalBottomSheet<bool>(
+                        context: context,
+                        backgroundColor: AppColors.cardBg(context),
+                        shape: const RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.vertical(top: Radius.circular(24))),
+                        builder: (ctx) => _buildDiscardSheet(ctx),
+                      );
+                      if (shouldDiscard == true && mounted) {
+                        // ignore: use_build_context_synchronously
+                        Navigator.pop(context);
+                      }
+                    },
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
                   ),
@@ -620,25 +762,23 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                                   );
                                 }),
                                 // + Add Set inline button
-                                const SizedBox(height: 6),
-                                GestureDetector(
-                                  onTap: () =>
-                                      _addSetInline(exIndex),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.add_circle_outline,
-                                          size: 15,
-                                          color: _accentColor(context)),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        sets.isEmpty
-                                            ? 'ADD FIRST SET'
-                                            : 'ADD SET',
-                                        style: KiStyles.label(
-                                            color: _accentColor(context)),
-                                      ),
-                                    ],
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () => _addSetInline(exIndex),
+                                    icon: Icon(Icons.add_circle_outline,
+                                        size: 15, color: _accentColor(context)),
+                                    label: Text(
+                                      sets.isEmpty ? 'ADD FIRST SET' : 'ADD SET',
+                                      style: KiStyles.label(color: _accentColor(context)),
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      side: BorderSide(color: _accentColor(context).withValues(alpha: 0.3)),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10)),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -707,6 +847,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }

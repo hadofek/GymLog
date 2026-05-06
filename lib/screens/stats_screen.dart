@@ -30,8 +30,8 @@ class _StatsScreenState extends State<StatsScreen> {
     });
   }
 
-  String _formatDuration(int seconds) {
-    if (seconds <= 0) return '0min';
+  String _fmtDuration(int seconds) {
+    if (seconds <= 0) return '0m';
     final h = seconds ~/ 3600;
     final m = (seconds % 3600) ~/ 60;
     if (h > 0) return '${h}h ${m}m';
@@ -43,11 +43,10 @@ class _StatsScreenState extends State<StatsScreen> {
   Widget build(BuildContext context) {
     final bg = AppColors.background(context);
     final textPrimary = AppColors.textPrimary(context);
+    final textSecondary = AppColors.textSecondary(context);
     final textTertiary = AppColors.textTertiary(context);
     final accentContainer = AppColors.accentContainer(context);
-
-    final totalWorkouts =
-        _stats != null ? _stats!['total_workouts'] as int : 0;
+    final border = AppColors.border(context);
 
     return Scaffold(
       backgroundColor: bg,
@@ -58,7 +57,6 @@ class _StatsScreenState extends State<StatsScreen> {
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(
                     child: Text(
@@ -73,27 +71,16 @@ class _StatsScreenState extends State<StatsScreen> {
                       ),
                     ),
                   ),
-                  if (!_loading && totalWorkouts > 0)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          '$totalWorkouts',
-                          style: KiStyles.headlineMd(color: textPrimary),
-                        ),
-                        Text('sessions',
-                            style: KiStyles.labelSm(color: textTertiary)),
-                      ],
-                    )
-                  else
-                    Text('ALL-TIME',
-                        style: KiStyles.label(color: textTertiary)),
+                  Text('STATS', style: KiStyles.label(color: textSecondary)),
                 ],
               ),
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: _loading ? _buildSkeleton(context) : _buildBody(),
+              child: _loading
+                  ? _buildSkeleton()
+                  : _buildBody(textPrimary, textSecondary, textTertiary,
+                      accentContainer, border),
             ),
           ],
         ),
@@ -101,37 +88,31 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildSkeleton(BuildContext context) {
-    const skeletonColor = Color(0xFF111111);
-
+  Widget _buildSkeleton() {
+    const c = Color(0xFF111111);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
       children: [
-        _SkeletonBox(height: 72, radius: 14, color: skeletonColor),
-        const SizedBox(height: 10),
-        Row(children: [
-          Expanded(
-              child: _SkeletonBox(height: 72, radius: 14, color: skeletonColor)),
-          const SizedBox(width: 10),
-          Expanded(
-              child: _SkeletonBox(height: 72, radius: 14, color: skeletonColor)),
-        ]),
-        const SizedBox(height: 10),
-        _SkeletonBox(height: 120, radius: 14, color: skeletonColor),
-        const SizedBox(height: 10),
-        _SkeletonBox(height: 140, radius: 14, color: skeletonColor),
+        _Bone(height: 48, color: c),
+        const SizedBox(height: 1),
+        _Bone(height: 120, color: c),
+        const SizedBox(height: 1),
+        _Bone(height: 140, color: c),
+        const SizedBox(height: 1),
+        _Bone(height: 100, color: c),
       ],
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildBody(
+    Color textPrimary,
+    Color textSecondary,
+    Color textTertiary,
+    Color accentContainer,
+    Color border,
+  ) {
     final stats = _stats!;
     final totalWorkouts = stats['total_workouts'] as int;
-    final textPrimary = AppColors.textPrimary(context);
-    final textSecondary = AppColors.textSecondary(context);
-    final textTertiary = AppColors.textTertiary(context);
-    final accentContainer = AppColors.accentContainer(context);
-    final isDark = AppColors.isDark(context);
 
     if (totalWorkouts == 0) {
       return Padding(
@@ -140,8 +121,7 @@ class _StatsScreenState extends State<StatsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('No data yet.',
-                style: KiStyles.headlineLg(color: textPrimary)),
+            Text('No data yet.', style: KiStyles.headlineLg(color: textPrimary)),
             const SizedBox(height: 6),
             Text('Log your first workout and stats will appear here.',
                 style: KiStyles.body(color: textTertiary)),
@@ -156,372 +136,277 @@ class _StatsScreenState extends State<StatsScreen> {
     final longestStreak = stats['longest_streak'] as int;
     final totalDistanceKm = stats['total_distance_km'] as double? ?? 0.0;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
-      children: [
+    final activeTypes = WorkoutTypes.all
+        .where((t) => (typeBreakdown[t] ?? 0) > 0)
+        .toList();
 
-        // ── Stats row: streak + total time ──
-        Row(children: [
-          Expanded(
-            child: _KoBentoCard(
-              isDark: isDark,
-              radius: 14,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+
+          // ── Stat strip ──
+          Divider(height: 1, thickness: 0.5, color: border),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('BEST STREAK',
-                      style: KiStyles.label(color: textTertiary)),
-                  const SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text('$longestStreak',
-                          style: KiStyles.headlineLg(color: textPrimary)),
-                      Padding(
-                        padding:
-                            const EdgeInsets.only(left: 4, bottom: 3),
-                        child: Text(
-                          longestStreak == 1 ? 'day' : 'days',
-                          style: KiStyles.label(color: textTertiary),
-                        ),
-                      ),
-                    ],
+                  _MicroStat(
+                    value: '$totalWorkouts',
+                    label: 'WORKOUTS',
+                    valueColor: textPrimary,
+                    labelColor: textTertiary,
                   ),
+                  _Divider(color: border),
+                  _MicroStat(
+                    value: '$longestStreak',
+                    label: 'BEST STREAK',
+                    valueColor: textPrimary,
+                    labelColor: textTertiary,
+                  ),
+                  _Divider(color: border),
+                  _MicroStat(
+                    value: _fmtDuration(totalSeconds),
+                    label: 'TOTAL TIME',
+                    valueColor: textPrimary,
+                    labelColor: textTertiary,
+                  ),
+                  if (totalDistanceKm > 0) ...[
+                    _Divider(color: border),
+                    _MicroStat(
+                      value: totalDistanceKm >= 1000
+                          ? '${(totalDistanceKm / 1000).toStringAsFixed(1)}k'
+                          : totalDistanceKm % 1 == 0
+                              ? '${totalDistanceKm.toInt()}'
+                              : totalDistanceKm.toStringAsFixed(1),
+                      label: 'KM RUN',
+                      valueColor: textPrimary,
+                      labelColor: textTertiary,
+                    ),
+                  ],
                 ],
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _KoBentoCard(
-              isDark: isDark,
-              radius: 14,
+
+          // ── Training split ──
+          if (activeTypes.isNotEmpty) ...[
+            Divider(height: 1, thickness: 0.5, color: border),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 20, 0, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('TOTAL TIME',
+                  Text('TRAINING SPLIT',
                       style: KiStyles.label(color: textTertiary)),
-                  const SizedBox(height: 8),
-                  Text(_formatDuration(totalSeconds),
-                      style: KiStyles.headlineLg(color: textPrimary)),
-                ],
-              ),
-            ),
-          ),
-        ]),
+                  const SizedBox(height: 14),
 
-        // ── Distance card (cardio users only) ──
-        if (totalDistanceKm > 0) ...[
-          const SizedBox(height: 10),
-          _KoBentoCard(
-            isDark: isDark,
-            radius: 14,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('TOTAL DISTANCE',
-                          style: KiStyles.label(color: textTertiary)),
-                      const SizedBox(height: 8),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                  // Stacked color bar
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: SizedBox(
+                      height: 6,
+                      child: Row(
+                        children: activeTypes.map((type) {
+                          final count = typeBreakdown[type]!;
+                          return Expanded(
+                            flex: count,
+                            child: Container(
+                              color: WorkoutTypes.color(type, context),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 18),
+
+                  // Legend rows
+                  ...activeTypes.map((type) {
+                    final count = typeBreakdown[type]!;
+                    final pct = (count / totalWorkouts * 100).round();
+                    final typeColor = WorkoutTypes.color(type, context);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 11),
+                      child: Row(
                         children: [
-                          Text(
-                            totalDistanceKm >= 1000
-                                ? '${(totalDistanceKm / 1000).toStringAsFixed(1)}k'
-                                : totalDistanceKm % 1 == 0
-                                    ? '${totalDistanceKm.toInt()}'
-                                    : totalDistanceKm.toStringAsFixed(1),
-                            style: KiStyles.headlineLg(color: textPrimary),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(left: 4, bottom: 3),
-                            child: Text('km',
-                                style: KiStyles.label(color: textTertiary)),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.straighten_rounded,
-                    color: textTertiary.withValues(alpha: 0.4), size: 32),
-              ],
-            ),
-          ),
-        ],
-
-        // ── Top exercises podium ──
-        if (topExercises.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          _KoBentoCard(
-            isDark: isDark,
-            radius: 18,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('TOP EXERCISES',
-                    style: KiStyles.label(color: textTertiary)),
-                const SizedBox(height: 16),
-
-                // Podium row (center=1st, left=2nd, right=3rd)
-                if (topExercises.length >= 2)
-                  _PodiumRow(
-                    exercises: topExercises,
-                    accentContainer: accentContainer,
-                    textPrimary: textPrimary,
-                    textTertiary: textTertiary,
-                    isDark: isDark,
-                  )
-                else
-                  Row(
-                    children: topExercises.asMap().entries.map((e) {
-                      final colors = [
-                        accentContainer,
-                        textSecondary,
-                        textTertiary,
-                      ];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(children: [
-                          Text('${e.key + 1}.',
-                              style: KiStyles.label(
-                                  color: colors[e.key.clamp(0, 2)])),
-                          const SizedBox(width: 8),
-                          Text(e.value,
-                              style:
-                                  KiStyles.bodySemibold(color: textPrimary)),
-                        ]),
-                      );
-                    }).toList(),
-                  ),
-              ],
-            ),
-          ),
-        ],
-
-        // ── Workout type distribution ──
-        if (typeBreakdown.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          _KoBentoCard(
-            isDark: isDark,
-            radius: 12,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('TRAINING SPLIT',
-                    style: KiStyles.label(color: textTertiary)),
-                const SizedBox(height: 16),
-                ...WorkoutTypes.all.where((t) => (typeBreakdown[t] ?? 0) > 0).map((type) {
-                  final count = typeBreakdown[type] ?? 0;
-                  final pct =
-                      totalWorkouts > 0 ? count / totalWorkouts : 0.0;
-                  final typeColor = WorkoutTypes.color(type, context);
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: Column(
-                      children: [
-                        Row(children: [
                           Container(
                             width: 8, height: 8,
                             decoration: BoxDecoration(
-                              color: typeColor, shape: BoxShape.circle),
+                                color: typeColor, shape: BoxShape.circle),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 10),
                           Expanded(
+                            child: Text(WorkoutTypes.label(type),
+                                style: KiStyles.body(color: textPrimary)),
+                          ),
+                          Text('$pct%',
+                              style: KiStyles.bodySemibold(color: textPrimary)),
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            width: 32,
                             child: Text(
-                              WorkoutTypes.label(type),
-                              style: KiStyles.bodySemibold(
-                                  color: textPrimary),
+                              '$count',
+                              textAlign: TextAlign.right,
+                              style: KiStyles.label(color: textTertiary),
                             ),
                           ),
-                          Text(
-                            '${(pct * 100).round()}%',
-                            style: KiStyles.label(color: textSecondary),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '$count',
-                            style: KiStyles.label(color: textTertiary),
-                          ),
-                        ]),
-                        const SizedBox(height: 6),
-                        // Flat-end progress bar (KO spec)
-                        SizedBox(
-                          height: 4,
-                          child: Stack(
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
+
+          // ── Top exercises ──
+          if (topExercises.isNotEmpty) ...[
+            Divider(height: 1, thickness: 0.5, color: border),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 20, 0, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('TOP EXERCISES',
+                      style: KiStyles.label(color: textTertiary)),
+                  const SizedBox(height: 4),
+                  ...topExercises.asMap().entries.map((entry) {
+                    final rank = entry.key + 1;
+                    final name = entry.value;
+                    final isFirst = rank == 1;
+                    return Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          child: Row(
                             children: [
-                              Container(
-                                width: double.infinity,
-                                decoration: BoxDecoration(
-                                  color: typeColor.withValues(alpha: 0.12),
+                              SizedBox(
+                                width: 28,
+                                child: Text(
+                                  rank.toString().padLeft(2, '0'),
+                                  style: KiStyles.labelSm(
+                                      color: isFirst
+                                          ? accentContainer
+                                          : textTertiary),
                                 ),
                               ),
-                              FractionallySizedBox(
-                                widthFactor: pct,
-                                child: Container(color: typeColor),
+                              Expanded(
+                                child: Text(
+                                  name,
+                                  style: isFirst
+                                      ? KiStyles.bodySemibold(color: textPrimary)
+                                      : KiStyles.body(color: textPrimary),
+                                ),
                               ),
+                              if (isFirst)
+                                Text('★',
+                                    style: TextStyle(
+                                        color: accentContainer, fontSize: 11)),
                             ],
                           ),
                         ),
+                        if (rank < topExercises.length)
+                          Divider(
+                              height: 1,
+                              thickness: 0.5,
+                              color: AppColors.divider(context)),
+                      ],
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
+
+          // ── Muscle map ──
+          Divider(height: 1, thickness: 0.5, color: border),
+          GestureDetector(
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const MuscleMapScreen())),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('MUSCLE MAP',
+                            style: KiStyles.label(color: textTertiary)),
+                        const SizedBox(height: 4),
+                        Text('See which muscles you\'ve been hitting',
+                            style: KiStyles.body(color: textPrimary)),
                       ],
                     ),
-                  );
-                }),
-              ],
-            ),
-          ),
-        ],
-
-        // ── Muscle map entry ──
-        const SizedBox(height: 10),
-        GestureDetector(
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const MuscleMapScreen())),
-          child: _KoBentoCard(
-            isDark: isDark,
-            radius: 14,
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('MUSCLE MAP',
-                          style: KiStyles.label(color: textTertiary)),
-                      const SizedBox(height: 8),
-                      Text('See which muscles\nyou\'ve been hitting',
-                          style: KiStyles.bodySemibold(color: textPrimary)),
-                    ],
                   ),
-                ),
-                Icon(Icons.chevron_right_rounded,
-                    color: textTertiary, size: 22),
-              ],
+                  Icon(Icons.chevron_right_rounded,
+                      color: textTertiary, size: 20),
+                ],
+              ),
             ),
           ),
-        ),
+          Divider(height: 1, thickness: 0.5, color: border),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+class _MicroStat extends StatelessWidget {
+  final String value;
+  final String label;
+  final Color valueColor;
+  final Color labelColor;
+
+  const _MicroStat({
+    required this.value,
+    required this.label,
+    required this.valueColor,
+    required this.labelColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(value, style: KiStyles.headlineMd(color: valueColor)),
+        const SizedBox(height: 1),
+        Text(label, style: KiStyles.labelSm(color: labelColor)),
       ],
     );
   }
 }
 
-// ── Podium widget ──────────────────────────────────────────────────────────────
-class _PodiumRow extends StatelessWidget {
-  final List<String> exercises;
-  final Color accentContainer;
-  final Color textPrimary;
-  final Color textTertiary;
-  final bool isDark;
-
-  const _PodiumRow({
-    required this.exercises,
-    required this.accentContainer,
-    required this.textPrimary,
-    required this.textTertiary,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Order: 2nd (left), 1st (center-raised), 3rd (right)
-    final order = [1, 0, exercises.length > 2 ? 2 : -1];
-    final heights = [56.0, 72.0, 44.0];
-    final colors = [
-      AppColors.textSecondary(context),
-      accentContainer,
-      AppColors.textTertiary(context),
-    ];
-    final labels = ['2ND', '1ST', '3RD'];
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: List.generate(3, (col) {
-        final idx = order[col];
-        if (idx < 0 || idx >= exercises.length) {
-          return const Expanded(child: SizedBox());
-        }
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(right: col < 2 ? 8 : 0),
-            child: Column(
-              children: [
-                Text(
-                  exercises[idx],
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: KiStyles.labelSm(color: textPrimary),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  height: heights[col],
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: colors[col], width: 1),
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(labels[col],
-                        style: KiStyles.label(color: colors[col])),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }),
-    );
-  }
-}
-
-// ── Flat section card (no box) ────────────────────────────────────────────────
-class _KoBentoCard extends StatelessWidget {
-  final Widget child;
-  final bool isDark;
-  final double radius;
-
-  const _KoBentoCard({
-    required this.child,
-    required this.isDark,
-    this.radius = 16,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: child,
-      ),
-    );
-  }
-}
-
-// ── Skeleton placeholder box ───────────────────────────────────────────────────
-class _SkeletonBox extends StatelessWidget {
-  final double height;
-  final double radius;
+class _Divider extends StatelessWidget {
   final Color color;
+  const _Divider({required this.color});
 
-  const _SkeletonBox({
-    required this.height,
-    required this.color,
-    this.radius = 16,
-  });
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Container(width: 1, height: 30, color: color),
+    );
+  }
+}
+
+class _Bone extends StatelessWidget {
+  final double height;
+  final Color color;
+  const _Bone({required this.height, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      height: height,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(radius),
-      ),
-    );
+        width: double.infinity, height: height, color: color);
   }
 }

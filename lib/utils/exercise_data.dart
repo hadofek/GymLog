@@ -95,4 +95,16 @@ class ExerciseData {
         .where((name) => seen.add(name.toLowerCase()))
         .toList();
   }
+
+  /// Returns the muscle group category for a known exercise, or null if not found.
+  /// Category names match the keys in [full] (e.g. 'Chest', 'Back', 'Legs').
+  static String? muscleGroupFor(String exerciseName) {
+    final lower = exerciseName.toLowerCase().trim();
+    for (final entry in full.entries) {
+      if (entry.value.any((e) => e.toLowerCase() == lower)) {
+        return entry.key;
+      }
+    }
+    return null;
+  }
 }

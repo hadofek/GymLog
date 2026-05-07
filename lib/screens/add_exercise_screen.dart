@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/exercise_data.dart';
@@ -34,6 +35,11 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   bool _isWeightedExercise = false;
   double _exercisePR = 0;
 
+  // ── Rest timer ──
+  final Stopwatch _restStopwatch = Stopwatch();
+  Timer? _restTicker;
+  bool _restActive = false;
+
   Map<String, List<String>> get _currentLibrary =>
       widget.workoutType == WorkoutTypes.bodyweight
           ? ExerciseData.bodyweight
@@ -49,8 +55,14 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
 
   Future<void> _pickExercise(String name) async {
     final last = await DBHelper.getLastSets(name);
-    final isBw = await DBHelper.isExerciseBodyweight(name);
+    bool isBw = await DBHelper.isExerciseBodyweight(name);
     final pr = await DBHelper.getMaxWeightForExercise(name);
+    // If this is a bodyweight workout, flag the exercise permanently so the
+    // history screen can show reps progress instead of weight progress.
+    if (!isBw && widget.workoutType == WorkoutTypes.bodyweight) {
+      isBw = true;
+      await DBHelper.setExerciseBodyweight(name, true);
+    }
     if (!mounted) return;
     setState(() {
       _selectedExercise = name;
@@ -77,6 +89,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
         _sets.add({'weight': 0.0, 'reps': r, 'bodyweight': true});
         _repsController.clear();
       });
+      _startRest();
       return;
     }
 
@@ -97,6 +110,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
           _weightController.clear();
           _repsController.clear();
         });
+        _startRest();
         return;
       }
       final name = _selectedExercise ?? '';
@@ -109,6 +123,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
             _weightController.clear();
             _repsController.clear();
           });
+          _startRest();
           return;
         }
       }
@@ -137,6 +152,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                   _weightController.clear();
                   _repsController.clear();
                 });
+                _startRest();
                 if (exerciseName.isNotEmpty) {
                   await DBHelper.setExerciseBodyweight(exerciseName, true);
                 }
@@ -156,16 +172,17 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
       _weightController.clear();
       _repsController.clear();
     });
+    _startRest();
     if (isPR && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(children: [
-            Icon(Icons.emoji_events_rounded, color: Color(0xFFE8E8E8), size: 20),
+          content: Row(children: const [
+            Icon(Icons.emoji_events_rounded, color: AppColors.gold, size: 20),
             SizedBox(width: 8),
             Text('New Personal Record!',
                 style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
           ]),
-          backgroundColor: const Color(0xFF111111),
+          backgroundColor: AppColors.cardBg(context),
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -180,8 +197,32 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
     Navigator.pop(context, {'name': _selectedExercise!, 'sets': _sets});
   }
 
+  void _startRest() {
+    _restStopwatch..reset()..start();
+    _restTicker?.cancel();
+    _restTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+    if (mounted) setState(() => _restActive = true);
+  }
+
+  void _dismissRest() {
+    _restTicker?.cancel();
+    _restStopwatch.stop();
+    if (mounted) setState(() => _restActive = false);
+  }
+
+  String get _restDisplay {
+    final e = _restStopwatch.elapsed;
+    final m = e.inMinutes.remainder(60).toString();
+    final s = e.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
   @override
   void dispose() {
+    _restTicker?.cancel();
+    _restStopwatch.stop();
     _searchController.dispose();
     _weightController.dispose();
     _repsController.dispose();
@@ -334,7 +375,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                     child: Text(
                       cat,
                       style: KiStyles.labelSm(
-                          color: selected ? const Color(0xFF000000) : textPrimary),
+                          color: selected ? AppColors.primaryBtnFg(context) : textPrimary),
                     ),
                   ),
                 ),
@@ -664,6 +705,48 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
           ),
         ),
 
+        // ── Rest timer ──
+        if (_restActive) ...[
+          Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
+          Container(
+            color: AppColors.liveGreen.withValues(alpha: 0.05),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 7, height: 7,
+                  decoration: const BoxDecoration(
+                    color: AppColors.liveGreen, shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text('REST', style: KiStyles.labelSm(color: AppColors.liveGreen)),
+                const SizedBox(width: 12),
+                Text(
+                  _restDisplay,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.liveGreen,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: _dismissRest,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Icon(Icons.close_rounded,
+                        size: 16, color: AppColors.textTertiary(context)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+
         // ── Done bar ──
         if (_sets.isNotEmpty)
           SafeArea(
@@ -676,7 +759,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                   onPressed: _done,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: accentContainer,
-                    foregroundColor: const Color(0xFF000000),
+                    foregroundColor: AppColors.primaryBtnFg(context),
                     minimumSize: const Size(double.infinity, 52),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14)),

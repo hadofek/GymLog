@@ -20,6 +20,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   final _heightController = TextEditingController();
   String? _imagePath;
   bool _saving = false;
+  bool _nameError = false;
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
   late Animation<Offset> _slideAnim;
@@ -123,27 +124,29 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
               },
             ),
             if (_imagePath != null)
-              ListTile(
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color:
-                        const Color(0xFFE53935).withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
+              Builder(builder: (ctx2) {
+                final destructive = AppColors.destructive(ctx2);
+                return ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: destructive.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.delete_outline,
+                        color: destructive, size: 20),
                   ),
-                  child: const Icon(Icons.delete_outline,
-                      color: Color(0xFFE53935), size: 20),
-                ),
-                title: const Text('Remove photo',
-                    style: TextStyle(
-                        color: Color(0xFFE53935),
-                        fontWeight: FontWeight.w500)),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  setState(() => _imagePath = null);
-                },
-              ),
+                  title: Text('Remove photo',
+                      style: TextStyle(
+                          color: destructive,
+                          fontWeight: FontWeight.w500)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    setState(() => _imagePath = null);
+                  },
+                );
+              }),
             const SizedBox(height: 8),
           ],
         ),
@@ -154,9 +157,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter your name')),
-      );
+      setState(() => _nameError = true);
       return;
     }
     setState(() => _saving = true);
@@ -183,7 +184,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
       if (mounted) {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save: $e')),
+          const SnackBar(content: Text('Something went wrong. Please try again.')),
         );
       }
     }
@@ -288,8 +289,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                               color: ac,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.camera_alt,
-                                color: Color(0xFF000000), size: 17),
+                            child: Icon(Icons.camera_alt,
+                                color: AppColors.background(context), size: 17),
                           );
                         }),
                       ],
@@ -335,7 +336,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                           hintStyle:
                               TextStyle(color: AppColors.hintText(context)),
                           prefixIcon: Icon(Icons.person_outline,
-                              color: textSecondary),
+                              color: _nameError ? AppColors.error(context) : textSecondary),
+                          errorText: _nameError ? 'Name is required' : null,
                           filled: true,
                           fillColor: AppColors.inputFill(context),
                           contentPadding: const EdgeInsets.symmetric(
@@ -346,15 +348,24 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide:
-                                BorderSide(color: border, width: 1.5),
+                            borderSide: BorderSide(
+                                color: _nameError ? AppColors.error(context) : border, width: 1.5),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
                             borderSide: BorderSide(
-                                color: textPrimary, width: 2),
+                                color: _nameError ? AppColors.error(context) : textPrimary, width: 2),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(color: AppColors.error(context), width: 1.5),
+                          ),
+                          focusedErrorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(color: AppColors.error(context), width: 2),
                           ),
                         ),
+                        onChanged: (_) { if (_nameError) setState(() => _nameError = false); },
                         onSubmitted: (_) => _save(),
                       ),
                     ],
@@ -366,14 +377,26 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'HEIGHT (CM)',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                          color: textSecondary,
-                          letterSpacing: 1.2,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            'HEIGHT (CM)',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11,
+                              color: textSecondary,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '— used for BMI in body measurements',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: textSecondary.withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 10),
                       TextField(

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'package:gymlog/db/db_helper.dart';
+import 'package:gymlog/screens/muscle_map_screen.dart';
 import 'package:gymlog/screens/profile_setup_screen.dart';
 import 'package:gymlog/screens/month_workouts_screen.dart';
 import 'package:gymlog/screens/log_workout_screen.dart';
@@ -9,7 +11,7 @@ import 'package:gymlog/screens/cardio_log_screen.dart';
 import 'package:gymlog/screens/flexibility_log_screen.dart';
 import 'package:gymlog/screens/templates_screen.dart';
 import 'package:gymlog/screens/workout_detail_screen.dart';
-import 'package:gymlog/screens/body_measurements_screen.dart';
+import 'package:gymlog/utils/body_svg_paths.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
@@ -27,7 +29,8 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _userImage;
   DateTime _currentMonth = DateTime(DateTime.now().year, DateTime.now().month);
   int _weeklyGoal = 3;
-  double? _latestWeight;
+  Map<String, int> _muscleCounts = {};
+  bool _showWelcomeBanner = false;
 
   Map<int, double> get _workedOutDays {
     final result = <int, double>{};
@@ -77,24 +80,87 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _load() async {
+    final since30 = DateTime.now().subtract(const Duration(days: 30));
     final results = await Future.wait([
       DBHelper.getWorkouts(),
-      DBHelper.getMeasurements(),
       SharedPreferences.getInstance(),
+      DBHelper.getMuscleGroupCounts(since: since30),
     ]);
     final w = results[0] as List<Map<String, dynamic>>;
-    final measurements = results[1] as List<Map<String, dynamic>>;
-    final prefs = results[2] as SharedPreferences;
-    final latestWeight = measurements.isNotEmpty
-        ? (measurements.first['weight_kg'] as num?)?.toDouble()
-        : null;
+    final prefs = results[1] as SharedPreferences;
+    final rawCounts = results[2] as Map<String, int>;
+    final normalized = <String, int>{};
+    for (final e in rawCounts.entries) {
+      final key = _normalizeGroup(e.key);
+      normalized[key] = (normalized[key] ?? 0) + e.value;
+    }
+    final seenWelcome = prefs.getBool('seen_welcome') ?? false;
     setState(() {
       _workouts = w;
       _userName = prefs.getString('user_name') ?? '';
       _userImage = prefs.getString('user_image');
       _weeklyGoal = prefs.getInt('weekly_goal') ?? 3;
-      _latestWeight = latestWeight;
+      _muscleCounts = normalized;
+      _showWelcomeBanner = !seenWelcome && w.isEmpty;
     });
+  }
+
+  Future<void> _dismissWelcomeBanner() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('seen_welcome', true);
+    if (mounted) setState(() => _showWelcomeBanner = false);
+  }
+
+  String _normalizeGroup(String name) {
+    final s = name.toLowerCase().trim();
+    if (s.contains('chest') || s.contains('pec')) return 'chest';
+    if (s.contains('back') || s.contains('lat')) return 'back';
+    if (s.contains('shoulder') || s.contains('delt')) return 'shoulders';
+    if (s.contains('bicep')) return 'biceps';
+    if (s.contains('tricep')) return 'triceps';
+    if (s.contains('core') || s.contains('abs') || s.contains('abdom')) return 'core';
+    if (s.contains('quad') || s == 'legs') return 'quads';
+    if (s.contains('hamstring')) return 'hamstrings';
+    if (s.contains('glute') || s.contains('butt') || s.contains('hip')) return 'glutes';
+    if (s.contains('calf') || s.contains('calves')) return 'calves';
+    if (s.contains('trap')) return 'traps';
+    if (s.contains('forearm')) return 'forearms';
+    return s;
+  }
+
+  Future<void> _repeatLastWorkout() async {
+    final last = _lastWorkout!;
+    final type = last['type'] as String? ?? WorkoutTypes.weighted;
+    if (type == WorkoutTypes.cardio) {
+      await Navigator.push(context, fadeSlideRoute(CardioLogScreen(initialDate: DateTime.now())));
+      _load();
+      return;
+    }
+    if (type == WorkoutTypes.flexibility) {
+      await Navigator.push(context, fadeSlideRoute(FlexibilityLogScreen(initialDate: DateTime.now())));
+      _load();
+      return;
+    }
+    final sets = await DBHelper.getSetsForWorkout(last['id'] as int);
+    final seen = <String>{};
+    final exerciseOrder = <String>[];
+    for (final s in sets) {
+      final name = s['exercise_name'] as String;
+      if (seen.add(name)) exerciseOrder.add(name);
+    }
+    final initialExercises = exerciseOrder
+        .map((name) => {'name': name, 'sets': <Map<String, dynamic>>[]})
+        .toList();
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      fadeSlideRoute(LogWorkoutScreen(
+        initialDate: DateTime.now(),
+        type: type,
+        initialExercises: initialExercises,
+      )),
+    );
+    _load();
   }
 
   Future<void> _startWorkout(DateTime date) async {
@@ -107,6 +173,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final type = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: cardBg,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => SafeArea(
@@ -138,7 +205,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: WorkoutTypes.icon(t),
                     iconColor: WorkoutTypes.color(t, ctx),
                     title: WorkoutTypes.label(t),
+                    subtitle: _workoutTypeSubtitle(t),
                     textColor: textPrimary,
+                    subtitleColor: textSecondary,
                     onTap: () => Navigator.pop(ctx, t),
                   )),
               Divider(height: 16, color: borderColor),
@@ -172,6 +241,16 @@ class _HomeScreenState extends State<HomeScreen> {
           fadeSlideRoute(LogWorkoutScreen(initialDate: date, type: type)));
     }
     _load();
+  }
+
+  String _workoutTypeSubtitle(String type) {
+    switch (type) {
+      case WorkoutTypes.weighted: return 'Barbell, dumbbell, machines';
+      case WorkoutTypes.bodyweight: return 'Push-ups, pull-ups, dips';
+      case WorkoutTypes.cardio: return 'Running, cycling, rowing';
+      case WorkoutTypes.flexibility: return 'Yoga, stretching, mobility';
+      default: return '';
+    }
   }
 
   void _prevMonth() => setState(() =>
@@ -361,24 +440,41 @@ class _HomeScreenState extends State<HomeScreen> {
                   Expanded(
                     child: Text(
                       'GYMLOG',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 20,
                         fontWeight: FontWeight.w900,
                         fontStyle: FontStyle.italic,
                         letterSpacing: 3,
-                        color: Color(0xFFE8E8E8),
+                        color: accentContainer,
                       ),
                     ),
                   ),
                   // Right: templates
-                  GestureDetector(
-                    onTap: () => Navigator.push(
-                        context, fadeSlideRoute(const TemplatesScreen())),
-                    child: Padding(
-                      padding: const EdgeInsets.all(6),
-                      child: Icon(Icons.bookmark_outline_rounded,
-                          color: textTertiary, size: 22),
+                  Semantics(
+                    label: 'Templates',
+                    button: true,
+                    child: GestureDetector(
+                      onTap: () => Navigator.push(
+                          context, fadeSlideRoute(const TemplatesScreen())),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(11, 8, 11, 8),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.bookmark_outline_rounded,
+                                color: textTertiary, size: 20),
+                            const SizedBox(height: 2),
+                            Text('TEMPLATES',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w700,
+                                  color: textTertiary,
+                                  letterSpacing: 0.5,
+                                )),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -397,41 +493,49 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     // ── Compact stat strip ──
                     Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
+                    Stack(
+                      children: [
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.fromLTRB(4, 16, 4, 16),
+                      padding: const EdgeInsets.fromLTRB(4, 16, 40, 16),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          GestureDetector(
-                            onTap: _showWeeklyGoalPicker,
-                            child: _MicroStat(
-                              value: '$_workoutsThisWeek/$_weeklyGoal',
-                              label: 'THIS WEEK',
-                              valueColor: _workoutsThisWeek >= _weeklyGoal
-                                  ? accentContainer
-                                  : textPrimary,
-                              labelColor: textTertiary,
+                          Semantics(
+                            label: 'Weekly goal: $_workoutsThisWeek of $_weeklyGoal workouts. Tap to change goal.',
+                            button: true,
+                            child: GestureDetector(
+                              onTap: _showWeeklyGoalPicker,
+                              child: _MicroStat(
+                                value: '$_workoutsThisWeek/$_weeklyGoal',
+                                label: 'THIS WEEK',
+                                hint: 'tap to set goal',
+                                primary: true,
+                                valueColor: _workoutsThisWeek >= _weeklyGoal
+                                    ? accentContainer
+                                    : textPrimary,
+                                labelColor: textTertiary,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 20),
                           Container(
                             width: 1,
-                            height: 30,
+                            height: 34,
                             color: AppColors.border(context),
                           ),
                           const SizedBox(width: 20),
                           _MicroStat(
                             value: '${monthWorkouts.length}',
                             label: _monthLabel.split(' ').first.toUpperCase(),
-                            valueColor: accentContainer,
+                            valueColor: textPrimary,
                             labelColor: textTertiary,
                           ),
                           if (totalMonthSeconds > 0) ...[
                             const SizedBox(width: 20),
                             Container(
                               width: 1,
-                              height: 30,
+                              height: 34,
                               color: AppColors.border(context),
                             ),
                             const SizedBox(width: 20),
@@ -446,42 +550,104 @@ class _HomeScreenState extends State<HomeScreen> {
                             const SizedBox(width: 20),
                             Container(
                               width: 1,
-                              height: 30,
+                              height: 34,
                               color: AppColors.border(context),
                             ),
                             const SizedBox(width: 20),
                             _MicroStat(
                               value: '$streak',
                               label: 'STREAK',
-                              valueColor: accentContainer,
+                              valueColor: textPrimary,
                               labelColor: textTertiary,
-                            ),
-                          ],
-                          if (_latestWeight != null) ...[
-                            const SizedBox(width: 20),
-                            Container(
-                              width: 1,
-                              height: 30,
-                              color: AppColors.border(context),
-                            ),
-                            const SizedBox(width: 20),
-                            GestureDetector(
-                              onTap: () async {
-                                await Navigator.push(context,
-                                    fadeSlideRoute(const BodyMeasurementsScreen()));
-                                _load();
-                              },
-                              child: _MicroStat(
-                                value: '${_latestWeight!.toStringAsFixed(1)}kg',
-                                label: 'WEIGHT',
-                                valueColor: textPrimary,
-                                labelColor: textTertiary,
-                              ),
                             ),
                           ],
                         ],
                       ),
                     ),
+                    Positioned(
+                      right: 0, top: 0, bottom: 0,
+                      child: IgnorePointer(
+                        child: Container(
+                          width: 40,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [bg.withValues(alpha: 0), bg],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    ], // Stack children
+                    ), // Stack
+
+                    // ── Welcome banner (first-run only) ──
+                    if (_showWelcomeBanner) ...[
+                      Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(4, 16, 4, 16),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: accentContainer.withValues(alpha: 0.07),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: accentContainer.withValues(alpha: 0.18)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(
+                                    'Welcome${_userName.isNotEmpty ? ', ${_userName.split(' ').first}' : ''}.',
+                                    style: KiStyles.headlineMd(color: textPrimary),
+                                  ),
+                                  const Spacer(),
+                                  GestureDetector(
+                                    onTap: _dismissWelcomeBanner,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(4),
+                                      child: Icon(Icons.close_rounded, size: 16, color: textTertiary),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Tap any day on the calendar to log your first workout. Your stats, streaks, and muscle map will fill in as you train.',
+                                style: KiStyles.body(color: textSecondary),
+                              ),
+                              const SizedBox(height: 14),
+                              Row(
+                                children: [
+                                  for (final item in [
+                                    (Icons.calendar_today_rounded, 'Log a workout'),
+                                    (Icons.bar_chart_rounded, 'Track progress'),
+                                    (Icons.local_fire_department_rounded, 'Build streaks'),
+                                  ]) ...[
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(item.$1, size: 13, color: accentContainer.withValues(alpha: 0.6)),
+                                        const SizedBox(width: 4),
+                                        Text(item.$2,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w500,
+                                              color: textTertiary,
+                                            )),
+                                      ],
+                                    ),
+                                    const SizedBox(width: 12),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
 
                     // ── Last workout line ──
                     if (_lastWorkout != null) ...[
@@ -536,6 +702,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ],
                               const Spacer(),
+                              Semantics(
+                                label: 'Repeat last workout',
+                                button: true,
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: _repeatLastWorkout,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                    child: Text(
+                                      'REPEAT',
+                                      style: KiStyles.labelSm(color: accentContainer),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
                               Icon(Icons.arrow_forward_rounded,
                                   color: textTertiary, size: 14),
                             ],
@@ -547,7 +729,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     // ── Calendar card ──
                     Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
                     _KoBentoCard(
-                      radius: 20,
                       padding: const EdgeInsets.fromLTRB(4, 16, 4, 16),
                       child: Column(
                         children: [
@@ -555,26 +736,35 @@ class _HomeScreenState extends State<HomeScreen> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              GestureDetector(
-                                onTap: _prevMonth,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(4),
-                                  child: Icon(Icons.chevron_left,
-                                      color: textSecondary, size: 20),
+                              Semantics(
+                                label: 'Previous month',
+                                button: true,
+                                child: GestureDetector(
+                                  onTap: _prevMonth,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Icon(Icons.chevron_left,
+                                        color: textSecondary, size: 20),
+                                  ),
                                 ),
                               ),
                               Text(_monthLabel,
                                   style: KiStyles.bodySemibold(
                                       color: textPrimary)),
-                              GestureDetector(
-                                onTap: isCurrentMonth ? null : _nextMonth,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(4),
-                                  child: Icon(Icons.chevron_right,
-                                      color: isCurrentMonth
-                                          ? textTertiary
-                                          : textSecondary,
-                                      size: 20),
+                              Semantics(
+                                label: 'Next month',
+                                button: true,
+                                enabled: !isCurrentMonth,
+                                child: GestureDetector(
+                                  onTap: isCurrentMonth ? null : _nextMonth,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12),
+                                    child: Icon(Icons.chevron_right,
+                                        color: isCurrentMonth
+                                            ? textTertiary
+                                            : textSecondary,
+                                        size: 20),
+                                  ),
                                 ),
                               ),
                             ],
@@ -656,7 +846,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                 ? FontWeight.w700
                                                 : FontWeight.w400,
                                             color: isToday
-                                                ? const Color(0xFF000000)
+                                                ? bg
                                                 : hasWorkout
                                                     ? textPrimary
                                                     : isFuture
@@ -689,6 +879,73 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
 
+                    // ── Compact muscle map ──
+                    Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
+                    Semantics(
+                      label: 'Muscle activity map. Tap to view details.',
+                      button: true,
+                      child: GestureDetector(
+                        onTap: () async {
+                          await Navigator.push(context, fadeSlideRoute(const MuscleMapScreen()));
+                          _load();
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(4, 14, 4, 14),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text('MUSCLES', style: KiStyles.label(color: textTertiary)),
+                                  const SizedBox(width: 6),
+                                  Text('· LAST 30 DAYS', style: KiStyles.labelSm(color: textTertiary)),
+                                  const Spacer(),
+                                  Icon(Icons.chevron_right, color: textTertiary, size: 16),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                height: 160,
+                                width: double.infinity,
+                                child: _muscleCounts.isEmpty
+                                    ? Center(
+                                        child: Text(
+                                          'Log a workout to track your muscle activity here.',
+                                          style: KiStyles.labelSm(color: textTertiary),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      )
+                                    : SvgPicture.string(
+                                        buildBodySvg(
+                                          counts: _muscleCounts,
+                                          totalCount: _muscleCounts.values.fold(0, (a, b) => a + b),
+                                          isDark: AppColors.isDark(context),
+                                        ),
+                                        fit: BoxFit.contain,
+                                      ),
+                              ),
+                              if (_muscleCounts.isNotEmpty) ...[
+                                const SizedBox(height: 10),
+                                Row(
+                                  children: [
+                                    _ColorDot(color: const Color(0xFF2868D4)),
+                                    const SizedBox(width: 4),
+                                    _ColorDot(color: const Color(0xFF7238CC)),
+                                    const SizedBox(width: 4),
+                                    _ColorDot(color: const Color(0xFFCC2E7A)),
+                                    const SizedBox(width: 4),
+                                    _ColorDot(color: const Color(0xFFD83638)),
+                                    const SizedBox(width: 6),
+                                    Text('fewer → more sessions per muscle', style: KiStyles.labelSm(color: textTertiary)),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
                     // ── Empty state ──
                     if (_workouts.isEmpty) ...[
                       const SizedBox(height: 10),
@@ -703,8 +960,33 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Tap any day in the calendar or use New Workout.',
+                              'Tap New Workout below, or tap any calendar day to log a workout on that date.',
                               style: KiStyles.body(color: textTertiary),
+                            ),
+                            const SizedBox(height: 16),
+                            // ── Calendar legend ──
+                            Row(
+                              children: [
+                                Container(
+                                  width: 8, height: 8,
+                                  decoration: BoxDecoration(
+                                    color: accentContainer,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text('Workout logged', style: KiStyles.labelSm(color: textTertiary)),
+                                const SizedBox(width: 16),
+                                Container(
+                                  width: 8, height: 8,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: accentContainer, width: 1.5),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text('Today', style: KiStyles.labelSm(color: textTertiary)),
+                              ],
                             ),
                           ],
                         ),
@@ -723,17 +1005,16 @@ class _HomeScreenState extends State<HomeScreen> {
             bottom: MediaQuery.of(context).viewPadding.bottom + 4),
         child: FloatingActionButton.extended(
           onPressed: () => _startWorkout(DateTime.now()),
-          backgroundColor: const Color(0xFF000000),
-          foregroundColor: const Color(0xFFE8E8E8),
+          backgroundColor: AppColors.accentContainer(context),
+          foregroundColor: AppColors.primaryBtnFg(context),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(color: Color(0xFFE8E8E8), width: 1),
           ),
           icon: const Icon(Icons.add, size: 22),
           label: Text(
             'New Workout',
-            style: KiStyles.bodySemibold(color: const Color(0xFFE8E8E8)),
+            style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(context)),
           ),
         ),
       ),
@@ -817,12 +1098,10 @@ class _HomeScreenState extends State<HomeScreen> {
 class _KoBentoCard extends StatelessWidget {
   final Widget child;
   final EdgeInsets padding;
-  final double radius;
 
   const _KoBentoCard({
     required this.child,
     this.padding = const EdgeInsets.all(20),
-    this.radius = 16,
   });
 
   @override
@@ -843,12 +1122,18 @@ class _MicroStat extends StatelessWidget {
   final String label;
   final Color valueColor;
   final Color labelColor;
+  /// Primary stats use headlineLg (larger, heavier) for visual anchoring.
+  final bool primary;
+  /// Optional hint shown below the label (e.g. "tap to edit").
+  final String? hint;
 
   const _MicroStat({
     required this.value,
     required this.label,
     required this.valueColor,
     required this.labelColor,
+    this.primary = false,
+    this.hint,
   });
 
   @override
@@ -856,9 +1141,26 @@ class _MicroStat extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(value, style: KiStyles.headlineMd(color: valueColor)),
-        const SizedBox(height: 1),
-        Text(label, style: KiStyles.labelSm(color: labelColor)),
+        Text(
+          value,
+          style: primary
+              ? KiStyles.headlineLg(color: valueColor)
+              : KiStyles.headlineMd(color: valueColor),
+        ),
+        const SizedBox(height: 2),
+        Row(
+          children: [
+            Text(label, style: KiStyles.labelSm(color: labelColor)),
+            if (hint != null) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.edit_outlined, size: 9, color: labelColor),
+            ],
+          ],
+        ),
+        if (hint != null) ...[
+          const SizedBox(height: 1),
+          Text(hint!, style: TextStyle(fontSize: 9, color: labelColor.withValues(alpha: 0.7))),
+        ],
       ],
     );
   }
@@ -903,6 +1205,20 @@ class _SheetTile extends StatelessWidget {
               style: KiStyles.labelSm(color: subtitleColor ?? textColor))
           : null,
       onTap: onTap,
+    );
+  }
+}
+
+class _ColorDot extends StatelessWidget {
+  final Color color;
+  const _ColorDot({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }

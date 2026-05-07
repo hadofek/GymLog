@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/app_colors.dart';
+import 'package:gymlog/utils/exercise_data.dart';
 import 'package:gymlog/utils/ki_styles.dart';
 
 class ExerciseHistoryScreen extends StatefulWidget {
@@ -31,10 +32,41 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
     if (mounted) {
       setState(() {
         _history = results[0] as List<Map<String, dynamic>>;
-        _isBodyweight = results[1] as bool;
+        final flagged = results[1] as bool;
+        // Also treat as bodyweight if the exercise only exists in the
+        // bodyweight library (handles exercises logged before the flag was set).
+        final bwNames = ExerciseData.bodyweight.values
+            .expand((e) => e)
+            .map((e) => e.toLowerCase())
+            .toSet();
+        _isBodyweight = flagged ||
+            bwNames.contains(widget.exerciseName.toLowerCase());
         _loading = false;
       });
     }
+  }
+
+  static Set<int> _computePrIndices(
+    List<double> chartValues,
+    List<Map<String, dynamic>> fullHistory,
+    bool isBodyweight, {
+    required int chartStartIdx,
+  }) {
+    double runningMax = double.negativeInfinity;
+    for (int i = 0; i < chartStartIdx; i++) {
+      final v = isBodyweight
+          ? (fullHistory[i]['total_reps'] as num).toDouble()
+          : (fullHistory[i]['max_weight'] as num).toDouble();
+      if (v > runningMax) runningMax = v;
+    }
+    final prIndices = <int>{};
+    for (int i = 0; i < chartValues.length; i++) {
+      if (chartValues[i] > runningMax) {
+        prIndices.add(i);
+        runningMax = chartValues[i];
+      }
+    }
+    return prIndices;
   }
 
   String _formatDate(String raw) {
@@ -250,8 +282,16 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
-                    height: 140,
-                    child: _WeightChart(values: _isBodyweight ? chartReps : chartWeights),
+                    height: 160,
+                    child: _WeightChart(
+                      values: _isBodyweight ? chartReps : chartWeights,
+                      prIndices: _computePrIndices(
+                        _isBodyweight ? chartReps : chartWeights,
+                        _history,
+                        _isBodyweight,
+                        chartStartIdx: _history.length > 20 ? _history.length - 20 : 0,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 20),
                 ],
@@ -375,13 +415,17 @@ class _StatCard extends StatelessWidget {
 
 class _WeightChart extends StatelessWidget {
   final List<double> values;
-  const _WeightChart({required this.values});
+  final Set<int> prIndices;
+  const _WeightChart({required this.values, this.prIndices = const {}});
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
       painter: _ChartPainter(
-          values: values, dotCenter: AppColors.cardBg(context)),
+        values: values,
+        dotCenter: AppColors.cardBg(context),
+        prIndices: prIndices,
+      ),
       size: Size.infinite,
     );
   }
@@ -390,9 +434,14 @@ class _WeightChart extends StatelessWidget {
 class _ChartPainter extends CustomPainter {
   final List<double> values;
   final Color dotCenter;
-  static const _lineColor = Color(0xFFE8E8E8);
+  final Set<int> prIndices;
+  static const _lineColor = AppColors.gold;
 
-  const _ChartPainter({required this.values, required this.dotCenter});
+  const _ChartPainter({
+    required this.values,
+    required this.dotCenter,
+    this.prIndices = const {},
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -456,29 +505,48 @@ class _ChartPainter extends CustomPainter {
         ..strokeJoin = StrokeJoin.round,
     );
 
-    int maxIdx = 0;
-    for (int i = 1; i < values.length; i++) {
-      if (values[i] > values[maxIdx]) maxIdx = i;
-    }
-
     for (int i = 0; i < values.length; i++) {
       final p = pt(i);
-      final isMax = i == maxIdx;
-      if (isMax) {
+      final isPR = prIndices.contains(i);
+      // Halo ring for PR points
+      if (isPR) {
         canvas.drawCircle(
-            p,
-            8,
-            Paint()
-              ..color = _lineColor.withValues(alpha: 0.3)
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 2);
+          p,
+          9,
+          Paint()
+            ..color = _lineColor.withValues(alpha: 0.25)
+            ..style = PaintingStyle.fill,
+        );
+        canvas.drawCircle(
+          p,
+          9,
+          Paint()
+            ..color = _lineColor.withValues(alpha: 0.5)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5,
+        );
       }
       canvas.drawCircle(p, 5, Paint()..color = dotCenter);
-      canvas.drawCircle(p, isMax ? 4.5 : 3.5, Paint()..color = _lineColor);
+      canvas.drawCircle(p, isPR ? 4.5 : 3.5, Paint()..color = _lineColor);
+
+      // "PR" label above PR points
+      if (isPR) {
+        const labelStyle = TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
+          color: AppColors.gold,
+          letterSpacing: 0.5,
+        );
+        final tp = TextPainter(
+          text: const TextSpan(text: 'PR', style: labelStyle),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        tp.paint(canvas, Offset(p.dx - tp.width / 2, p.dy - 20));
+      }
     }
   }
 
   @override
   bool shouldRepaint(_ChartPainter old) =>
-      old.values != values || old.dotCenter != dotCenter;
+      old.values != values || old.dotCenter != dotCenter || old.prIndices != prIndices;
 }

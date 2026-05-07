@@ -113,13 +113,13 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(
               backgroundColor:
-                  const Color(0xFFE53935).withValues(alpha: 0.08),
+                  AppColors.destructive(ctx).withValues(alpha: 0.08),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text('Delete',
+            child: Text('Delete',
                 style: TextStyle(
-                    color: Color(0xFFE53935),
+                    color: AppColors.destructive(ctx),
                     fontWeight: FontWeight.bold)),
           ),
         ],
@@ -204,26 +204,29 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                 _editTemplate(tmpl);
               },
             ),
-            ListTile(
-              leading: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE53935).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
+            Builder(builder: (ctx2) {
+              final destructive = AppColors.destructive(ctx2);
+              return ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: destructive.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.delete_outline,
+                      color: destructive, size: 20),
                 ),
-                child: const Icon(Icons.delete_outline,
-                    color: Color(0xFFE53935), size: 20),
-              ),
-              title: const Text('Delete',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFFE53935))),
-              onTap: () {
-                Navigator.pop(ctx);
-                _confirmDelete(tmpl);
-              },
-            ),
+                title: Text('Delete',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: destructive)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _confirmDelete(tmpl);
+                },
+              );
+            }),
             const SizedBox(height: 8),
           ],
         ),
@@ -240,7 +243,7 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
     final accentContainer = AppColors.accentContainer(context);
     final isDark = AppColors.isDark(context);
     final cardBorder = isDark
-        ? const Color(0xFF1A1A1A).withValues(alpha: 0.6)
+        ? const Color(0xFF1C2235).withValues(alpha: 0.6)
         : const Color(0xFFEEEEEE);
 
     return Scaffold(

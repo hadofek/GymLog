@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/screens/add_exercise_screen.dart';
+import 'package:gymlog/screens/workout_summary_screen.dart';
+import 'package:gymlog/utils/exercise_data.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
@@ -31,6 +31,12 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   Timer? _ticker;
   int _nextSupersetGroup = 1;
 
+  // ── Rest timer ──
+  final Stopwatch _restStopwatch = Stopwatch();
+  bool _restActive = false;
+  int? _restTarget;
+  bool _restAlarmFired = false;
+
   @override
   void initState() {
     super.initState();
@@ -38,7 +44,13 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     DBHelper.getExercises().then((e) => setState(() => _allExercises = e));
     _workoutStopwatch = Stopwatch()..start();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      if (_restActive && _restTarget != null && !_restAlarmFired &&
+          _restStopwatch.elapsed.inSeconds >= _restTarget!) {
+        _restAlarmFired = true;
+        HapticFeedback.heavyImpact();
+      }
+      setState(() {});
     });
     if (widget.initialExercises != null) {
       _exercises.addAll(widget.initialExercises!);
@@ -49,7 +61,160 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   void dispose() {
     _ticker?.cancel();
     _workoutStopwatch.stop();
+    _restStopwatch.stop();
     super.dispose();
+  }
+
+  void _startRest() {
+    _restStopwatch
+      ..reset()
+      ..start();
+    if (mounted) setState(() { _restActive = true; _restAlarmFired = false; });
+  }
+
+  void _dismissRest() {
+    _restStopwatch.stop();
+    if (mounted) setState(() => _restActive = false);
+  }
+
+  void _showRestTargetPicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardBg(context),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        final textPrimary = AppColors.textPrimary(ctx);
+        final textTertiary = AppColors.textTertiary(ctx);
+        final accent = _accentColor(ctx);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Rest Target', style: KiStyles.headlineMd(color: textPrimary)),
+                const SizedBox(height: 4),
+                Text('Haptic alert when rest is done.', style: KiStyles.body(color: textTertiary)),
+                const SizedBox(height: 20),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final entry in [('60s', 60), ('90s', 90), ('2 min', 120), ('3 min', 180), ('5 min', 300)])
+                      _RestPresetChip(
+                        label: entry.$1,
+                        selected: _restTarget == entry.$2,
+                        accent: accent,
+                        textPrimary: textPrimary,
+                        onTap: () {
+                          setState(() { _restTarget = entry.$2; _restAlarmFired = false; });
+                          Navigator.pop(ctx);
+                        },
+                      ),
+                    _RestPresetChip(
+                      label: 'Off',
+                      selected: _restTarget == null,
+                      accent: AppColors.error(ctx),
+                      textPrimary: textPrimary,
+                      onTap: () {
+                        setState(() => _restTarget = null);
+                        Navigator.pop(ctx);
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteExercise(int exIndex) {
+    final exName = _exercises[exIndex]['name'] as String;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardBg(context),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        final textPrimary = AppColors.textPrimary(ctx);
+        final textTertiary = AppColors.textTertiary(ctx);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Remove Exercise?', style: KiStyles.headlineMd(color: textPrimary)),
+                const SizedBox(height: 6),
+                Text(exName, style: KiStyles.body(color: textTertiary)),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final removed = {
+                        ...Map<String, dynamic>.from(_exercises[exIndex]),
+                        'sets': List.from(_exercises[exIndex]['sets'] as List),
+                      };
+                      final idx = exIndex;
+                      setState(() => _exercises.removeAt(exIndex));
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context)
+                        ..hideCurrentSnackBar()
+                        ..showSnackBar(SnackBar(
+                          content: Text('$exName removed'),
+                          duration: const Duration(seconds: 4),
+                          action: SnackBarAction(
+                            label: 'Undo',
+                            onPressed: () {
+                              if (mounted) {
+                                setState(() {
+                                  _exercises.insert(idx.clamp(0, _exercises.length), removed);
+                                });
+                              }
+                            },
+                          ),
+                        ));
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.error(ctx),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    child: Text('Remove $exName', style: KiStyles.bodySemibold(color: Colors.white)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                    child: Text('Cancel', style: KiStyles.bodySemibold(color: textTertiary)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String get _restDisplay {
+    final e = _restStopwatch.elapsed;
+    final m = e.inMinutes.remainder(60).toString().padLeft(1, '0');
+    final s = e.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
   }
 
   String get _elapsedDisplay {
@@ -107,7 +272,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                 ),
                 child: Text('Discard',
                     style: KiStyles.bodySemibold(
-                        color: const Color(0xFFFFB4AB))),
+                        color: AppColors.error(ctx))),
               ),
             ),
           ],
@@ -159,208 +324,211 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   }
 
   Future<void> _addSetInline(int exIndex) async {
-    final cardBg = AppColors.cardBg(context);
-    final textPrimary = AppColors.textPrimary(context);
-    final textTertiary = AppColors.textTertiary(context);
-    final accentContainer = AppColors.accentContainer(context);
     final isBodyweight = widget.type == WorkoutTypes.bodyweight;
+    final exName = _exercises[exIndex]['name'] as String;
 
-    final wCtrl = TextEditingController();
-    final rCtrl = TextEditingController();
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: cardBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Add Set — ${_exercises[exIndex]['name']}',
-          style: KiStyles.headlineMd(color: textPrimary),
-        ),
-        content: Row(children: [
-          if (!isBodyweight) ...[
-            Expanded(
-              child: TextField(
-                controller: wCtrl,
-                autofocus: true,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                style: KiStyles.body(color: textPrimary),
-                decoration: InputDecoration(
-                  labelText: 'Weight (kg)',
-                  hintText: '0 = BW',
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-          ],
-          Expanded(
-            child: TextField(
-              controller: rCtrl,
-              autofocus: isBodyweight,
-              keyboardType: TextInputType.number,
-              style: KiStyles.body(color: textPrimary),
-              decoration: InputDecoration(
-                labelText: 'Reps',
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-            ),
-          ),
-        ]),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel', style: KiStyles.label(color: textTertiary)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(
-              backgroundColor: accentContainer.withValues(alpha: 0.12),
-              shape:
-                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: Text('Add Set',
-                style: KiStyles.label(color: accentContainer)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && mounted) {
-      final w = isBodyweight
-          ? 0.0
-          : (double.tryParse(wCtrl.text.isEmpty ? '0' : wCtrl.text) ?? 0.0);
-      final r = int.tryParse(rCtrl.text) ?? 0;
-      if (r > 0) {
-        final exName = _exercises[exIndex]['name'] as String;
-        final prevSets = await DBHelper.getLastSets(exName);
-        final prevMax = prevSets.isEmpty
-            ? 0.0
-            : prevSets
-                .map((s) => (s['weight'] as num).toDouble())
-                .reduce((a, b) => a > b ? a : b);
-        final isPR = !isBodyweight && prevSets.isNotEmpty && w > prevMax;
-        if (mounted) {
-          setState(() {
-            (_exercises[exIndex]['sets'] as List)
-                .add({'weight': w, 'reps': r, if (isPR) 'isPR': true});
-          });
-        }
+    final prevSets = await DBHelper.getLastSets(exName);
+    String prevHint = '';
+    double seedWeight = 0.0;
+    if (prevSets.isNotEmpty) {
+      final lastWeight = (prevSets.last['weight'] as num).toDouble();
+      final lastReps = prevSets.last['reps'] as int? ?? 0;
+      if (!isBodyweight && lastWeight > 0) {
+        seedWeight = lastWeight;
+        prevHint = 'Last: ${lastWeight % 1 == 0 ? lastWeight.toInt() : lastWeight.toStringAsFixed(1)}kg × $lastReps reps';
+      } else if (isBodyweight && lastReps > 0) {
+        prevHint = 'Last session: $lastReps reps';
       }
     }
-  }
 
-  Future<String?> _showProgressPhotoDialog() async {
-    if (!mounted) return null;
-    final cardBg = AppColors.cardBg(context);
-    final textPrimary = AppColors.textPrimary(context);
-    final textTertiary = AppColors.textTertiary(context);
-    final borderColor = AppColors.border(context);
+    if (!mounted) return;
 
-    return await showModalBottomSheet<String?>(
+    final wCtrl = TextEditingController(
+        text: seedWeight > 0
+            ? (seedWeight % 1 == 0
+                ? seedWeight.toInt().toString()
+                : seedWeight.toStringAsFixed(1))
+            : '');
+    final rCtrl = TextEditingController();
+
+    final result = await showModalBottomSheet<({double weight, int reps})>(
       context: context,
-      backgroundColor: cardBg,
+      isScrollControlled: true,
+      backgroundColor: AppColors.cardBg(context),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 36, height: 4,
-                decoration: BoxDecoration(
-                    color: borderColor,
-                    borderRadius: BorderRadius.circular(2)),
-              ),
-              const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Add a progress photo?',
-                    style: KiStyles.headlineMd(color: textPrimary)),
-              ),
-              const SizedBox(height: 4),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Document your progress with a photo',
-                    style: KiStyles.label(color: textTertiary)),
-              ),
-              const SizedBox(height: 20),
-              ListTile(
-                onTap: () => Navigator.pop(ctx, 'camera'),
-                leading: Container(
-                  width: 44, height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.accentContainer(ctx)
-                        .withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, sheetSetState) {
+          final accent = _accentColor(ctx);
+          final textPrimary = AppColors.textPrimary(ctx);
+          final textTertiary = AppColors.textTertiary(ctx);
+
+          void adjustWeight(double delta) {
+            final current = double.tryParse(wCtrl.text) ?? 0.0;
+            final next = (current + delta).clamp(0.0, 9999.0);
+            wCtrl.text = next % 1 == 0 ? next.toInt().toString() : next.toStringAsFixed(1);
+            wCtrl.selection = TextSelection.fromPosition(
+                TextPosition(offset: wCtrl.text.length));
+            sheetSetState(() {});
+          }
+
+          InputDecoration fieldDeco(String label) => InputDecoration(
+            hintText: '0',
+            hintStyle: TextStyle(color: textTertiary),
+            labelText: label,
+            labelStyle: TextStyle(color: textTertiary, fontSize: 13),
+            filled: true,
+            fillColor: AppColors.inputFill(ctx),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.border(ctx))),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: accent, width: 1.5)),
+          );
+
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 20, right: 20, top: 24,
+              bottom: MediaQuery.viewInsetsOf(ctx).bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36, height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border(ctx),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                  child: Icon(Icons.camera_alt_outlined,
-                      color: AppColors.accentContainer(ctx), size: 22),
                 ),
-                title: Text('Take Photo',
-                    style: KiStyles.bodySemibold(color: textPrimary)),
-                subtitle: Text('Open camera',
-                    style: KiStyles.labelSm(color: textTertiary)),
-              ),
-              ListTile(
-                onTap: () => Navigator.pop(ctx, 'gallery'),
-                leading: Container(
-                  width: 44, height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.accentContainer(ctx)
-                        .withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 20),
+                Text('Add Set', style: KiStyles.headlineMd(color: textPrimary)),
+                Text(exName, style: KiStyles.label(color: textTertiary)),
+                const SizedBox(height: 16),
+                if (prevHint.isNotEmpty) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: accent.withValues(alpha: 0.18)),
+                    ),
+                    child: Text(prevHint,
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: accent)),
                   ),
-                  child: Icon(Icons.photo_library_outlined,
-                      color: AppColors.accentContainer(ctx), size: 22),
+                  const SizedBox(height: 12),
+                ],
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (!isBodyweight) ...[
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextField(
+                              controller: wCtrl,
+                              autofocus: true,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                              style: KiStyles.bodySemibold(color: textPrimary),
+                              decoration: fieldDeco('Weight (kg)'),
+                              onChanged: (_) => sheetSetState(() {}),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                for (final delta in [-5.0, -2.5, 2.5, 5.0])
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(right: 4),
+                                      child: OutlinedButton(
+                                        onPressed: () => adjustWeight(delta),
+                                        style: OutlinedButton.styleFrom(
+                                          padding: EdgeInsets.zero,
+                                          minimumSize: const Size(0, 32),
+                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                          side: BorderSide(color: AppColors.border(ctx)),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                        ),
+                                        child: Text(
+                                          delta > 0 ? '+${delta % 1 == 0 ? delta.toInt() : delta}' : '${delta % 1 == 0 ? delta.toInt() : delta}',
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textPrimary),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                    ],
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: rCtrl,
+                        autofocus: isBodyweight,
+                        keyboardType: TextInputType.number,
+                        style: KiStyles.bodySemibold(color: textPrimary),
+                        decoration: fieldDeco('Reps'),
+                        onChanged: (_) => sheetSetState(() {}),
+                      ),
+                    ),
+                  ],
                 ),
-                title: Text('Choose from Gallery',
-                    style: KiStyles.bodySemibold(color: textPrimary)),
-                subtitle: Text('Pick an existing photo',
-                    style: KiStyles.labelSm(color: textTertiary)),
-              ),
-              ListTile(
-                onTap: () => Navigator.pop(ctx, null),
-                leading: Container(
-                  width: 44, height: 44,
-                  decoration: BoxDecoration(
-                    color: borderColor.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final reps = int.tryParse(rCtrl.text) ?? 0;
+                      if (reps <= 0) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          const SnackBar(content: Text('Enter at least 1 rep.')),
+                        );
+                        return;
+                      }
+                      final weight = isBodyweight
+                          ? 0.0
+                          : (double.tryParse(wCtrl.text.isEmpty ? '0' : wCtrl.text) ?? 0.0);
+                      FocusScope.of(ctx).unfocus();
+                      Navigator.pop(ctx, (weight: weight, reps: reps));
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: accent,
+                      foregroundColor: AppColors.primaryBtnFg(ctx),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    child: Text('Add Set', style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(ctx))),
                   ),
-                  child: Icon(Icons.close, color: textTertiary, size: 22),
                 ),
-                title: Text('Skip',
-                    style: KiStyles.bodySemibold(color: textTertiary)),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
+              ],
+            ),
+          );
+        },
       ),
     );
-  }
 
-  Future<String?> _pickAndCopyPhoto(String source) async {
-    final picker = ImagePicker();
-    final XFile? picked = source == 'camera'
-        ? await picker.pickImage(source: ImageSource.camera, imageQuality: 85)
-        : await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked == null) return null;
-
-    // Copy to app documents dir for permanence
-    final dir = await getApplicationDocumentsDirectory();
-    final photosDir = Directory('${dir.path}/progress_photos');
-    if (!photosDir.existsSync()) photosDir.createSync(recursive: true);
-    final fileName =
-        'photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final dest = '${photosDir.path}/$fileName';
-    await File(picked.path).copy(dest);
-    return dest;
+    if (result != null && mounted) {
+      final prevMax = prevSets.isEmpty
+          ? 0.0
+          : prevSets
+              .map((s) => (s['weight'] as num).toDouble())
+              .reduce((a, b) => a > b ? a : b);
+      final isPR = !isBodyweight && prevSets.isNotEmpty && result.weight > prevMax;
+      setState(() {
+        (_exercises[exIndex]['sets'] as List)
+            .add({'weight': result.weight, 'reps': result.reps, if (isPR) 'isPR': true});
+      });
+      _startRest();
+    }
   }
 
   Future<void> _saveWorkout() async {
@@ -381,7 +549,8 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
         type: widget.type,
       );
       for (final ex in _exercises) {
-        await DBHelper.insertExercise(ex['name'] as String);
+        final muscleGroup = ExerciseData.muscleGroupFor(ex['name'] as String);
+        await DBHelper.insertExercise(ex['name'] as String, muscleGroup: muscleGroup);
         final sets = ex['sets'] as List;
         final supersetGroup = ex['supersetGroup'] as int?;
         int setNum = 1;
@@ -399,72 +568,22 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
         }
       }
 
-      // Check PRs before leaving
       final prs = await DBHelper.getPersonalBestsInWorkout(workoutId);
 
-      // Progress photo
-      if (!mounted) return;
-      final source = await _showProgressPhotoDialog();
-      if (source != null && mounted) {
-        final path = await _pickAndCopyPhoto(source);
-        if (path != null) {
-          await DBHelper.updateWorkoutPhoto(workoutId, path);
-        }
-      }
-
-      // PR flash
-      if (prs.isNotEmpty && mounted) {
-        await showModalBottomSheet(
-          context: context,
-          backgroundColor: AppColors.cardBg(context),
-          shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-          builder: (ctx) => SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    prs.length == 1 ? 'New PR' : '${prs.length} New PRs',
-                    style: KiStyles.headlineMd(
-                        color: AppColors.accentContainer(ctx)),
-                  ),
-                  const SizedBox(height: 8),
-                  ...prs.map((name) => Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(name,
-                            style: KiStyles.body(
-                                color: AppColors.textPrimary(ctx))),
-                      )),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.accentContainer(ctx),
-                        foregroundColor: AppColors.background(ctx),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
-                      ),
-                      child: Text('Done',
-                          style: KiStyles.bodySemibold(
-                              color: AppColors.background(ctx))),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      }
-
       // ignore: use_build_context_synchronously
-      if (mounted) Navigator.pop(context);
+      if (!mounted) return;
+      await Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => WorkoutSummaryScreen(
+            workoutId: workoutId,
+            durationSeconds: _workoutStopwatch.elapsed.inSeconds,
+            type: widget.type,
+            exercises: List<Map<String, dynamic>>.from(_exercises),
+            prs: prs,
+          ),
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -558,31 +677,25 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                         width: 5, height: 5,
                         decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Color(0xFF4AE176),
+                          color: AppColors.liveGreen,
                         ),
                       ),
                       const SizedBox(width: 5),
                       Text('LIVE', style: KiStyles.labelSm(color: textTertiary)),
                     ],
                   ),
-                  if (_exercises.isNotEmpty) ...[
-                    const SizedBox(width: 16),
-                    GestureDetector(
-                      onTap: _saveWorkout,
-                      child: Text('Save', style: KiStyles.bodySemibold(color: accentContainer)),
-                    ),
-                  ],
                 ],
               ),
             ),
 
-            // ── Timer + date flat strip ──
+            // ── Timer + date + rest strip ──
             Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  // Workout clock
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -600,21 +713,86 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                   const SizedBox(width: 24),
                   Container(width: 1, height: 36, color: AppColors.border(context)),
                   const SizedBox(width: 24),
-                  GestureDetector(
-                    onTap: _pickDate,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('DATE', style: KiStyles.labelSm(color: textTertiary)),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}',
-                          style: KiStyles.headlineMd(color: textPrimary),
+                  // Rest timer (replaces DATE when active)
+                  if (_restActive)
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _showRestTargetPicker,
+                        behavior: HitTestBehavior.opaque,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 6, height: 6,
+                                  decoration: BoxDecoration(
+                                    color: _restAlarmFired ? AppColors.error(context) : AppColors.liveGreen,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'REST',
+                                  style: KiStyles.labelSm(color: _restAlarmFired ? AppColors.error(context) : AppColors.liveGreen),
+                                ),
+                                const Spacer(),
+                                GestureDetector(
+                                  onTap: _dismissRest,
+                                  behavior: HitTestBehavior.opaque,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(6),
+                                    child: Icon(Icons.close_rounded, size: 13, color: textTertiary),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _restDisplay,
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                color: _restAlarmFired ? AppColors.error(context) : textPrimary,
+                                letterSpacing: 1,
+                              ),
+                            ),
+                            if (_restTarget != null) ...[
+                              const SizedBox(height: 4),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(2),
+                                child: LinearProgressIndicator(
+                                  value: (_restStopwatch.elapsed.inSeconds / _restTarget!).clamp(0.0, 1.0),
+                                  minHeight: 3,
+                                  backgroundColor: AppColors.border(context),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    _restAlarmFired ? AppColors.error(context) : AppColors.liveGreen,
+                                  ),
+                                ),
+                              ),
+                            ] else
+                              Text('tap to set target', style: KiStyles.labelSm(color: textTertiary)),
+                          ],
                         ),
-                        Text('TAP TO CHANGE', style: KiStyles.labelSm(color: textTertiary)),
-                      ],
+                      ),
+                    )
+                  else
+                    GestureDetector(
+                      onTap: _pickDate,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('DATE', style: KiStyles.labelSm(color: textTertiary)),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}',
+                            style: KiStyles.headlineMd(color: textPrimary),
+                          ),
+                          Text('TAP TO CHANGE', style: KiStyles.labelSm(color: textTertiary)),
+                        ],
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -692,24 +870,33 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                               crossAxisAlignment:
                                   CrossAxisAlignment.start,
                               children: [
-                                Row(children: [
-                                  Container(
-                                    width: 8, height: 8,
-                                    decoration: BoxDecoration(
-                                        color: _accentColor(context),
-                                        shape: BoxShape.circle),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      ex['name'] as String,
-                                      style: KiStyles.bodySemibold(
-                                          color: textPrimary),
+                                GestureDetector(
+                                  onLongPress: () => _confirmDeleteExercise(exIndex),
+                                  behavior: HitTestBehavior.opaque,
+                                  child: Row(children: [
+                                    Container(
+                                      width: 8, height: 8,
+                                      decoration: BoxDecoration(
+                                          color: _accentColor(context),
+                                          shape: BoxShape.circle),
                                     ),
-                                  ),
-                                  if (isLinked)
-                                    Text('SS', style: KiStyles.labelSm(color: _accentColor(context))),
-                                ]),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        ex['name'] as String,
+                                        style: KiStyles.bodySemibold(
+                                            color: textPrimary),
+                                      ),
+                                    ),
+                                    if (isLinked) ...[
+                                      const SizedBox(width: 4),
+                                      Icon(Icons.link_rounded, size: 13, color: _accentColor(context)),
+                                      const SizedBox(width: 3),
+                                      Text('SUPERSET', style: KiStyles.labelSm(color: _accentColor(context))),
+                                    ],
+                                    Icon(Icons.more_horiz_rounded, size: 16, color: textTertiary.withValues(alpha: 0.4)),
+                                  ]),
+                                ),
                                 const SizedBox(height: 10),
                                 ...sets.asMap().entries.map((e) {
                                   final isBW =
@@ -750,13 +937,42 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                                       // Remove set button
                                       const Spacer(),
                                       GestureDetector(
-                                        onTap: () => setState(() {
-                                          (ex['sets'] as List)
-                                              .removeAt(e.key);
-                                        }),
-                                        child: Icon(Icons.close,
-                                            size: 14,
-                                            color: textTertiary),
+                                        behavior: HitTestBehavior.opaque,
+                                        onTap: () {
+                                          final removed = Map<String, dynamic>.from(
+                                              (ex['sets'] as List)[e.key] as Map);
+                                          final exIdx = exIndex;
+                                          final setIdx = e.key;
+                                          setState(() {
+                                            (ex['sets'] as List).removeAt(e.key);
+                                          });
+                                          ScaffoldMessenger.of(context)
+                                            ..hideCurrentSnackBar()
+                                            ..showSnackBar(
+                                              SnackBar(
+                                                content: const Text('Set removed'),
+                                                duration: const Duration(seconds: 3),
+                                                action: SnackBarAction(
+                                                  label: 'Undo',
+                                                  onPressed: () {
+                                                    if (mounted && exIdx < _exercises.length) {
+                                                      setState(() {
+                                                        final sets = _exercises[exIdx]['sets'] as List;
+                                                        final insertAt = setIdx.clamp(0, sets.length);
+                                                        sets.insert(insertAt, removed);
+                                                      });
+                                                    }
+                                                  },
+                                                ),
+                                              ),
+                                            );
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(8),
+                                          child: Icon(Icons.close,
+                                              size: 14,
+                                              color: textTertiary),
+                                        ),
                                       ),
                                     ]),
                                   );
@@ -788,6 +1004,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                         );
                       }),
             ),
+
 
             // ── Bottom action area ──
             SafeArea(
@@ -826,10 +1043,10 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                               size: 20),
                           label: Text('Finish Workout',
                               style: KiStyles.bodySemibold(
-                                  color: const Color(0xFF000000))),
+                                  color: AppColors.primaryBtnFg(context))),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: accentContainer,
-                            foregroundColor: const Color(0xFF000000),
+                            foregroundColor: AppColors.primaryBtnFg(context),
                             padding:
                                 const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
@@ -867,26 +1084,87 @@ class _SupersetConnector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTertiary = AppColors.textTertiary(context);
+    final borderColor = AppColors.border(context);
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 0),
         child: Row(
           children: [
-            if (isLinked)
-              Container(width: 1, height: 16, color: accentColor.withValues(alpha: 0.4))
-            else
-              const SizedBox(width: 1),
-            const SizedBox(width: 14),
+            // Vertical connector line
+            SizedBox(
+              width: 16,
+              child: Center(
+                child: Container(
+                  width: 1,
+                  height: 28,
+                  color: isLinked
+                      ? accentColor.withValues(alpha: 0.5)
+                      : borderColor,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              isLinked ? Icons.link_rounded : Icons.add_link_rounded,
+              size: 13,
+              color: isLinked ? accentColor : textTertiary,
+            ),
+            const SizedBox(width: 4),
             Text(
               isLinked ? 'SUPERSET — tap to unlink' : 'Link as superset',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: isLinked ? accentColor : const Color(0xFF444444),
+                color: isLinked ? accentColor : textTertiary,
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Rest preset chip ──────────────────────────────────────────────────────────
+
+class _RestPresetChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final Color accent;
+  final Color textPrimary;
+  final VoidCallback onTap;
+  const _RestPresetChip({
+    required this.label,
+    required this.selected,
+    required this.accent,
+    required this.textPrimary,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected
+              ? accent.withValues(alpha: 0.15)
+              : AppColors.border(context).withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+              color: selected ? accent : Colors.transparent),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: selected ? accent : textPrimary,
+          ),
         ),
       ),
     );

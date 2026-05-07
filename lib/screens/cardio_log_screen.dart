@@ -1,8 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:gymlog/db/db_helper.dart';
+import 'package:gymlog/screens/workout_summary_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
@@ -64,87 +62,6 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
     return h * 3600 + m * 60;
   }
 
-  Future<String?> _showProgressPhotoDialog() async {
-    if (!mounted) return null;
-    final cardBg = AppColors.cardBg(context);
-    final textPrimary = AppColors.textPrimary(context);
-    final textTertiary = AppColors.textTertiary(context);
-    final borderColor = AppColors.border(context);
-    final accentContainer = AppColors.accentContainer(context);
-
-    return showModalBottomSheet<String?>(
-      context: context,
-      backgroundColor: cardBg,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 36, height: 4,
-                decoration: BoxDecoration(
-                    color: borderColor,
-                    borderRadius: BorderRadius.circular(2)),
-              ),
-              const SizedBox(height: 20),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Add a progress photo?',
-                    style: KiStyles.headlineMd(color: textPrimary)),
-              ),
-              const SizedBox(height: 4),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Document your progress with a photo',
-                    style: KiStyles.label(color: textTertiary)),
-              ),
-              const SizedBox(height: 20),
-              ListTile(
-                onTap: () => Navigator.pop(ctx, 'camera'),
-                leading: Icon(Icons.camera_alt_outlined,
-                    color: accentContainer, size: 22),
-                title: Text('Take Photo',
-                    style: KiStyles.bodySemibold(color: textPrimary)),
-              ),
-              ListTile(
-                onTap: () => Navigator.pop(ctx, 'gallery'),
-                leading: Icon(Icons.photo_library_outlined,
-                    color: accentContainer, size: 22),
-                title: Text('Choose from Gallery',
-                    style: KiStyles.bodySemibold(color: textPrimary)),
-              ),
-              ListTile(
-                onTap: () => Navigator.pop(ctx, null),
-                leading: Icon(Icons.close, color: textTertiary, size: 22),
-                title: Text('Skip',
-                    style: KiStyles.bodySemibold(color: textTertiary)),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<String?> _pickAndCopyPhoto(String source) async {
-    final picker = ImagePicker();
-    final XFile? picked = source == 'camera'
-        ? await picker.pickImage(source: ImageSource.camera, imageQuality: 85)
-        : await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (picked == null) return null;
-    final dir = await getApplicationDocumentsDirectory();
-    final photosDir = Directory('${dir.path}/progress_photos');
-    if (!photosDir.existsSync()) photosDir.createSync(recursive: true);
-    final dest =
-        '${photosDir.path}/photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    await File(picked.path).copy(dest);
-    return dest;
-  }
-
   Future<void> _save() async {
     if (!_canSave) return;
     try {
@@ -174,16 +91,29 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
         notes: notesParts.join('\n'),
       );
 
-      if (!mounted) return;
-      final source = await _showProgressPhotoDialog();
-      if (source != null && mounted) {
-        final path = await _pickAndCopyPhoto(source);
-        if (path != null) {
-          await DBHelper.updateWorkoutPhoto(workoutId, path);
-        }
-      }
+      final prs = await DBHelper.getNonWeightedPRs(workoutId);
 
-      if (mounted) Navigator.pop(context);
+      if (!mounted) return;
+      final details = <(String, String)>[
+        ('Activity', _activityController.text.trim()),
+        if (distance > 0) ('Distance', '${distance.toStringAsFixed(1)}km'),
+        if (_durationSeconds > 0)
+          ('Duration', DBHelper.formatDuration(_durationSeconds)),
+        if (avgSpeed > 0) ('Avg Speed', '${avgSpeed.toStringAsFixed(1)}km/h'),
+      ];
+      await Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => WorkoutSummaryScreen(
+            workoutId: workoutId,
+            durationSeconds: _durationSeconds,
+            type: WorkoutTypes.cardio,
+            exercises: const [],
+            prs: prs,
+            activityDetails: details,
+          ),
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -259,7 +189,7 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
                 onPressed: _save,
                 style: TextButton.styleFrom(
                   backgroundColor: accentContainer,
-                  foregroundColor: const Color(0xFF000000),
+                  foregroundColor: AppColors.primaryBtnFg(context),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   shape: RoundedRectangleBorder(
@@ -268,7 +198,7 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text('SAVE',
-                    style: KiStyles.label(color: const Color(0xFF000000))),
+                    style: KiStyles.label(color: AppColors.primaryBtnFg(context))),
               ),
             ),
         ],

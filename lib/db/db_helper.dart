@@ -170,10 +170,17 @@ class DBHelper {
 
   // ── Exercises ──────────────────────────────────────────────────────────────
 
-  static Future<void> insertExercise(String name) async {
+  static Future<void> insertExercise(String name,
+      {String? muscleGroup}) async {
     final d = await db;
     await d.insert('exercises', {'name': name.trim()},
         conflictAlgorithm: ConflictAlgorithm.ignore);
+    if (muscleGroup != null) {
+      await d.rawUpdate(
+        'UPDATE exercises SET muscle_group = ? WHERE name = ? AND muscle_group IS NULL',
+        [muscleGroup, name.trim()],
+      );
+    }
   }
 
   static Future<List<String>> getExercises() async {
@@ -565,13 +572,15 @@ class DBHelper {
   static Future<List<String>> getPersonalBestsInWorkout(
       int workoutId) async {
     final d = await db;
-    final currentRes = await d.rawQuery('''
+    final pbs = <String>[];
+
+    // Weighted: max weight per exercise
+    final weightedRes = await d.rawQuery('''
       SELECT exercise_name, MAX(weight) as max_weight
       FROM sets WHERE workout_id = ? AND weight > 0
       GROUP BY exercise_name
     ''', [workoutId]);
-    final pbs = <String>[];
-    for (final row in currentRes) {
+    for (final row in weightedRes) {
       final name = row['exercise_name'] as String;
       final currentMax = (row['max_weight'] as num?)?.toDouble() ?? 0.0;
       if (currentMax <= 0) continue;
@@ -584,7 +593,83 @@ class DBHelper {
           : (histRes.first['max_weight'] as num?)?.toDouble() ?? 0.0;
       if (currentMax > histMax) pbs.add(name);
     }
+
+    // Bodyweight: max reps per exercise
+    final bwRes = await d.rawQuery('''
+      SELECT exercise_name, MAX(reps) as max_reps
+      FROM sets WHERE workout_id = ? AND weight = 0
+      GROUP BY exercise_name
+    ''', [workoutId]);
+    for (final row in bwRes) {
+      final name = row['exercise_name'] as String;
+      final currentMax = (row['max_reps'] as num?)?.toInt() ?? 0;
+      if (currentMax <= 0) continue;
+      final histRes = await d.rawQuery('''
+        SELECT MAX(reps) as max_reps FROM sets
+        WHERE exercise_name = ? AND workout_id != ? AND weight = 0
+      ''', [name, workoutId]);
+      final histMax = histRes.isEmpty
+          ? 0
+          : (histRes.first['max_reps'] as num?)?.toInt() ?? 0;
+      if (currentMax > histMax) pbs.add(name);
+    }
+
     return pbs;
+  }
+
+  /// PR detection for cardio and flexibility workouts.
+  /// Returns a list of human-readable PR strings, e.g. "Running — 5.2km".
+  static Future<List<String>> getNonWeightedPRs(int workoutId) async {
+    final d = await db;
+    final rows = await d.query('workouts', where: 'id = ?', whereArgs: [workoutId]);
+    if (rows.isEmpty) return [];
+    final workout = rows.first;
+    final type = workout['type'] as String? ?? '';
+    final durationSeconds = workout['duration_seconds'] as int? ?? 0;
+    final distanceKm = (workout['distance_km'] as num?)?.toDouble() ?? 0.0;
+    final notes = workout['notes'] as String? ?? '';
+    final activity = notes.split('\n').first.trim();
+    if (activity.isEmpty) return [];
+
+    if (type == 'cardio') {
+      if (distanceKm > 0) {
+        final histRes = await d.rawQuery('''
+          SELECT MAX(distance_km) as max_dist FROM workouts
+          WHERE type = 'cardio' AND notes LIKE ? AND id != ?
+        ''', ['$activity%', workoutId]);
+        final histMax = histRes.isEmpty
+            ? 0.0
+            : (histRes.first['max_dist'] as num?)?.toDouble() ?? 0.0;
+        if (distanceKm > histMax) {
+          return ['$activity — ${distanceKm.toStringAsFixed(1)}km'];
+        }
+      } else if (durationSeconds > 0) {
+        final histRes = await d.rawQuery('''
+          SELECT MAX(duration_seconds) as max_dur FROM workouts
+          WHERE type = 'cardio' AND notes LIKE ? AND id != ?
+        ''', ['$activity%', workoutId]);
+        final histMax = histRes.isEmpty
+            ? 0
+            : (histRes.first['max_dur'] as num?)?.toInt() ?? 0;
+        if (durationSeconds > histMax) {
+          return ['$activity — ${formatDuration(durationSeconds)}'];
+        }
+      }
+    } else if (type == 'flexibility') {
+      if (durationSeconds > 0) {
+        final histRes = await d.rawQuery('''
+          SELECT MAX(duration_seconds) as max_dur FROM workouts
+          WHERE type = 'flexibility' AND notes LIKE ? AND id != ?
+        ''', ['$activity%', workoutId]);
+        final histMax = histRes.isEmpty
+            ? 0
+            : (histRes.first['max_dur'] as num?)?.toInt() ?? 0;
+        if (durationSeconds > histMax) {
+          return ['$activity — ${formatDuration(durationSeconds)}'];
+        }
+      }
+    }
+    return [];
   }
 
   // ── All-time stats ─────────────────────────────────────────────────────────

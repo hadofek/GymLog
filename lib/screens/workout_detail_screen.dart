@@ -198,7 +198,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           'Set removed',
           style: KiStyles.body(color: const Color(0xFFE8E8E8)),
         ),
-        backgroundColor: const Color(0xFF1A1A1A),
+        backgroundColor: const Color(0xFF111827),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 4),
         action: SnackBarAction(
@@ -363,10 +363,10 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           onPressed: _saveAsTemplate,
           icon: const Icon(Icons.bookmark_outline_rounded, size: 18),
           label: Text('Save as Template',
-              style: KiStyles.bodySemibold(color: const Color(0xFF000000))),
+              style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(context))),
           style: ElevatedButton.styleFrom(
             backgroundColor: accentContainer,
-            foregroundColor: const Color(0xFF000000),
+            foregroundColor: AppColors.primaryBtnFg(context),
             minimumSize: const Size(double.infinity, 52),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14)),
@@ -495,7 +495,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 onPressed: () => Navigator.pop(ctx, true),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: accentContainer,
-                  foregroundColor: const Color(0xFF000000),
+                  foregroundColor: AppColors.primaryBtnFg(context),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
@@ -503,7 +503,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 ),
                 child: Text('Save',
                     style: KiStyles.bodySemibold(
-                        color: const Color(0xFF000000))),
+                        color: AppColors.primaryBtnFg(context))),
               ),
             ),
           ],
@@ -649,6 +649,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final textTertiary = AppColors.textTertiary(context);
     final borderColor = AppColors.border(context);
     final typeColor = WorkoutTypes.color(widget.type, context);
+    final accentContainer = AppColors.accentContainer(context);
+    final errorColor = AppColors.error(context);
 
     return Scaffold(
       backgroundColor: bg,
@@ -664,13 +666,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         // Title: GYMLOG wordmark + type badge side by side
         title: Text(
           'GYMLOG',
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: 'Lexend',
             fontSize: 18,
             fontWeight: FontWeight.w900,
             fontStyle: FontStyle.italic,
             letterSpacing: 3,
-            color: Color(0xFFE8E8E8),
+            color: accentContainer,
           ),
         ),
         // Single overflow menu replaces the crowded action buttons
@@ -717,14 +719,14 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                         TextButton(
                           onPressed: () => Navigator.pop(ctx, true),
                           style: TextButton.styleFrom(
-                            backgroundColor: const Color(0xFFFFB4AB)
+                            backgroundColor: AppColors.error(context)
                                 .withValues(alpha: 0.12),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8)),
                           ),
                           child: Text('Delete',
                               style: KiStyles.label(
-                                  color: const Color(0xFFFFB4AB))),
+                                  color: AppColors.error(context))),
                         ),
                       ],
                     ),
@@ -771,12 +773,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 PopupMenuItem(
                   value: 'delete',
                   child: Row(children: [
-                    const Icon(Icons.delete_outline,
-                        size: 18, color: Color(0xFFFFB4AB)),
+                    Icon(Icons.delete_outline,
+                        size: 18, color: errorColor),
                     const SizedBox(width: 12),
                     Text('Delete',
-                        style:
-                            KiStyles.body(color: const Color(0xFFFFB4AB))),
+                        style: KiStyles.body(color: errorColor)),
                   ]),
                 ),
               ],
@@ -902,8 +903,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                           const SizedBox(width: 14),
                                           GestureDetector(
                                             onTap: () => _deleteSet(s),
-                                            child: const Icon(Icons.close,
-                                                size: 16, color: Color(0xFFFFB4AB)),
+                                            child: Icon(Icons.close,
+                                                size: 16, color: errorColor),
                                           ),
                                         ],
                                       ]),
@@ -919,14 +920,14 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                         padding: const EdgeInsets.only(
                                             right: 12),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFFFFB4AB)
+                                          color: errorColor
                                               .withValues(alpha: 0.12),
                                           borderRadius:
                                               BorderRadius.circular(8),
                                         ),
-                                        child: const Icon(
+                                        child: Icon(
                                             Icons.delete_outline,
-                                            color: Color(0xFFFFB4AB),
+                                            color: errorColor,
                                             size: 20),
                                       ),
                                       child: setRow,
@@ -1097,16 +1098,17 @@ class _SharePreviewDialogState extends State<_SharePreviewDialog> {
                   child: ElevatedButton.icon(
                     onPressed: _sharing ? null : _doShare,
                     icon: _sharing
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 16,
                             height: 16,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.black))
+                                strokeWidth: 2,
+                                color: AppColors.background(context)))
                         : const Icon(Icons.download_outlined),
                     label: Text(_sharing ? 'Saving...' : 'Save to Gallery'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE8E8E8),
-                      foregroundColor: Colors.black,
+                      backgroundColor: AppColors.accentContainer(context),
+                      foregroundColor: AppColors.primaryBtnFg(context),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),

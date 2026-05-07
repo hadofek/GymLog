@@ -227,13 +227,13 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(
-              backgroundColor: const Color(0xFFE53935).withValues(alpha: 0.08),
+              backgroundColor: AppColors.destructive(ctx).withValues(alpha: 0.08),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8)),
             ),
-            child: const Text('Delete',
+            child: Text('Delete',
                 style: TextStyle(
-                    color: Color(0xFFE53935), fontWeight: FontWeight.bold)),
+                    color: AppColors.destructive(ctx), fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -527,7 +527,7 @@ class _WeightChart extends StatelessWidget {
 class _ChartPainter extends CustomPainter {
   final List<double> values;
   final Color cardColor;
-  static const _lineColor = Color(0xFFE8E8E8);
+  static const _lineColor = AppColors.gold;
 
   const _ChartPainter({required this.values, required this.cardColor});
 

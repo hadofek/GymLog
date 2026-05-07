@@ -179,7 +179,7 @@ class _ThemeOption extends StatelessWidget {
                   width: 18,
                   height: 18,
                   decoration: BoxDecoration(color: ac, shape: BoxShape.circle),
-                  child: const Icon(Icons.check, size: 12, color: Color(0xFF000000)),
+                  child: Icon(Icons.check, size: 12, color: AppColors.background(context)),
                 )
               else
                 Container(

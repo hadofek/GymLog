@@ -78,7 +78,7 @@ class _StatsScreenState extends State<StatsScreen> {
             const SizedBox(height: 16),
             Expanded(
               child: _loading
-                  ? _buildSkeleton()
+                  ? _buildSkeleton(context)
                   : _buildBody(textPrimary, textSecondary, textTertiary,
                       accentContainer, border),
             ),
@@ -88,8 +88,8 @@ class _StatsScreenState extends State<StatsScreen> {
     );
   }
 
-  Widget _buildSkeleton() {
-    const c = Color(0xFF111111);
+  Widget _buildSkeleton(BuildContext context) {
+    final c = AppColors.cardBg(context);
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
       children: [
@@ -121,10 +121,22 @@ class _StatsScreenState extends State<StatsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('No data yet.', style: KiStyles.headlineLg(color: textPrimary)),
-            const SizedBox(height: 6),
-            Text('Log your first workout and stats will appear here.',
-                style: KiStyles.body(color: textTertiary)),
+            Text('Nothing yet.', style: KiStyles.headlineLg(color: textPrimary)),
+            const SizedBox(height: 8),
+            Text(
+              'Complete your first workout and your full stats — training split, streaks, top exercises — will unlock here.',
+              style: KiStyles.body(color: textTertiary),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                _StatPreview(label: 'WORKOUTS', icon: Icons.fitness_center_rounded, color: accentContainer),
+                const SizedBox(width: 16),
+                _StatPreview(label: 'STREAK', icon: Icons.local_fire_department_rounded, color: accentContainer),
+                const SizedBox(width: 16),
+                _StatPreview(label: 'TIME', icon: Icons.timer_outlined, color: accentContainer),
+              ],
+            ),
           ],
         ),
       );
@@ -179,11 +191,11 @@ class _StatsScreenState extends State<StatsScreen> {
                     _Divider(color: border),
                     _MicroStat(
                       value: totalDistanceKm >= 1000
-                          ? '${(totalDistanceKm / 1000).toStringAsFixed(1)}k'
+                          ? '${(totalDistanceKm / 1000).toStringAsFixed(1)}k km'
                           : totalDistanceKm % 1 == 0
-                              ? '${totalDistanceKm.toInt()}'
-                              : totalDistanceKm.toStringAsFixed(1),
-                      label: 'KM RUN',
+                              ? '${totalDistanceKm.toInt()} km'
+                              : '${totalDistanceKm.toStringAsFixed(1)} km',
+                      label: 'DISTANCE',
                       valueColor: textPrimary,
                       labelColor: textTertiary,
                     ),
@@ -408,5 +420,36 @@ class _Bone extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
         width: double.infinity, height: height, color: color);
+  }
+}
+
+/// Ghost stat tile for the empty state — shows what will unlock.
+class _StatPreview extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  const _StatPreview({
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, size: 18, color: color.withValues(alpha: 0.3)),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+            color: color.withValues(alpha: 0.3),
+            letterSpacing: 0.8,
+          ),
+        ),
+      ],
+    );
   }
 }

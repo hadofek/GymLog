@@ -26,6 +26,7 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
   late TextEditingController _nameCtrl;
   List<String> _allExercises = [];
   bool _saving = false;
+  bool _nameError = false;
 
   @override
   void initState() {
@@ -170,9 +171,7 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
   Future<void> _save() async {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Template name cannot be empty')),
-      );
+      setState(() => _nameError = true);
       return;
     }
     if (_exercises.isEmpty) {
@@ -228,7 +227,7 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
               onPressed: _saving ? null : _save,
               style: TextButton.styleFrom(
                 backgroundColor: AppColors.accentContainer(context),
-                foregroundColor: const Color(0xFF000000),
+                foregroundColor: AppColors.primaryBtnFg(context),
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 shape: RoundedRectangleBorder(
@@ -238,7 +237,7 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
               ),
               child: Text('SAVE',
                   style:
-                      KiStyles.label(color: const Color(0xFF000000))),
+                      KiStyles.label(color: AppColors.primaryBtnFg(context))),
             ),
           ),
         ],
@@ -269,6 +268,7 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
                   decoration: InputDecoration(
                     hintText: 'e.g. Push Day A',
                     hintStyle: TextStyle(color: AppColors.hintText(context)),
+                    errorText: _nameError ? 'Template name is required' : null,
                     filled: true,
                     fillColor: AppColors.inputFill(context),
                     contentPadding: const EdgeInsets.symmetric(
@@ -279,13 +279,24 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: border, width: 1.5),
+                      borderSide: BorderSide(
+                          color: _nameError ? AppColors.error(context) : border, width: 1.5),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: textPrimary, width: 2),
+                      borderSide: BorderSide(
+                          color: _nameError ? AppColors.error(context) : textPrimary, width: 2),
+                    ),
+                    errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.error(context), width: 1.5),
+                    ),
+                    focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.error(context), width: 2),
                     ),
                   ),
+                  onChanged: (_) { if (_nameError) setState(() => _nameError = false); },
                 ),
 
                 const SizedBox(height: 24),
@@ -387,10 +398,10 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
                               IconButton(
                                 onPressed: () =>
                                     setState(() => _exercises.removeAt(i)),
-                                icon: const Icon(Icons.close,
-                                    size: 18, color: Color(0xFFE53935)),
+                                icon: Icon(Icons.close,
+                                    size: 18, color: AppColors.destructive(ctx)),
                                 style: IconButton.styleFrom(
-                                  backgroundColor: const Color(0xFFE53935)
+                                  backgroundColor: AppColors.destructive(ctx)
                                       .withValues(alpha: 0.08),
                                   minimumSize: const Size(32, 32),
                                   padding: EdgeInsets.zero,
@@ -434,7 +445,7 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
                         TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accentContainer(context),
-                  foregroundColor: const Color(0xFF000000),
+                  foregroundColor: AppColors.primaryBtnFg(context),
                   minimumSize: const Size(double.infinity, 50),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),

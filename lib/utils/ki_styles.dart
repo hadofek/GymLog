@@ -4,10 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 /// Kinetic Obsidian typography helpers.
 /// Call these with an optional [color] override; they return a [TextStyle].
 class KiStyles {
-  // Lexend 56px w600 — key metric numbers
+  // Lexend 56px w900 — key metric numbers
   static TextStyle monument({Color? color}) => GoogleFonts.lexend(
         fontSize: 56,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.w900,
         letterSpacing: -1.5,
         height: 0.94,
         color: color,
@@ -22,10 +22,10 @@ class KiStyles {
         color: color,
       );
 
-  // Lexend 22px w500 — card headers
+  // Lexend 22px w600 — card headers
   static TextStyle headlineLg({Color? color}) => GoogleFonts.lexend(
         fontSize: 22,
-        fontWeight: FontWeight.w500,
+        fontWeight: FontWeight.w600,
         letterSpacing: -0.2,
         height: 1.33,
         color: color,
@@ -40,17 +40,17 @@ class KiStyles {
         color: color,
       );
 
-  // Lexend 15px w400 — body text
+  // Lexend 16px w400 — body text
   static TextStyle body({Color? color}) => GoogleFonts.lexend(
-        fontSize: 15,
+        fontSize: 16,
         fontWeight: FontWeight.w400,
         height: 1.5,
         color: color,
       );
 
-  // Lexend 15px w500 — emphasis body
+  // Lexend 16px w500 — emphasis body
   static TextStyle bodySemibold({Color? color}) => GoogleFonts.lexend(
-        fontSize: 15,
+        fontSize: 16,
         fontWeight: FontWeight.w500,
         color: color,
       );
@@ -64,9 +64,9 @@ class KiStyles {
         color: color,
       );
 
-  // Space Grotesk 10px w400 — small labels
+  // Space Grotesk 11px w400 — small labels
   static TextStyle labelSm({Color? color}) => GoogleFonts.spaceGrotesk(
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.3,
         height: 1.6,

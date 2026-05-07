@@ -54,6 +54,16 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     });
     if (widget.initialExercises != null) {
       _exercises.addAll(widget.initialExercises!);
+      _seedLastSets();
+    }
+  }
+
+  Future<void> _seedLastSets() async {
+    for (final ex in _exercises) {
+      final last = await DBHelper.getLastSets(ex['name'] as String);
+      if (mounted && last.isNotEmpty) {
+        setState(() => ex['lastSets'] = last);
+      }
     }
   }
 
@@ -299,9 +309,15 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
             builder: (_) => AddExerciseScreen(
                 allExercises: _allExercises, workoutType: widget.type)));
     if (result != null) {
-      setState(() => _exercises.add(result));
-      if (!_allExercises.contains(result['name'])) {
-        _allExercises.add(result['name']);
+      final last = await DBHelper.getLastSets(result['name'] as String);
+      if (mounted) {
+        setState(() {
+          if (last.isNotEmpty) result['lastSets'] = last;
+          _exercises.add(result);
+        });
+        if (!_allExercises.contains(result['name'])) {
+          _allExercises.add(result['name'] as String);
+        }
       }
     }
   }
@@ -323,14 +339,15 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     });
   }
 
-  Future<void> _addSetInline(int exIndex) async {
+  Future<void> _addSetInline(int exIndex, {double? prefillWeight, int? prefillReps}) async {
     final isBodyweight = widget.type == WorkoutTypes.bodyweight;
     final exName = _exercises[exIndex]['name'] as String;
 
     final prevSets = await DBHelper.getLastSets(exName);
     String prevHint = '';
-    double seedWeight = 0.0;
-    if (prevSets.isNotEmpty) {
+    double seedWeight = prefillWeight ?? 0.0;
+    int seedReps = prefillReps ?? 0;
+    if (prefillWeight == null && prevSets.isNotEmpty) {
       final lastWeight = (prevSets.last['weight'] as num).toDouble();
       final lastReps = prevSets.last['reps'] as int? ?? 0;
       if (!isBodyweight && lastWeight > 0) {
@@ -349,7 +366,8 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                 ? seedWeight.toInt().toString()
                 : seedWeight.toStringAsFixed(1))
             : '');
-    final rCtrl = TextEditingController();
+    final rCtrlInitial = seedReps > 0 ? seedReps.toString() : '';
+    final rCtrl = TextEditingController(text: rCtrlInitial);
 
     final result = await showModalBottomSheet<({double weight, int reps})>(
       context: context,
@@ -901,6 +919,50 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                                   ),
                                 ]),
                                 const SizedBox(height: 10),
+                                // ── Ghost rows (last session reference) ──
+                                Builder(builder: (context) {
+                                  final lastSets = ex['lastSets'] as List?;
+                                  if (lastSets == null || lastSets.isEmpty || sets.isNotEmpty) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('LAST SESSION', style: KiStyles.labelSm(color: textTertiary)),
+                                      const SizedBox(height: 6),
+                                      ...lastSets.asMap().entries.map((e) {
+                                        final w = (e.value['weight'] as num).toDouble();
+                                        final r = e.value['reps'] as int? ?? 0;
+                                        final isBW = w == 0;
+                                        return GestureDetector(
+                                          onTap: () => _addSetInline(exIndex, prefillWeight: w, prefillReps: r),
+                                          child: Opacity(
+                                            opacity: 0.4,
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(bottom: 5),
+                                              child: Row(children: [
+                                                _SetBadge(number: e.key + 1, color: _accentColor(context)),
+                                                const SizedBox(width: 10),
+                                                Text(isBW ? 'BW' : '${w % 1 == 0 ? w.toInt() : w}kg',
+                                                    style: KiStyles.bodySemibold(color: textPrimary)),
+                                                Padding(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                                  child: Text('×', style: KiStyles.label(color: textTertiary)),
+                                                ),
+                                                Text('$r reps', style: KiStyles.bodySemibold(color: textSecondary)),
+                                                const Spacer(),
+                                                Icon(Icons.arrow_forward_ios_rounded, size: 10, color: textTertiary),
+                                              ]),
+                                            ),
+                                          ),
+                                        );
+                                      }),
+                                      const SizedBox(height: 8),
+                                      Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
+                                      const SizedBox(height: 8),
+                                    ],
+                                  );
+                                }),
                                 ...sets.asMap().entries.map((e) {
                                   final isBW =
                                       (e.value['weight'] as num)

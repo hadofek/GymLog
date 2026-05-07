@@ -741,7 +741,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     // ── Calendar card ──
                     Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
-                    _KoBentoCard(
+                    TipOverlay(
+                      tipKey: 'tip_home_calendar',
+                      tipTitle: 'Training Calendar',
+                      tipBody: 'Tap any empty day to log a workout on that date. Days with a dot are already logged — tap to view or add.',
+                      direction: TipDirection.below,
+                      child: _KoBentoCard(
                       padding: const EdgeInsets.fromLTRB(4, 16, 4, 16),
                       child: Column(
                         children: [
@@ -891,10 +896,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
+                    ), // TipOverlay(tip_home_calendar)
 
                     // ── Compact muscle map ──
                     Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
-                    Semantics(
+                    TipOverlay(
+                      tipKey: 'tip_home_muscles',
+                      tipTitle: 'Muscle Activity Map',
+                      tipBody: 'Shows which muscles you trained in the last 30 days. Colours go blue → red as sessions increase. Tap to open the full map.',
+                      direction: TipDirection.above,
+                      child: Semantics(
                       label: 'Muscle activity map. Tap to view details.',
                       button: true,
                       child: GestureDetector(
@@ -958,6 +969,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
+                    ), // TipOverlay(tip_home_muscles)
 
                     // ── Empty state ──
                     if (_workouts.isEmpty) ...[

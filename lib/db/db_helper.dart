@@ -61,6 +61,45 @@ class DBHelper {
     } catch (_) {}
   }
 
+  /// Merges duplicate exercises that differ only by case.
+  /// For each group, the exercise with the most logged sets becomes canonical.
+  /// All sets and template_exercises are rewritten to use the canonical name,
+  /// and the duplicate exercise rows are deleted.
+  static Future<void> _deduplicateExercises(Database d) async {
+    final allEx = await d.query('exercises');
+    // Group by lowercase name
+    final groups = <String, List<String>>{};
+    for (final ex in allEx) {
+      final name = ex['name'] as String;
+      groups.putIfAbsent(name.toLowerCase(), () => []).add(name);
+    }
+    for (final variants in groups.values) {
+      if (variants.length <= 1) continue;
+      // Count sets per variant
+      final counts = <String, int>{};
+      for (final name in variants) {
+        final res = await d.rawQuery(
+          'SELECT COUNT(*) as c FROM sets WHERE exercise_name = ?', [name]);
+        counts[name] = (res.first['c'] as int?) ?? 0;
+      }
+      // Canonical = most sets; tie-break = alphabetically first
+      variants.sort((a, b) {
+        final diff = (counts[b] ?? 0).compareTo(counts[a] ?? 0);
+        return diff != 0 ? diff : a.compareTo(b);
+      });
+      final canonical = variants.first;
+      for (final other in variants.skip(1)) {
+        await d.rawUpdate(
+          'UPDATE sets SET exercise_name = ? WHERE LOWER(exercise_name) = LOWER(?)',
+          [canonical, other]);
+        await d.rawUpdate(
+          'UPDATE template_exercises SET exercise_name = ? WHERE LOWER(exercise_name) = LOWER(?)',
+          [canonical, other]);
+        await d.delete('exercises', where: 'name = ?', whereArgs: [other]);
+      }
+    }
+  }
+
   static Future<void> _createTemplatesTables(Database d) async {
     try {
       await d.execute('''
@@ -83,7 +122,7 @@ class DBHelper {
 
   static Future<Database> _initDB() async {
     final path = p.join(await getDatabasesPath(), 'gymlog.db');
-    final d = await openDatabase(path, version: 7, onCreate: (db, v) async {
+    final d = await openDatabase(path, version: 8, onCreate: (db, v) async {
       await db.execute('''
         CREATE TABLE exercises (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -159,6 +198,7 @@ class DBHelper {
       }
       if (oldV < 6) await _ensureV6Columns(db);
       if (oldV < 7) await _ensureV7Columns(db);
+      if (oldV < 8) await _deduplicateExercises(db);
     });
     await _ensureV4Columns(d);
     await _ensureV5Columns(d);
@@ -173,12 +213,25 @@ class DBHelper {
   static Future<void> insertExercise(String name,
       {String? muscleGroup}) async {
     final d = await db;
-    await d.insert('exercises', {'name': name.trim()},
+    final trimmed = name.trim();
+    // Check for case-insensitive match — avoids duplicates like "pushups" / "Pushups"
+    final existing = await d.rawQuery(
+      'SELECT name FROM exercises WHERE LOWER(name) = LOWER(?)', [trimmed]);
+    if (existing.isNotEmpty) {
+      final existingName = existing.first['name'] as String;
+      if (muscleGroup != null) {
+        await d.rawUpdate(
+          'UPDATE exercises SET muscle_group = ? WHERE name = ? AND muscle_group IS NULL',
+          [muscleGroup, existingName]);
+      }
+      return;
+    }
+    await d.insert('exercises', {'name': trimmed},
         conflictAlgorithm: ConflictAlgorithm.ignore);
     if (muscleGroup != null) {
       await d.rawUpdate(
         'UPDATE exercises SET muscle_group = ? WHERE name = ? AND muscle_group IS NULL',
-        [muscleGroup, name.trim()],
+        [muscleGroup, trimmed],
       );
     }
   }
@@ -422,8 +475,8 @@ class DBHelper {
         COALESCE(e.is_bodyweight, 0)          AS is_bodyweight
       FROM sets s
       INNER JOIN workouts w ON s.workout_id = w.id
-      LEFT JOIN exercises e ON e.name = s.exercise_name COLLATE NOCASE
-      GROUP BY s.exercise_name
+      LEFT JOIN exercises e ON LOWER(e.name) = LOWER(s.exercise_name)
+      GROUP BY LOWER(s.exercise_name)
       HAVING MAX(s.reps) > 0
       ORDER BY session_count DESC, s.exercise_name ASC
     ''');
@@ -728,7 +781,7 @@ class DBHelper {
 
     final topExRes = await d.rawQuery('''
       SELECT exercise_name, COUNT(*) as cnt FROM sets
-      GROUP BY exercise_name ORDER BY cnt DESC LIMIT 3
+      GROUP BY LOWER(exercise_name) ORDER BY cnt DESC LIMIT 3
     ''');
     final topExercises =
         topExRes.map((r) => r['exercise_name'] as String).toList();

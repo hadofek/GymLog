@@ -5,6 +5,7 @@ import 'package:gymlog/utils/exercise_data.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/utils/weight_format.dart';
 
 class AddExerciseScreen extends StatefulWidget {
   final List<String> allExercises;
@@ -57,6 +58,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
     final last = await DBHelper.getLastSets(name);
     bool isBw = await DBHelper.isExerciseBodyweight(name);
     final pr = await DBHelper.getMaxWeightForExercise(name);
+    await WeightFormat.load();
     // If this is a bodyweight workout, flag the exercise permanently so the
     // history screen can show reps progress instead of weight progress.
     if (!isBw && widget.workoutType == WorkoutTypes.bodyweight) {
@@ -570,7 +572,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                           if (_exercisePR > 0) ...[
                             const Spacer(),
                             Text(
-                              'PR  ${_exercisePR % 1 == 0 ? _exercisePR.toInt() : _exercisePR}kg',
+                              'PR  ${WeightFormat.format(_exercisePR)}',
                               style: KiStyles.labelSm(color: textTertiary),
                             ),
                           ],
@@ -579,7 +581,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                         ..._lastSets.map((s) => Padding(
                               padding: const EdgeInsets.only(bottom: 3),
                               child: Text(
-                                'Set ${s['set_number']}  ·  ${s['weight']}kg × ${s['reps']} reps',
+                                'Set ${s['set_number']}  ·  ${WeightFormat.format((s['weight'] as num).toDouble())} × ${s['reps']} reps',
                                 style: KiStyles.body(color: textSecondary),
                               ),
                             )),
@@ -604,7 +606,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                               Text(
                                 e.value['bodyweight'] == true
                                     ? 'BW  ×  ${e.value['reps']} reps'
-                                    : '${e.value['weight']}kg  ×  ${e.value['reps']} reps',
+                                    : '${WeightFormat.format((e.value['weight'] as num).toDouble())}  ×  ${e.value['reps']} reps',
                                 style: KiStyles.bodySemibold(color: textPrimary),
                               ),
                               if (e.value['isPR'] == true) ...[
@@ -661,7 +663,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                     Expanded(
                       child: _flatField(
                         controller: _weightController,
-                        label: 'Weight (kg)',
+                        label: WeightFormat.inputLabel,
                         keyboard: const TextInputType.numberWithOptions(
                             decimal: true),
                         textPrimary: textPrimary,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/app_colors.dart';
+import 'package:gymlog/utils/weight_format.dart';
 
 class BodyMeasurementsScreen extends StatefulWidget {
   const BodyMeasurementsScreen({super.key});
@@ -28,6 +29,7 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
     ]);
     final m = results[0] as List<Map<String, dynamic>>;
     final prefs = results[1] as SharedPreferences;
+    await WeightFormat.load();
     if (mounted) {
       setState(() {
         _measurements = m;
@@ -103,7 +105,7 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
                 child: _buildField(
                   ctx: ctx,
                   ctrl: weightCtrl,
-                  label: 'Weight (kg)',
+                  label: WeightFormat.inputLabel,
                   hint: 'e.g. 75.5',
                   decimal: true,
                 ),
@@ -465,7 +467,7 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
                                         children: [
                                           if (weight != null)
                                             Text(
-                                              '${weight % 1 == 0 ? weight.toInt() : weight.toStringAsFixed(1)} kg',
+                                              WeightFormat.format(weight),
                                               style: TextStyle(
                                                 fontWeight: FontWeight.w700,
                                                 fontSize: 15,

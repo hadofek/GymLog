@@ -8,6 +8,7 @@ import 'package:gymlog/utils/exercise_data.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/utils/weight_format.dart';
 import 'package:gymlog/widgets/tip_overlay.dart';
 
 class LogWorkoutScreen extends StatefulWidget {
@@ -57,6 +58,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
       _exercises.addAll(widget.initialExercises!);
       _seedLastSets();
     }
+    WeightFormat.load();
   }
 
   Future<void> _seedLastSets() async {
@@ -76,7 +78,14 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     super.dispose();
   }
 
-  void _startRest() {
+  void _startRest([int? exIndex]) {
+    // Use exercise-specific target if set, otherwise fall back to global.
+    if (exIndex != null && exIndex < _exercises.length) {
+      final exTarget = _exercises[exIndex]['restTarget'] as int?;
+      if (exTarget != null) {
+        setState(() { _restTarget = exTarget; _restAlarmFired = false; });
+      }
+    }
     _restStopwatch
       ..reset()
       ..start();
@@ -135,6 +144,77 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                       },
                     ),
                   ],
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatRestTarget(int seconds) {
+    if (seconds < 60) return '${seconds}s';
+    final m = seconds ~/ 60;
+    final s = seconds % 60;
+    return s == 0 ? '${m}m' : '${m}m${s}s';
+  }
+
+  void _showExerciseRestPicker(int exIndex) {
+    final exName = _exercises[exIndex]['name'] as String;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardBg(context),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        final textPrimary = AppColors.textPrimary(ctx);
+        final textTertiary = AppColors.textTertiary(ctx);
+        final accent = _accentColor(ctx);
+        final currentExTarget = _exercises[exIndex]['restTarget'] as int?;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Rest Timer', style: KiStyles.headlineMd(color: textPrimary)),
+                const SizedBox(height: 2),
+                Text(exName, style: KiStyles.label(color: textTertiary)),
+                const SizedBox(height: 20),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final entry in [('60s', 60), ('90s', 90), ('2 min', 120), ('3 min', 180), ('5 min', 300)])
+                      _RestPresetChip(
+                        label: entry.$1,
+                        selected: currentExTarget == entry.$2,
+                        accent: accent,
+                        textPrimary: textPrimary,
+                        onTap: () {
+                          setState(() => _exercises[exIndex]['restTarget'] = entry.$2);
+                          Navigator.pop(ctx);
+                        },
+                      ),
+                    _RestPresetChip(
+                      label: 'Default',
+                      selected: currentExTarget == null,
+                      accent: textTertiary,
+                      textPrimary: textPrimary,
+                      onTap: () {
+                        setState(() => _exercises[exIndex].remove('restTarget'));
+                        Navigator.pop(ctx);
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Default uses the global rest target (${_restTarget != null ? _formatRestTarget(_restTarget!) : 'off'}).',
+                  style: KiStyles.labelSm(color: textTertiary),
                 ),
                 const SizedBox(height: 8),
               ],
@@ -353,7 +433,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
       final lastReps = prevSets.last['reps'] as int? ?? 0;
       if (!isBodyweight && lastWeight > 0) {
         seedWeight = lastWeight;
-        prevHint = 'Last: ${lastWeight % 1 == 0 ? lastWeight.toInt() : lastWeight.toStringAsFixed(1)}kg × $lastReps reps';
+        prevHint = 'Last: ${WeightFormat.format(lastWeight)} × $lastReps reps';
       } else if (isBodyweight && lastReps > 0) {
         prevHint = 'Last session: $lastReps reps';
       }
@@ -454,13 +534,13 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                               autofocus: true,
                               keyboardType: const TextInputType.numberWithOptions(decimal: true),
                               style: KiStyles.bodySemibold(color: textPrimary),
-                              decoration: fieldDeco('Weight (kg)'),
+                              decoration: fieldDeco(WeightFormat.inputLabel),
                               onChanged: (_) => sheetSetState(() {}),
                             ),
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                for (final delta in [-5.0, -2.5, 2.5, 5.0])
+                                for (final delta in WeightFormat.increments)
                                   Expanded(
                                     child: Padding(
                                       padding: const EdgeInsets.only(right: 4),
@@ -474,7 +554,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                                         ),
                                         child: Text(
-                                          delta > 0 ? '+${delta % 1 == 0 ? delta.toInt() : delta}' : '${delta % 1 == 0 ? delta.toInt() : delta}',
+                                          WeightFormat.incrementLabel(delta),
                                           style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: textPrimary),
                                         ),
                                       ),
@@ -546,7 +626,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
         (_exercises[exIndex]['sets'] as List)
             .add({'weight': result.weight, 'reps': result.reps, if (isPR) 'isPR': true});
       });
-      _startRest();
+      _startRest(exIndex);
     }
   }
 
@@ -921,6 +1001,28 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                                     const SizedBox(width: 3),
                                     Text('SUPERSET', style: KiStyles.labelSm(color: _accentColor(context))),
                                   ],
+                                  const SizedBox(width: 6),
+                                  // Per-exercise rest timer chip
+                                  GestureDetector(
+                                    onTap: () => _showExerciseRestPicker(exIndex),
+                                    behavior: HitTestBehavior.opaque,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                      child: Builder(builder: (ctx) {
+                                        final exTarget = ex['restTarget'] as int?;
+                                        final effective = exTarget ?? _restTarget;
+                                        return Text(
+                                          effective != null ? '⏱ ${_formatRestTarget(effective)}' : '⏱',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: exTarget != null
+                                                ? _accentColor(ctx)
+                                                : textTertiary.withValues(alpha: 0.5),
+                                          ),
+                                        );
+                                      }),
+                                    ),
+                                  ),
                                   GestureDetector(
                                     onTap: () => _confirmDeleteExercise(exIndex),
                                     behavior: HitTestBehavior.opaque,
@@ -955,7 +1057,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                                               child: Row(children: [
                                                 _SetBadge(number: e.key + 1, color: _accentColor(context)),
                                                 const SizedBox(width: 10),
-                                                Text(isBW ? 'BW' : '${w % 1 == 0 ? w.toInt() : w}kg',
+                                                Text(isBW ? 'BW' : WeightFormat.format(w),
                                                     style: KiStyles.bodySemibold(color: textPrimary)),
                                                 Padding(
                                                   padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -963,6 +1065,16 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                                                 ),
                                                 Text('$r reps', style: KiStyles.bodySemibold(color: textSecondary)),
                                                 const Spacer(),
+                                                // Progressive overload hint
+                                                Text(
+                                                  isBW ? '+1 rep' : WeightFormat.overloadStep,
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: textTertiary.withValues(alpha: 0.6),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 6),
                                                 Icon(Icons.arrow_forward_ios_rounded, size: 10, color: textTertiary),
                                               ]),
                                             ),
@@ -991,7 +1103,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                                       Text(
                                         isBW
                                             ? 'BW'
-                                            : '${e.value['weight']}kg',
+                                            : WeightFormat.format((e.value['weight'] as num).toDouble()),
                                         style: KiStyles.bodySemibold(
                                             color: textPrimary),
                                       ),

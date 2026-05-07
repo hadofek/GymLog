@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/screens/exercise_history_screen.dart';
-import 'package:gymlog/screens/muscle_map_screen.dart';
+import 'package:gymlog/screens/personal_records_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
@@ -355,11 +355,11 @@ class _StatsScreenState extends State<StatsScreen> {
             ),
           ],
 
-          // ── Muscle map ──
+          // ── Personal Records ──
           Divider(height: 1, thickness: 0.5, color: border),
           GestureDetector(
             onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const MuscleMapScreen())),
+                MaterialPageRoute(builder: (_) => const PersonalRecordsScreen())),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 18),
               child: Row(
@@ -368,10 +368,10 @@ class _StatsScreenState extends State<StatsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('MUSCLE MAP',
+                        Text('PERSONAL RECORDS',
                             style: KiStyles.label(color: textTertiary)),
                         const SizedBox(height: 4),
-                        Text('See which muscles you\'ve been hitting',
+                        Text('All-time bests for every exercise',
                             style: KiStyles.body(color: textPrimary)),
                       ],
                     ),

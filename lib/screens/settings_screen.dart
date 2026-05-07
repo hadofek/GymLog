@@ -7,6 +7,7 @@ import 'package:gymlog/screens/exercise_library_screen.dart';
 import 'package:gymlog/screens/profile_setup_screen.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/utils/weight_format.dart';
 import 'package:gymlog/widgets/tip_overlay.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _userName = '';
   String? _userImage;
   int _weeklyGoal = 3;
+  String _weightUnit = 'kg';
 
   @override
   void initState() {
@@ -34,6 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _userName = prefs.getString('user_name') ?? '';
       _userImage = prefs.getString('user_image');
       _weeklyGoal = prefs.getInt('weekly_goal') ?? 3;
+      _weightUnit = prefs.getString('weight_unit') ?? 'kg';
     });
   }
 
@@ -218,6 +221,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
             textSecondary: textSecondary,
           ),
           Divider(height: 1, thickness: 0.5, color: border),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+            child: SizedBox(
+              height: 56,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text('Weight unit',
+                        style: KiStyles.body(color: textPrimary)),
+                  ),
+                  _UnitToggle(
+                    value: _weightUnit,
+                    onChanged: (unit) async {
+                      await WeightFormat.save(unit);
+                      if (mounted) setState(() => _weightUnit = unit);
+                    },
+                    accentContainer: accentContainer,
+                    textPrimary: textPrimary,
+                    border: border,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Divider(height: 1, thickness: 0.5, color: border),
 
           // ── Data ──
           _SectionHeader(label: 'DATA', color: textSecondary),
@@ -369,6 +397,59 @@ class _SettingsRow extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _UnitToggle extends StatelessWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
+  final Color accentContainer;
+  final Color textPrimary;
+  final Color border;
+
+  const _UnitToggle({
+    required this.value,
+    required this.onChanged,
+    required this.accentContainer,
+    required this.textPrimary,
+    required this.border,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: border),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: ['kg', 'lbs'].map((unit) {
+          final selected = value == unit;
+          return GestureDetector(
+            onTap: () { if (!selected) onChanged(unit); },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: selected ? accentContainer : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                unit,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: selected
+                      ? AppColors.background(context)
+                      : textPrimary,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

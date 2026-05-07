@@ -408,6 +408,48 @@ class DBHelper {
     return result;
   }
 
+  /// All-time personal records per exercise, sorted by session count descending.
+  static Future<List<Map<String, dynamic>>> getAllExercisePRs() async {
+    final d = await db;
+    final res = await d.rawQuery('''
+      SELECT
+        s.exercise_name,
+        MAX(s.weight)                         AS max_weight,
+        MAX(s.reps)                           AS max_reps,
+        MAX(s.weight * (1 + s.reps / 30.0))  AS best_1rm,
+        MAX(w.date)                           AS last_date,
+        COUNT(DISTINCT s.workout_id)          AS session_count,
+        COALESCE(e.is_bodyweight, 0)          AS is_bodyweight
+      FROM sets s
+      INNER JOIN workouts w ON s.workout_id = w.id
+      LEFT JOIN exercises e ON e.name = s.exercise_name COLLATE NOCASE
+      GROUP BY s.exercise_name
+      HAVING MAX(s.reps) > 0
+      ORDER BY session_count DESC, s.exercise_name ASC
+    ''');
+    return List<Map<String, dynamic>>.from(res);
+  }
+
+  /// Sets from the second-most-recent workout containing [exerciseName].
+  /// Returns empty list if fewer than 2 sessions exist.
+  static Future<List<Map<String, dynamic>>> getPenultimateSessionSets(
+      String exerciseName) async {
+    final d = await db;
+    final ids = await d.rawQuery('''
+      SELECT DISTINCT workout_id FROM sets
+      WHERE exercise_name = ?
+      ORDER BY workout_id DESC
+      LIMIT 2
+    ''', [exerciseName]);
+    if (ids.length < 2) return [];
+    final penultimateId = ids[1]['workout_id'] as int;
+    final res = await d.rawQuery('''
+      SELECT * FROM sets WHERE workout_id = ? AND exercise_name = ?
+      ORDER BY set_number
+    ''', [penultimateId, exerciseName]);
+    return List<Map<String, dynamic>>.from(res);
+  }
+
   // ── Templates ──────────────────────────────────────────────────────────────
 
   static Future<int> saveTemplate(

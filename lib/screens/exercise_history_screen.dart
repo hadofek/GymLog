@@ -4,6 +4,7 @@ import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/exercise_data.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/utils/weight_format.dart';
 
 class ExerciseHistoryScreen extends StatefulWidget {
   final String exerciseName;
@@ -29,6 +30,7 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
       DBHelper.getExerciseHistory(widget.exerciseName),
       DBHelper.isExerciseBodyweight(widget.exerciseName),
     ]);
+    await WeightFormat.load();
     if (mounted) {
       setState(() {
         _history = results[0] as List<Map<String, dynamic>>;
@@ -100,11 +102,9 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
     }
   }
 
-  String _weightLabel(double w) =>
-      w % 1 == 0 ? '${w.toInt()}kg' : '${w}kg';
+  String _weightLabel(double w) => WeightFormat.format(w);
 
-  String _rmLabel(double rm) =>
-      rm % 1 == 0 ? '${rm.toInt()}kg' : '${rm.toStringAsFixed(1)}kg';
+  String _rmLabel(double rm) => WeightFormat.formatRm(rm);
 
   @override
   Widget build(BuildContext context) {

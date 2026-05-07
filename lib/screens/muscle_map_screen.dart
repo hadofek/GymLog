@@ -128,6 +128,78 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
     return s;
   }
 
+  static const _allGroups = [
+    'chest', 'back', 'shoulders', 'biceps', 'triceps',
+    'core', 'quads', 'hamstrings', 'glutes', 'calves',
+  ];
+
+  List<Widget> _buildAnalysis(
+    List<MapEntry<String, int>> sorted,
+    Color textPrimary,
+    Color textSecondary,
+    Color textTertiary,
+    Color border,
+  ) {
+    if (sorted.isEmpty) return [];
+
+    // Groups that are known but have zero sessions in the current period.
+    final detrained = _allGroups
+        .where((g) => !_counts.containsKey(g) || _counts[g]! == 0)
+        .toList();
+
+    // Top group (most trained) if it's ≥2× the average of trained groups.
+    final totalSessions = sorted.fold<int>(0, (s, e) => s + e.value);
+    final avgPerGroup = totalSessions / sorted.length;
+    final topEntry = sorted.first;
+    final isOverTrained = sorted.length >= 2 && topEntry.value >= avgPerGroup * 2;
+
+    if (detrained.isEmpty && !isOverTrained) return [];
+
+    String displayName(String g) {
+      final n = _groupDisplayNames[g] ?? g;
+      return n[0].toUpperCase() + n.substring(1);
+    }
+
+    return [
+      const SizedBox(height: 20),
+      if (detrained.isNotEmpty) ...[
+        Text('NEEDS ATTENTION', style: KiStyles.label(color: textTertiary)),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: detrained.map((g) => _AnalysisChip(
+            label: displayName(g),
+            color: const Color(0xFF2868D4),
+            textColor: Colors.white,
+          )).toList(),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'These muscle groups had no logged sessions in the selected period.',
+          style: TextStyle(fontSize: 11, color: textTertiary.withValues(alpha: 0.6), height: 1.4),
+        ),
+      ],
+      if (isOverTrained) ...[
+        SizedBox(height: detrained.isNotEmpty ? 16 : 0),
+        Text('MOST TRAINED', style: KiStyles.label(color: textTertiary)),
+        const SizedBox(height: 10),
+        _AnalysisChip(
+          label: displayName(topEntry.key),
+          color: const Color(0xFFD83638),
+          textColor: Colors.white,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${displayName(topEntry.key)} accounts for a large share of your sessions. Consider balancing with neglected groups.',
+          style: TextStyle(fontSize: 11, color: textTertiary.withValues(alpha: 0.6), height: 1.4),
+        ),
+      ],
+      const SizedBox(height: 8),
+      Divider(height: 1, thickness: 0.5, color: border),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final bg = AppColors.background(context);
@@ -288,6 +360,9 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
                       style: KiStyles.body(color: textTertiary),
                     ),
                   ] else ...[
+                    // ── Analysis: detrained / focus ──────────────────────────
+                    ..._buildAnalysis(sortedGroups, textPrimary, textSecondary, textTertiary, border),
+
                     const SizedBox(height: 24),
                     Row(
                       children: [
@@ -364,6 +439,33 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AnalysisChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  final Color textColor;
+  const _AnalysisChip({required this.label, required this.color, required this.textColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: color,
         ),
       ),
     );

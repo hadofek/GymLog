@@ -8,6 +8,8 @@ class TemplateEditScreen extends StatefulWidget {
   final String templateName;
   final String templateType;
   final List<String> exercises;
+  /// When true, creates a new template instead of updating an existing one.
+  final bool createMode;
 
   const TemplateEditScreen({
     super.key,
@@ -15,6 +17,7 @@ class TemplateEditScreen extends StatefulWidget {
     required this.templateName,
     required this.templateType,
     required this.exercises,
+    this.createMode = false,
   });
 
   @override
@@ -181,8 +184,12 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
       return;
     }
     setState(() => _saving = true);
-    await DBHelper.updateTemplateExercises(
-        widget.templateId, name, _exercises);
+    if (widget.createMode) {
+      await DBHelper.saveTemplate(name, widget.templateType, _exercises);
+    } else {
+      await DBHelper.updateTemplateExercises(
+          widget.templateId, name, _exercises);
+    }
     if (mounted) Navigator.pop(context, true);
   }
 
@@ -215,7 +222,7 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            Text('EDIT TEMPLATE',
+            Text(widget.createMode ? 'NEW TEMPLATE' : 'EDIT TEMPLATE',
                 style: KiStyles.label(
                     color: AppColors.textTertiary(context))),
           ],

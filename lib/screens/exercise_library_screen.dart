@@ -146,8 +146,23 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
   ) {
     if (names.isEmpty) {
       return Center(
-        child: Text('No exercises found',
-            style: KiStyles.body(color: textTertiary)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.search_off_rounded, size: 32, color: textTertiary),
+              const SizedBox(height: 12),
+              Text('No exercises match "$_searchQuery"',
+                  textAlign: TextAlign.center,
+                  style: KiStyles.body(color: textTertiary)),
+              const SizedBox(height: 4),
+              Text('You can add custom exercises when logging a workout.',
+                  textAlign: TextAlign.center,
+                  style: KiStyles.labelSm(color: textTertiary)),
+            ],
+          ),
+        ),
       );
     }
     return ListView.builder(

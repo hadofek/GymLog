@@ -88,6 +88,74 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
     if (updated == true) _load();
   }
 
+  Future<void> _createTemplate() async {
+    // Pick workout type first, then open the editor in create mode.
+    final type = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.cardBg(context),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        final textPrimary = AppColors.textPrimary(ctx);
+        final border = AppColors.border(ctx);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36, height: 4,
+                    decoration: BoxDecoration(
+                        color: border, borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text('Workout type', style: KiStyles.headlineMd(color: textPrimary)),
+                const SizedBox(height: 4),
+                Text('Choose the type for this template', style: KiStyles.body(color: AppColors.textTertiary(ctx))),
+                const SizedBox(height: 16),
+                ...WorkoutTypes.all.where((t) => t == WorkoutTypes.weighted || t == WorkoutTypes.bodyweight).map((type) {
+                  final typeColor = WorkoutTypes.color(type, ctx);
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        color: typeColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(WorkoutTypes.icon(type), color: typeColor, size: 20),
+                    ),
+                    title: Text(WorkoutTypes.label(type),
+                        style: KiStyles.bodySemibold(color: textPrimary)),
+                    onTap: () => Navigator.pop(ctx, type),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (type == null || !mounted) return;
+    final updated = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => TemplateEditScreen(
+          templateId: -1,
+          templateName: '',
+          templateType: type,
+          exercises: const [],
+          createMode: true,
+        ),
+      ),
+    );
+    if (updated == true) _load();
+  }
+
   Future<void> _confirmDelete(Map<String, dynamic> template) async {
     final name = template['name'] as String;
     final confirmed = await showDialog<bool>(
@@ -274,6 +342,23 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                     color: AppColors.textTertiary(context))),
           ],
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: TextButton(
+              onPressed: _createTemplate,
+              style: TextButton.styleFrom(
+                backgroundColor: accentContainer.withValues(alpha: 0.12),
+                foregroundColor: accentContainer,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text('New', style: KiStyles.label(color: accentContainer)),
+            ),
+          ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -297,9 +382,20 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                           style: KiStyles.headlineMd(color: textPrimary)),
                       const SizedBox(height: 6),
                       Text(
-                        'Save a workout as a template\nfrom the workout detail screen',
+                        'Create a template to start workouts faster,\nor save any past workout as a template.',
                         textAlign: TextAlign.center,
                         style: KiStyles.label(color: textSecondary),
+                      ),
+                      const SizedBox(height: 20),
+                      TextButton(
+                        onPressed: _createTemplate,
+                        style: TextButton.styleFrom(
+                          backgroundColor: accentContainer.withValues(alpha: 0.12),
+                          foregroundColor: accentContainer,
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                        child: Text('Create template', style: KiStyles.label(color: accentContainer)),
                       ),
                     ],
                   ),
@@ -312,70 +408,85 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                     final type =
                         tmpl['type'] as String? ?? WorkoutTypes.weighted;
                     final typeColor = WorkoutTypes.color(type, context);
-                    return GestureDetector(
-                      onTap: () => _startWorkout(tmpl),
-                      onLongPress: () => _showTemplateOptions(tmpl),
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: card,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: cardBorder, width: 1),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 46,
-                              height: 46,
-                              decoration: BoxDecoration(
-                                color: typeColor.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: Icon(WorkoutTypes.icon(type),
-                                  color: typeColor, size: 22),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    tmpl['name'] as String,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 16,
-                                      color: textPrimary,
-                                      letterSpacing: -0.2,
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: card,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: cardBorder, width: 1),
+                      ),
+                      child: Row(
+                        children: [
+                          // Main tappable area — starts workout
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => _startWorkout(tmpl),
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 46,
+                                      height: 46,
+                                      decoration: BoxDecoration(
+                                        color: typeColor.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: Icon(WorkoutTypes.icon(type),
+                                          color: typeColor, size: 22),
                                     ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    WorkoutTypes.label(type),
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: typeColor,
-                                      fontWeight: FontWeight.w600,
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            tmpl['name'] as String,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 16,
+                                              color: textPrimary,
+                                              letterSpacing: -0.2,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            WorkoutTypes.label(type),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: typeColor,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                    Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        color: accentContainer.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(Icons.play_arrow_rounded,
+                                          color: accentContainer, size: 20),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: accentContainer.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(
-                                  Icons.play_arrow_rounded,
-                                  color: accentContainer,
-                                  size: 20),
+                          ),
+                          // ⋯ options button
+                          GestureDetector(
+                            onTap: () => _showTemplateOptions(tmpl),
+                            behavior: HitTestBehavior.opaque,
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(8, 16, 14, 16),
+                              child: Icon(Icons.more_vert_rounded,
+                                  size: 18, color: AppColors.textTertiary(context)),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     );
                   },

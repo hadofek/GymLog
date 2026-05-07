@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gymlog/db/db_helper.dart';
+import 'package:gymlog/screens/exercise_history_screen.dart';
 import 'package:gymlog/screens/muscle_map_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
@@ -294,33 +295,44 @@ class _StatsScreenState extends State<StatsScreen> {
                     final isFirst = rank == 1;
                     return Column(
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 28,
-                                child: Text(
-                                  rank.toString().padLeft(2, '0'),
-                                  style: KiStyles.labelSm(
-                                      color: isFirst
-                                          ? accentContainer
-                                          : textTertiary),
+                        InkWell(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ExerciseHistoryScreen(exerciseName: name),
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  width: 28,
+                                  child: Text(
+                                    rank.toString().padLeft(2, '0'),
+                                    style: KiStyles.labelSm(
+                                        color: isFirst
+                                            ? accentContainer
+                                            : textTertiary),
+                                  ),
                                 ),
-                              ),
-                              Expanded(
-                                child: Text(
-                                  name,
-                                  style: isFirst
-                                      ? KiStyles.bodySemibold(color: textPrimary)
-                                      : KiStyles.body(color: textPrimary),
+                                Expanded(
+                                  child: Text(
+                                    name,
+                                    style: isFirst
+                                        ? KiStyles.bodySemibold(color: textPrimary)
+                                        : KiStyles.body(color: textPrimary),
+                                  ),
                                 ),
-                              ),
-                              if (isFirst)
-                                Text('★',
-                                    style: TextStyle(
-                                        color: accentContainer, fontSize: 11)),
-                            ],
+                                if (isFirst)
+                                  Text('★',
+                                      style: TextStyle(
+                                          color: accentContainer, fontSize: 11)),
+                                const SizedBox(width: 8),
+                                Icon(Icons.chevron_right_rounded,
+                                    size: 14, color: textTertiary),
+                              ],
+                            ),
                           ),
                         ),
                         if (rank < topExercises.length)

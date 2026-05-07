@@ -870,33 +870,36 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                               crossAxisAlignment:
                                   CrossAxisAlignment.start,
                               children: [
-                                GestureDetector(
-                                  onLongPress: () => _confirmDeleteExercise(exIndex),
-                                  behavior: HitTestBehavior.opaque,
-                                  child: Row(children: [
-                                    Container(
-                                      width: 8, height: 8,
-                                      decoration: BoxDecoration(
-                                          color: _accentColor(context),
-                                          shape: BoxShape.circle),
+                                Row(children: [
+                                  Container(
+                                    width: 8, height: 8,
+                                    decoration: BoxDecoration(
+                                        color: _accentColor(context),
+                                        shape: BoxShape.circle),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      ex['name'] as String,
+                                      style: KiStyles.bodySemibold(
+                                          color: textPrimary),
                                     ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        ex['name'] as String,
-                                        style: KiStyles.bodySemibold(
-                                            color: textPrimary),
-                                      ),
+                                  ),
+                                  if (isLinked) ...[
+                                    const SizedBox(width: 4),
+                                    Icon(Icons.link_rounded, size: 13, color: _accentColor(context)),
+                                    const SizedBox(width: 3),
+                                    Text('SUPERSET', style: KiStyles.labelSm(color: _accentColor(context))),
+                                  ],
+                                  GestureDetector(
+                                    onTap: () => _confirmDeleteExercise(exIndex),
+                                    behavior: HitTestBehavior.opaque,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                                      child: Icon(Icons.more_horiz_rounded, size: 18, color: textTertiary.withValues(alpha: 0.6)),
                                     ),
-                                    if (isLinked) ...[
-                                      const SizedBox(width: 4),
-                                      Icon(Icons.link_rounded, size: 13, color: _accentColor(context)),
-                                      const SizedBox(width: 3),
-                                      Text('SUPERSET', style: KiStyles.labelSm(color: _accentColor(context))),
-                                    ],
-                                    Icon(Icons.more_horiz_rounded, size: 16, color: textTertiary.withValues(alpha: 0.4)),
-                                  ]),
-                                ),
+                                  ),
+                                ]),
                                 const SizedBox(height: 10),
                                 ...sets.asMap().entries.map((e) {
                                   final isBW =

@@ -16,6 +16,7 @@ import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
 import 'package:gymlog/utils/transitions.dart';
+import 'package:gymlog/widgets/tip_overlay.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -504,7 +505,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           Semantics(
                             label: 'Weekly goal: $_workoutsThisWeek of $_weeklyGoal workouts. Tap to change goal.',
                             button: true,
-                            child: GestureDetector(
+                            child: TipOverlay(
+                              tipKey: 'tip_home_stats',
+                              tipTitle: 'Weekly Goal',
+                              tipBody: 'Tap to set how many workouts you want per week. Your progress fills in as you train.',
+                              direction: TipDirection.below,
+                              child: GestureDetector(
                               onTap: _showWeeklyGoalPicker,
                               child: _MicroStat(
                                 value: '$_workoutsThisWeek/$_weeklyGoal',
@@ -516,6 +522,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     : textPrimary,
                                 labelColor: textTertiary,
                               ),
+                            ),
                             ),
                           ),
                           const SizedBox(width: 20),
@@ -702,7 +709,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ],
                               const Spacer(),
-                              Semantics(
+                              TipOverlay(
+                                tipKey: 'tip_home_last_workout',
+                                tipTitle: 'Repeat Workout',
+                                tipBody: 'Starts a new session with the same exercises as your last workout, pre-loaded and ready to go.',
+                                direction: TipDirection.above,
+                                child: Semantics(
                                 label: 'Repeat last workout',
                                 button: true,
                                 child: GestureDetector(
@@ -715,6 +727,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                       style: KiStyles.labelSm(color: accentContainer),
                                     ),
                                   ),
+                                ),
                                 ),
                               ),
                               const SizedBox(width: 4),

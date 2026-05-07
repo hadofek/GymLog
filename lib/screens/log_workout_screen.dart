@@ -8,6 +8,7 @@ import 'package:gymlog/utils/exercise_data.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/widgets/tip_overlay.dart';
 
 class LogWorkoutScreen extends StatefulWidget {
   final DateTime? initialDate;
@@ -866,11 +867,22 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                               ['supersetGroup'] as int?;
                           final isLinked =
                               groupA != null && groupA == groupB;
-                          return _SupersetConnector(
+                          final connector = _SupersetConnector(
                             isLinked: isLinked,
                             accentColor: _accentColor(context),
                             onTap: () => _toggleSuperset(i, i + 1),
                           );
+                          // Show tip only on the first connector
+                          if (i == 0) {
+                            return TipOverlay(
+                              tipKey: 'tip_superset',
+                              tipTitle: 'Supersets',
+                              tipBody: 'Tap to link two exercises as a superset. They\'ll be logged back-to-back with no rest between.',
+                              direction: TipDirection.right,
+                              child: connector,
+                            );
+                          }
+                          return connector;
                         }
                         final exIndex = index ~/ 2;
                         final ex = _exercises[exIndex];

@@ -5,6 +5,7 @@ import 'package:gymlog/screens/muscle_map_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/widgets/tip_overlay.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -286,8 +287,14 @@ class _StatsScreenState extends State<StatsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('TOP EXERCISES',
-                      style: KiStyles.label(color: textTertiary)),
+                  TipOverlay(
+                    tipKey: 'tip_stats_exercises',
+                    tipTitle: 'Top Exercises',
+                    tipBody: 'Tap any exercise to see your full progress chart — weights, reps, and personal bests over time.',
+                    direction: TipDirection.below,
+                    child: Text('TOP EXERCISES',
+                        style: KiStyles.label(color: textTertiary)),
+                  ),
                   const SizedBox(height: 4),
                   ...topExercises.asMap().entries.map((entry) {
                     final rank = entry.key + 1;

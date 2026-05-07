@@ -4,6 +4,7 @@ import 'package:gymlog/screens/exercise_history_screen.dart';
 import 'package:gymlog/utils/exercise_data.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/widgets/tip_overlay.dart';
 
 class ExerciseLibraryScreen extends StatefulWidget {
   const ExerciseLibraryScreen({super.key});
@@ -165,10 +166,16 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
         ),
       );
     }
+    bool tipAssigned = false;
     return ListView.builder(
       itemCount: names.length,
-      itemBuilder: (_, i) => _exerciseRow(
-          names[i], textPrimary, textTertiary, border, accent),
+      itemBuilder: (_, i) {
+        final name = names[i];
+        final hasHistory = _loggedNames.contains(name.toLowerCase());
+        final showTip = hasHistory && !tipAssigned;
+        if (showTip) tipAssigned = true;
+        return _exerciseRow(name, textPrimary, textTertiary, border, accent, showTip: showTip);
+      },
     );
   }
 
@@ -229,12 +236,17 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
               duration: const Duration(milliseconds: 280),
               curve: Curves.easeInOutCubic,
               child: isExpanded
-                  ? Column(
-                      children: exercises
-                          .map((name) => _exerciseRow(
-                              name, textPrimary, textTertiary, border, accent))
-                          .toList(),
-                    )
+                  ? Builder(builder: (ctx) {
+                      bool tipAssigned = false;
+                      return Column(
+                        children: exercises.map((name) {
+                          final hasHistory = _loggedNames.contains(name.toLowerCase());
+                          final showTip = hasHistory && !tipAssigned;
+                          if (showTip) tipAssigned = true;
+                          return _exerciseRow(name, textPrimary, textTertiary, border, accent, showTip: showTip);
+                        }).toList(),
+                      );
+                    })
                   : const SizedBox.shrink(),
             ),
           ],
@@ -248,10 +260,11 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
     Color textPrimary,
     Color textTertiary,
     Color border,
-    Color accent,
-  ) {
+    Color accent, {
+    bool showTip = false,
+  }) {
     final hasHistory = _loggedNames.contains(name.toLowerCase());
-    return InkWell(
+    final row = InkWell(
       onTap: () => _openHistory(name),
       child: Column(
         children: [
@@ -281,6 +294,14 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
           Divider(height: 1, thickness: 0.5, color: border),
         ],
       ),
+    );
+    if (!showTip) return row;
+    return TipOverlay(
+      tipKey: 'tip_library_progress',
+      tipTitle: 'Progress dot',
+      tipBody: 'The amber dot means you have logged this exercise. Tap it to see your history and progress chart.',
+      direction: TipDirection.left,
+      child: row,
     );
   }
 }

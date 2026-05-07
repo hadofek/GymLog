@@ -5,6 +5,7 @@ import 'package:gymlog/screens/template_edit_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/widgets/tip_overlay.dart';
 
 class TemplatesScreen extends StatefulWidget {
   const TemplatesScreen({super.key});
@@ -345,17 +346,23 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: TextButton(
-              onPressed: _createTemplate,
-              style: TextButton.styleFrom(
-                backgroundColor: accentContainer.withValues(alpha: 0.12),
-                foregroundColor: accentContainer,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            child: TipOverlay(
+              tipKey: 'tip_templates',
+              tipTitle: 'Templates',
+              tipBody: 'Save exercise lists as templates to launch workouts in seconds. Tap New to create your first one.',
+              direction: TipDirection.below,
+              child: TextButton(
+                onPressed: _createTemplate,
+                style: TextButton.styleFrom(
+                  backgroundColor: accentContainer.withValues(alpha: 0.12),
+                  foregroundColor: accentContainer,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text('New', style: KiStyles.label(color: accentContainer)),
               ),
-              child: Text('New', style: KiStyles.label(color: accentContainer)),
             ),
           ),
         ],

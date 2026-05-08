@@ -96,6 +96,14 @@ class ExerciseData {
         .toList();
   }
 
+  /// Exercises that are measured by duration (seconds) rather than reps.
+  static const Set<String> _timedLower = {
+    'plank', 'side plank', 'wall sit', 'l-sit',
+  };
+
+  static bool isTimedExercise(String name) =>
+      _timedLower.contains(name.toLowerCase().trim());
+
   /// Returns the muscle group category for a known exercise, or null if not found.
   /// Category names match the keys in [full] (e.g. 'Chest', 'Back', 'Legs').
   static String? muscleGroupFor(String exerciseName) {

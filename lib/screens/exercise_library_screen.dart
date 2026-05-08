@@ -74,15 +74,7 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
         backgroundColor: bg,
         elevation: 0,
         scrolledUnderElevation: 0,
-        title: Text(
-          'Exercise Library',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: textPrimary,
-          ),
-        ),
+        title: Text('Exercise Library', style: KiStyles.headlineMd(color: textPrimary)),
       ),
       body: Column(
         children: [
@@ -114,12 +106,20 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
                     ),
                   ),
                   if (_searchQuery.isNotEmpty)
-                    GestureDetector(
-                      onTap: () {
-                        _searchCtrl.clear();
-                        setState(() => _searchQuery = '');
-                      },
-                      child: Icon(Icons.close_rounded, size: 16, color: textTertiary),
+                    Semantics(
+                      label: 'Clear search',
+                      button: true,
+                      child: GestureDetector(
+                        onTap: () {
+                          _searchCtrl.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(Icons.close_rounded, size: 16, color: textTertiary),
+                        ),
+                      ),
                     ),
                 ],
               ),

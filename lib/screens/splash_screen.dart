@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gymlog/screens/main_shell.dart';
 import 'package:gymlog/screens/profile_setup_screen.dart';
+import 'package:gymlog/utils/app_colors.dart';
 
 class SplashRouter extends StatefulWidget {
   const SplashRouter({super.key});
@@ -31,9 +32,13 @@ class _SplashRouterState extends State<SplashRouter> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(child: CircularProgressIndicator(color: Colors.black)),
+    return Scaffold(
+      backgroundColor: AppColors.background(context),
+      body: Center(
+        child: CircularProgressIndicator(
+          color: AppColors.accent(context),
+        ),
+      ),
     );
   }
 }

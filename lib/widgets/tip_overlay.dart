@@ -103,7 +103,7 @@ class _TipOverlayState extends State<TipOverlay> {
 
 // ─── Overlay layer ─────────────────────────────────────────────────────────────
 
-class _TipCalloutLayer extends StatelessWidget {
+class _TipCalloutLayer extends StatefulWidget {
   final Rect targetRect;
   final TipDirection direction;
   final String title;
@@ -119,6 +119,40 @@ class _TipCalloutLayer extends StatelessWidget {
   });
 
   @override
+  State<_TipCalloutLayer> createState() => _TipCalloutLayerState();
+}
+
+class _TipCalloutLayerState extends State<_TipCalloutLayer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _opacity;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
+    _opacity = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _scale = Tween<double>(begin: 0.88, end: 1.0).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic),
+    );
+    _ctrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _animatedDismiss() {
+    _ctrl.reverse().then((_) => widget.onDismiss());
+  }
+
+  @override
   Widget build(BuildContext context) {
     const cardWidth = 236.0;
     const cardEstHeight = 116.0;
@@ -126,6 +160,8 @@ class _TipCalloutLayer extends StatelessWidget {
     const gap = 6.0;
     final screen = MediaQuery.of(context).size;
     final safePad = MediaQuery.of(context).padding;
+    final targetRect = widget.targetRect;
+    final direction = widget.direction;
 
     double cardLeft, cardTop;
 
@@ -151,7 +187,7 @@ class _TipCalloutLayer extends StatelessWidget {
       screen.height - safePad.bottom - cardEstHeight - 8.0,
     );
 
-    // Pointer tip position (center of the gap between card and target)
+    // Pointer tip position
     double? ptrLeft, ptrTop;
     bool showPointer = true;
 
@@ -170,10 +206,14 @@ class _TipCalloutLayer extends StatelessWidget {
         ptrTop = targetRect.center.dy - pointerH;
     }
 
-    // Suppress pointer if it would be offscreen
-    if (ptrLeft < 0 || ptrLeft > screen.width || ptrTop < 0 || ptrTop > screen.height) {
+    if (ptrLeft < 0 ||
+        ptrLeft > screen.width ||
+        ptrTop < 0 ||
+        ptrTop > screen.height) {
       showPointer = false;
     }
+
+    final cardColor = AppColors.surfaceContainerHighest(context);
 
     return Material(
       color: Colors.transparent,
@@ -182,28 +222,51 @@ class _TipCalloutLayer extends StatelessWidget {
           // Full-screen tap-to-dismiss barrier
           Positioned.fill(
             child: GestureDetector(
-              onTap: onDismiss,
+              onTap: _animatedDismiss,
               behavior: HitTestBehavior.opaque,
               child: const ColoredBox(color: Colors.transparent),
             ),
           ),
 
-          // Triangle pointer
+          // Triangle pointer — fades with the card
           if (showPointer)
             Positioned(
               left: ptrLeft,
               top: ptrTop,
-              child: _TrianglePointer(direction: direction, size: pointerH),
+              child: AnimatedBuilder(
+                animation: _opacity,
+                builder: (_, __) => Opacity(
+                  opacity: _opacity.value,
+                  child: _TrianglePointer(
+                    direction: direction,
+                    size: pointerH,
+                    color: cardColor,
+                  ),
+                ),
+              ),
             ),
 
-          // Card (must be last so it's above the barrier)
+          // Card — fades + scales in
           Positioned(
             left: cardLeft,
             top: cardTop,
             width: cardWidth,
-            child: GestureDetector(
-              onTap: () {}, // eat taps so they don't hit the barrier
-              child: _TipCard(title: title, body: body, onDismiss: onDismiss),
+            child: AnimatedBuilder(
+              animation: _ctrl,
+              builder: (_, __) => Opacity(
+                opacity: _opacity.value,
+                child: Transform.scale(
+                  scale: _scale.value,
+                  child: GestureDetector(
+                    onTap: () {}, // eat taps so they don't hit the barrier
+                    child: _TipCard(
+                      title: widget.title,
+                      body: widget.body,
+                      onDismiss: _animatedDismiss,
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
@@ -227,9 +290,9 @@ class _TipCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const cardBg = Color(0xFF1A1F2E);
-    const bodyColor = Color(0xFFD8DCE8);
-    const amber = AppColors.gold;
+    final cardBg = AppColors.surfaceContainerHighest(context);
+    final bodyColor = AppColors.textPrimary(context);
+    final amber = AppColors.accentContainer(context);
 
     return Container(
       decoration: BoxDecoration(
@@ -250,7 +313,7 @@ class _TipCard extends StatelessWidget {
         children: [
           Text(
             title.toUpperCase(),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w700,
               color: amber,
@@ -260,7 +323,7 @@ class _TipCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             body,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               color: bodyColor,
               height: 1.45,
@@ -269,14 +332,17 @@ class _TipCard extends StatelessWidget {
           const SizedBox(height: 10),
           Align(
             alignment: Alignment.centerRight,
-            child: GestureDetector(
-              onTap: onDismiss,
-              child: const Text(
-                'Got it',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: amber,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 10, 0, 4),
+              child: GestureDetector(
+                onTap: onDismiss,
+                child: Text(
+                  'Got it',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: amber,
+                  ),
                 ),
               ),
             ),
@@ -292,8 +358,13 @@ class _TipCard extends StatelessWidget {
 class _TrianglePointer extends StatelessWidget {
   final TipDirection direction;
   final double size;
+  final Color color;
 
-  const _TrianglePointer({required this.direction, this.size = 8.0});
+  const _TrianglePointer({
+    required this.direction,
+    required this.color,
+    this.size = 8.0,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -303,37 +374,35 @@ class _TrianglePointer extends StatelessWidget {
     final h = isVertical ? size : size * 2;
     return CustomPaint(
       size: Size(w, h),
-      painter: _TrianglePainter(direction: direction),
+      painter: _TrianglePainter(direction: direction, color: color),
     );
   }
 }
 
 class _TrianglePainter extends CustomPainter {
   final TipDirection direction;
-  const _TrianglePainter({required this.direction});
+  final Color color;
+
+  const _TrianglePainter({required this.direction, required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = const Color(0xFF1A1F2E);
+    final paint = Paint()..color = color;
     final path = Path();
     switch (direction) {
       case TipDirection.below:
-        // Pointer tip faces up (card is below)
         path.moveTo(size.width / 2, 0);
         path.lineTo(0, size.height);
         path.lineTo(size.width, size.height);
       case TipDirection.above:
-        // Pointer tip faces down (card is above)
         path.moveTo(0, 0);
         path.lineTo(size.width, 0);
         path.lineTo(size.width / 2, size.height);
       case TipDirection.right:
-        // Pointer tip faces left (card is to the right)
         path.moveTo(0, size.height / 2);
         path.lineTo(size.width, 0);
         path.lineTo(size.width, size.height);
       case TipDirection.left:
-        // Pointer tip faces right (card is to the left)
         path.moveTo(0, 0);
         path.lineTo(0, size.height);
         path.lineTo(size.width, size.height / 2);
@@ -343,5 +412,6 @@ class _TrianglePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TrianglePainter old) => old.direction != direction;
+  bool shouldRepaint(_TrianglePainter old) =>
+      old.direction != direction || old.color != color;
 }

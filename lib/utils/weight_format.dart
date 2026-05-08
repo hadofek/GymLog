@@ -28,7 +28,7 @@ class WeightFormat {
 
   /// Format a stored kg value as a display string including unit suffix.
   static String format(double kg) {
-    if (kg == 0) return 'BW';
+    if (kg == 0) return 'Bodyweight';
     final v = toDisplay(kg);
     final s = v % 1 == 0 ? '${v.toInt()}' : v.toStringAsFixed(1);
     return '$s$_unit';
@@ -36,7 +36,7 @@ class WeightFormat {
 
   /// Format without the unit suffix (for use inside compound strings).
   static String value(double kg) {
-    if (kg == 0) return 'BW';
+    if (kg == 0) return 'Bodyweight';
     final v = toDisplay(kg);
     return v % 1 == 0 ? '${v.toInt()}' : v.toStringAsFixed(1);
   }

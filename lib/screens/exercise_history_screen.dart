@@ -241,22 +241,12 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Est. 1 Rep Max (Epley)',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: AppColors.textTertiary(context),
-                                fontWeight: FontWeight.w600,
-                              ),
+                              'Estimated 1-Rep Max',
+                              style: KiStyles.label(color: AppColors.textTertiary(context)),
                             ),
                             Text(
                               _rmLabel(best1RM),
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.textPrimary(context),
-                                letterSpacing: -0.5,
-                                height: 1.2,
-                              ),
+                              style: KiStyles.headlineLg(color: AppColors.textPrimary(context)),
                             ),
                           ],
                         ),
@@ -281,15 +271,20 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
                     style: KiStyles.labelSm(color: textSecondary),
                   ),
                   const SizedBox(height: 12),
-                  SizedBox(
-                    height: 160,
-                    child: _WeightChart(
-                      values: _isBodyweight ? chartReps : chartWeights,
-                      prIndices: _computePrIndices(
-                        _isBodyweight ? chartReps : chartWeights,
-                        _history,
-                        _isBodyweight,
-                        chartStartIdx: _history.length > 20 ? _history.length - 20 : 0,
+                  Semantics(
+                    label: _isBodyweight
+                        ? 'Rep count chart over last ${chartHistory.length} sessions'
+                        : 'Weight progress chart over last ${chartHistory.length} sessions',
+                    child: SizedBox(
+                      height: 160,
+                      child: _WeightChart(
+                        values: _isBodyweight ? chartReps : chartWeights,
+                        prIndices: _computePrIndices(
+                          _isBodyweight ? chartReps : chartWeights,
+                          _history,
+                          _isBodyweight,
+                          chartStartIdx: _history.length > 20 ? _history.length - 20 : 0,
+                        ),
                       ),
                     ),
                   ),
@@ -391,22 +386,14 @@ class _StatCard extends StatelessWidget {
       children: [
         Text(
           label,
-          style: TextStyle(
-            fontSize: 11,
-            color: AppColors.textTertiary(context),
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.2,
-          ),
+          style: KiStyles.label(color: AppColors.textTertiary(context)),
         ),
         const SizedBox(height: 4),
         Text(
           value,
-          style: TextStyle(
-            fontSize: smallValue ? 14 : 18,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textPrimary(context),
-            letterSpacing: -0.3,
-          ),
+          style: smallValue
+              ? KiStyles.bodySemibold(color: AppColors.textPrimary(context))
+              : KiStyles.headlineMd(color: AppColors.textPrimary(context)),
         ),
       ],
     );
@@ -548,5 +535,8 @@ class _ChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ChartPainter old) =>
-      old.values != values || old.dotCenter != dotCenter || old.prIndices != prIndices;
+      old.dotCenter != dotCenter ||
+      old.prIndices != prIndices ||
+      old.values.length != values.length ||
+      !old.values.asMap().entries.every((e) => e.value == values[e.key]);
 }

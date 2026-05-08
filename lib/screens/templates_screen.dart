@@ -165,18 +165,16 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
         backgroundColor: AppColors.cardBg(ctx),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Delete template?',
-            style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary(ctx))),
+            style: KiStyles.headlineMd(color: AppColors.textPrimary(ctx))),
         content: Text(
           'Remove "$name" from your templates?',
-          style: TextStyle(color: AppColors.textSecondary(ctx)),
+          style: KiStyles.body(color: AppColors.textSecondary(ctx)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
             child: Text('Cancel',
-                style: TextStyle(color: AppColors.textSecondary(ctx))),
+                style: KiStyles.label(color: AppColors.textTertiary(ctx))),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -187,9 +185,7 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                   borderRadius: BorderRadius.circular(8)),
             ),
             child: Text('Delete',
-                style: TextStyle(
-                    color: AppColors.destructive(ctx),
-                    fontWeight: FontWeight.bold)),
+                style: KiStyles.label(color: AppColors.destructive(ctx))),
           ),
         ],
       ),
@@ -224,10 +220,7 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
             const SizedBox(height: 14),
             Text(
               tmpl['name'] as String,
-              style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                  color: textPrimary),
+              style: KiStyles.bodySemibold(color: textPrimary),
             ),
             const SizedBox(height: 8),
             ListTile(
@@ -245,8 +238,7 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                 );
               }),
               title: Text('Start Workout',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600, color: textPrimary)),
+                  style: KiStyles.bodySemibold(color: textPrimary)),
               onTap: () {
                 Navigator.pop(ctx);
                 _startWorkout(tmpl);
@@ -266,8 +258,7 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                 );
               }),
               title: Text('Edit Template',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600, color: textPrimary)),
+                  style: KiStyles.bodySemibold(color: textPrimary)),
               onTap: () {
                 Navigator.pop(ctx);
                 _editTemplate(tmpl);
@@ -287,9 +278,7 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                       color: destructive, size: 20),
                 ),
                 title: Text('Delete',
-                    style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: destructive)),
+                    style: KiStyles.bodySemibold(color: destructive)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _confirmDelete(tmpl);
@@ -312,8 +301,8 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
     final accentContainer = AppColors.accentContainer(context);
     final isDark = AppColors.isDark(context);
     final cardBorder = isDark
-        ? const Color(0xFF1C2235).withValues(alpha: 0.6)
-        : const Color(0xFFEEEEEE);
+        ? AppColors.border(context).withValues(alpha: 0.6)
+        : AppColors.surfaceContainerHighest(context);
 
     return Scaffold(
       backgroundColor: bg,
@@ -449,21 +438,12 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
                                         children: [
                                           Text(
                                             tmpl['name'] as String,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 16,
-                                              color: textPrimary,
-                                              letterSpacing: -0.2,
-                                            ),
+                                            style: KiStyles.bodySemibold(color: textPrimary),
                                           ),
                                           const SizedBox(height: 2),
                                           Text(
                                             WorkoutTypes.label(type),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: typeColor,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                            style: KiStyles.labelSm(color: typeColor),
                                           ),
                                         ],
                                       ),

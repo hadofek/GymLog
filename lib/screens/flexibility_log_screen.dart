@@ -104,7 +104,7 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to save: $e')));
+            const SnackBar(content: Text('Could not save. Please try again.')));
       }
     }
   }
@@ -113,7 +113,7 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
     final accent = AppColors.accentContainer(context);
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(color: AppColors.hintText(context)),
+      hintStyle: KiStyles.body(color: AppColors.hintText(context)),
       filled: true,
       fillColor: AppColors.inputFill(context),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -197,7 +197,10 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
           children: [
             // Date selector
             Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
-            GestureDetector(
+            Semantics(
+              label: 'Workout date: ${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}. Tap to change.',
+              button: true,
+              child: GestureDetector(
               onTap: _pickDate,
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -215,7 +218,7 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
                   ],
                 ),
               ),
-            ),
+            )),
             Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
 
             const SizedBox(height: 20),
@@ -225,10 +228,7 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
             TextField(
               controller: _activityController,
               onChanged: (_) => setState(() {}),
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: textPrimary),
+              style: KiStyles.bodySemibold(color: textPrimary),
               decoration: _fieldDecoration('e.g. Yoga'),
             ),
 
@@ -237,7 +237,10 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
               spacing: 8,
               runSpacing: 8,
               children: _suggestions
-                  .map((s) => GestureDetector(
+                  .map((s) => Semantics(
+                        label: s,
+                        button: true,
+                        child: GestureDetector(
                         onTap: () {
                           _activityController.text = s;
                           setState(() {});
@@ -266,7 +269,7 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
                             ),
                           ),
                         ),
-                      ))
+                      )))
                   .toList(),
             ),
 
@@ -307,10 +310,7 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
             TextField(
               controller: _notesController,
               maxLines: 3,
-              style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w400,
-                  color: textPrimary),
+              style: KiStyles.body(color: textPrimary),
               decoration: _fieldDecoration('How did it go? (optional)')
                   .copyWith(
                 contentPadding: const EdgeInsets.all(16),

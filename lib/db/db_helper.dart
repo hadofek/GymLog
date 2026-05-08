@@ -122,7 +122,7 @@ class DBHelper {
 
   static Future<Database> _initDB() async {
     final path = p.join(await getDatabasesPath(), 'gymlog.db');
-    final d = await openDatabase(path, version: 8, onCreate: (db, v) async {
+    final d = await openDatabase(path, version: 9, onCreate: (db, v) async {
       await db.execute('''
         CREATE TABLE exercises (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -178,6 +178,16 @@ class DBHelper {
           notes TEXT DEFAULT ''
         )
       ''');
+      await db.execute('''
+        CREATE TABLE workout_drafts (
+          id INTEGER PRIMARY KEY,
+          type TEXT NOT NULL,
+          exercises_json TEXT NOT NULL,
+          elapsed_seconds INTEGER DEFAULT 0,
+          date_str TEXT NOT NULL,
+          saved_at TEXT NOT NULL
+        )
+      ''');
     }, onUpgrade: (db, oldV, newV) async {
       if (oldV < 2) {
         try {
@@ -199,13 +209,30 @@ class DBHelper {
       if (oldV < 6) await _ensureV6Columns(db);
       if (oldV < 7) await _ensureV7Columns(db);
       if (oldV < 8) await _deduplicateExercises(db);
+      if (oldV < 9) await _ensureV9Tables(db);
     });
     await _ensureV4Columns(d);
     await _ensureV5Columns(d);
     await _createTemplatesTables(d);
     await _ensureV6Columns(d);
     await _ensureV7Columns(d);
+    await _ensureV9Tables(d);
     return d;
+  }
+
+  static Future<void> _ensureV9Tables(Database d) async {
+    try {
+      await d.execute('''
+        CREATE TABLE IF NOT EXISTS workout_drafts (
+          id INTEGER PRIMARY KEY,
+          type TEXT NOT NULL,
+          exercises_json TEXT NOT NULL,
+          elapsed_seconds INTEGER DEFAULT 0,
+          date_str TEXT NOT NULL,
+          saved_at TEXT NOT NULL
+        )
+      ''');
+    } catch (_) {}
   }
 
   // ── Exercises ──────────────────────────────────────────────────────────────
@@ -558,6 +585,40 @@ class DBHelper {
     await d.delete('templates', where: 'id = ?', whereArgs: [templateId]);
   }
 
+  // ── Workout Draft ──────────────────────────────────────────────────────────
+
+  static Future<void> saveDraft({
+    required String type,
+    required String exercisesJson,
+    required int elapsedSeconds,
+    required String dateStr,
+  }) async {
+    final d = await db;
+    await d.insert(
+      'workout_drafts',
+      {
+        'id': 1,
+        'type': type,
+        'exercises_json': exercisesJson,
+        'elapsed_seconds': elapsedSeconds,
+        'date_str': dateStr,
+        'saved_at': DateTime.now().toIso8601String(),
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
+  static Future<Map<String, dynamic>?> loadDraft() async {
+    final d = await db;
+    final rows = await d.query('workout_drafts', where: 'id = 1');
+    return rows.isEmpty ? null : rows.first;
+  }
+
+  static Future<void> clearDraft() async {
+    final d = await db;
+    await d.delete('workout_drafts', where: 'id = 1');
+  }
+
   // ── Measurements ───────────────────────────────────────────────────────────
 
   static Future<void> insertMeasurement({
@@ -597,7 +658,7 @@ class DBHelper {
       SELECT e.muscle_group, w.date
       FROM sets s
       INNER JOIN workouts w ON s.workout_id = w.id
-      INNER JOIN exercises e ON s.exercise_name = e.name
+      INNER JOIN exercises e ON LOWER(s.exercise_name) = LOWER(e.name)
       WHERE e.muscle_group IS NOT NULL
       GROUP BY e.muscle_group, w.id
     ''');
@@ -651,7 +712,7 @@ class DBHelper {
     final res = await d.rawQuery('''
       SELECT e.muscle_group, SUM(s.weight * s.reps) as volume
       FROM sets s
-      INNER JOIN exercises e ON s.exercise_name = e.name
+      INNER JOIN exercises e ON LOWER(s.exercise_name) = LOWER(e.name)
       WHERE s.workout_id = ? AND e.muscle_group IS NOT NULL
       GROUP BY e.muscle_group
     ''', [workoutId]);

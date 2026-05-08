@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/app_colors.dart';
+import 'package:gymlog/utils/ki_styles.dart';
 import 'package:gymlog/utils/weight_format.dart';
 
 class BodyMeasurementsScreen extends StatefulWidget {
@@ -61,6 +62,34 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
     final notesCtrl = TextEditingController();
     final card = AppColors.cardBg(context);
     final textPrimary = AppColors.textPrimary(context);
+    final textSecondary = AppColors.textSecondary(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final accentContainer = AppColors.accentContainer(context);
+    final borderColor = AppColors.border(context);
+    final inputFill = AppColors.inputFill(context);
+
+    InputDecoration fieldDec(String label, String hint) => InputDecoration(
+          labelText: label,
+          labelStyle: KiStyles.labelSm(color: textTertiary),
+          hintText: hint,
+          hintStyle: TextStyle(color: AppColors.hintText(context)),
+          filled: true,
+          fillColor: inputFill,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: borderColor),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: accentContainer, width: 1.5),
+          ),
+        );
 
     final saved = await showModalBottomSheet<bool>(
       context: context,
@@ -70,7 +99,7 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
         padding: EdgeInsets.fromLTRB(
-            24, 16, 24, 24 + MediaQuery.of(ctx).viewInsets.bottom),
+            20, 16, 20, 24 + MediaQuery.of(ctx).viewInsets.bottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -80,69 +109,57 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                    color: AppColors.border(ctx),
+                    color: borderColor,
                     borderRadius: BorderRadius.circular(2)),
               ),
             ),
             const SizedBox(height: 16),
-            Text(
-              'Log Measurements',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: textPrimary,
-                letterSpacing: -0.3,
-              ),
-            ),
+            Text('Log Measurements', style: KiStyles.headlineMd(color: textPrimary)),
             const SizedBox(height: 4),
-            Text(
-              'All fields are optional',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary(ctx)),
-            ),
+            Text('All fields are optional', style: KiStyles.labelSm(color: textSecondary)),
             const SizedBox(height: 20),
             Row(children: [
               Expanded(
-                child: _buildField(
-                  ctx: ctx,
-                  ctrl: weightCtrl,
-                  label: WeightFormat.inputLabel,
-                  hint: 'e.g. 75.5',
-                  decimal: true,
+                child: TextField(
+                  controller: weightCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  style: KiStyles.body(color: textPrimary),
+                  decoration: fieldDec(WeightFormat.inputLabel, 'e.g. 75.5'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _buildField(
-                  ctx: ctx,
-                  ctrl: bodyFatCtrl,
-                  label: 'Body fat (%)',
-                  hint: 'e.g. 18.5',
-                  decimal: true,
+                child: TextField(
+                  controller: bodyFatCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  style: KiStyles.body(color: textPrimary),
+                  decoration: fieldDec('Body fat (%)', 'e.g. 18.5'),
                 ),
               ),
             ]),
             const SizedBox(height: 12),
-            _buildField(
-              ctx: ctx,
-              ctrl: notesCtrl,
-              label: 'Notes (optional)',
-              hint: 'e.g. morning weight',
-              decimal: false,
+            TextField(
+              controller: notesCtrl,
+              style: KiStyles.body(color: textPrimary),
+              decoration: fieldDec('Notes (optional)', 'e.g. morning weight'),
             ),
             const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBtnBg(ctx),
-                foregroundColor: AppColors.primaryBtnFg(ctx),
-                minimumSize: const Size(double.infinity, 52),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                elevation: 0,
-                textStyle:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryBtnBg(ctx),
+                  foregroundColor: AppColors.primaryBtnFg(ctx),
+                  minimumSize: const Size(double.infinity, 52),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  elevation: 0,
+                ),
+                child: Text('Save',
+                    style: KiStyles.bodySemibold(
+                        color: AppColors.primaryBtnFg(ctx))),
               ),
-              child: const Text('Save'),
             ),
           ],
         ),
@@ -167,94 +184,45 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
     }
   }
 
-  Widget _buildField({
-    required BuildContext ctx,
-    required TextEditingController ctrl,
-    required String label,
-    required String hint,
-    required bool decimal,
-  }) {
-    return TextField(
-      controller: ctrl,
-      keyboardType: decimal
-          ? const TextInputType.numberWithOptions(decimal: true)
-          : TextInputType.text,
-      style: TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textPrimary(ctx)),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: TextStyle(color: AppColors.textSecondary(ctx)),
-        hintText: hint,
-        hintStyle: TextStyle(color: AppColors.hintText(ctx)),
-        filled: true,
-        fillColor: AppColors.inputFill(ctx),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
+  Future<void> _deleteMeasurement(Map<String, dynamic> m) async {
+    final id = m['id'] as int;
+    await DBHelper.deleteMeasurement(id);
+    await _load();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text('Measurement deleted',
+            style: KiStyles.body(color: AppColors.textPrimary(context))),
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.cardBg(context),
+        action: SnackBarAction(
+          label: 'Undo',
+          textColor: AppColors.accentContainer(context),
+          onPressed: () async {
+            await DBHelper.insertMeasurement(
+              date: m['date'] as String,
+              weightKg: m['weight_kg'] as double?,
+              bodyFatPct: m['body_fat_pct'] as double?,
+              notes: m['notes'] as String? ?? '',
+            );
+            await _load();
+          },
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.border(ctx), width: 1.5),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.textPrimary(ctx), width: 2),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _confirmDelete(int id) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.cardBg(ctx),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Delete entry?',
-            style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary(ctx))),
-        content: Text('Remove this measurement?',
-            style: TextStyle(color: AppColors.textSecondary(ctx))),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel',
-                style: TextStyle(color: AppColors.textSecondary(ctx))),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(
-              backgroundColor: AppColors.destructive(ctx).withValues(alpha: 0.08),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-            ),
-            child: Text('Delete',
-                style: TextStyle(
-                    color: AppColors.destructive(ctx), fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await DBHelper.deleteMeasurement(id);
-      await _load();
-    }
+      ));
   }
 
   @override
   Widget build(BuildContext context) {
     final bg = AppColors.background(context);
-    final card = AppColors.cardBg(context);
     final textPrimary = AppColors.textPrimary(context);
     final textSecondary = AppColors.textSecondary(context);
-    final border = AppColors.border(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final accentContainer = AppColors.accentContainer(context);
+    final borderColor = AppColors.border(context);
+    final errorColor = AppColors.error(context);
 
-    // Build chart data from oldest → newest with weight values
     final withWeight = _measurements
         .where((m) => m['weight_kg'] != null)
         .toList()
@@ -267,38 +235,38 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
         backgroundColor: bg,
         elevation: 0,
         scrolledUnderElevation: 0,
-        toolbarHeight: 64,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
             Text(
-              'Body Measurements',
+              'GYMLOG',
               style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 20,
-                color: textPrimary,
-                letterSpacing: -0.3,
+                fontFamily: 'Lexend',
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                fontStyle: FontStyle.italic,
+                letterSpacing: 3,
+                color: accentContainer,
               ),
             ),
-            Text(
-              _profileHeight != null
-                  ? 'Height: ${_profileHeight!.toInt()} cm · set in Profile'
-                  : 'Track your body stats over time',
-              style: TextStyle(
-                  fontSize: 12,
-                  color: textSecondary,
-                  fontWeight: FontWeight.w400),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'MEASUREMENTS',
+                style: KiStyles.label(color: textTertiary),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
       ),
-      floatingActionButton: Builder(
-        builder: (ctx) => FloatingActionButton(
-          onPressed: _showAddDialog,
-          backgroundColor: AppColors.primaryBtnBg(ctx),
-          foregroundColor: AppColors.primaryBtnFg(ctx),
-          child: const Icon(Icons.add),
-        ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAddDialog,
+        backgroundColor: accentContainer,
+        foregroundColor: AppColors.primaryBtnFg(context),
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        icon: const Icon(Icons.add, size: 20),
+        label: Text('Log', style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(context))),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -311,201 +279,128 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
                         width: 72,
                         height: 72,
                         decoration: BoxDecoration(
-                          color: AppColors.gold.withValues(alpha: 0.15),
+                          color: accentContainer.withValues(alpha: 0.12),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.monitor_weight_outlined,
-                            size: 32, color: AppColors.goldDark),
+                        child: Icon(Icons.monitor_weight_outlined,
+                            size: 32, color: accentContainer),
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        'No measurements yet',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          color: textPrimary,
-                        ),
-                      ),
+                      Text('No measurements yet',
+                          style: KiStyles.headlineMd(color: textPrimary)),
                       const SizedBox(height: 6),
-                      Text(
-                        'Tap + to log your first measurement',
-                        style: TextStyle(fontSize: 14, color: textSecondary),
-                      ),
+                      Text('Tap Log to record your first entry',
+                          style: KiStyles.body(color: textSecondary)),
                     ],
                   ),
                 )
               : ListView(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                   children: [
-                    // Weight chart
+                    // ── Weight chart ──
                     if (withWeight.length >= 2) ...[
-                      Container(
-                        decoration: BoxDecoration(
-                          color: card,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Weight Progress',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14,
-                                color: textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${withWeight.length} entries',
-                              style: TextStyle(
-                                  fontSize: 12, color: textSecondary),
-                            ),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                              height: 120,
-                              child: _WeightChart(
-                                values: withWeight
-                                    .map((m) =>
-                                        (m['weight_kg'] as num).toDouble())
-                                    .toList(),
-                              ),
-                            ),
-                          ],
+                      Text('Weight Progress',
+                          style: KiStyles.bodySemibold(color: textPrimary)),
+                      const SizedBox(height: 2),
+                      Text('${withWeight.length} entries',
+                          style: KiStyles.labelSm(color: textSecondary)),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 120,
+                        child: _WeightChart(
+                          values: withWeight
+                              .map((m) => (m['weight_kg'] as num).toDouble())
+                              .toList(),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
+                      Divider(height: 1, thickness: 0.5, color: borderColor),
                     ],
-                    // List
-                    Container(
-                      decoration: BoxDecoration(
-                        color: card,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+
+                    // ── Height context line ──
+                    if (_profileHeight != null) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Row(
+                          children: [
+                            Text('HEIGHT', style: KiStyles.label(color: textTertiary)),
+                            const Spacer(),
+                            Text(
+                              '${_profileHeight!.toInt()} cm  ·  set in Profile',
+                              style: KiStyles.labelSm(color: textTertiary),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: Column(
-                        children: List.generate(_measurements.length, (i) {
-                          final m = _measurements[i];
-                          final weight = m['weight_kg'] as double?;
-                          final bodyFat = m['body_fat_pct'] as double?;
-                          final notes = m['notes'] as String? ?? '';
-                          final isLast = i == _measurements.length - 1;
-                          return Column(
-                            children: [
-                              InkWell(
-                                onLongPress: () =>
-                                    _confirmDelete(m['id'] as int),
-                                borderRadius: BorderRadius.vertical(
-                                  top: i == 0
-                                      ? const Radius.circular(16)
-                                      : Radius.zero,
-                                  bottom: isLast
-                                      ? const Radius.circular(16)
-                                      : Radius.zero,
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 14),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 44,
-                                        height: 44,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.gold
-                                              .withValues(alpha: 0.15),
-                                          borderRadius:
-                                              BorderRadius.circular(12),
+                      Divider(height: 1, thickness: 0.5, color: borderColor),
+                    ],
+
+                    // ── Measurements list ──
+                    ...List.generate(_measurements.length, (i) {
+                      final m = _measurements[i];
+                      final weight = m['weight_kg'] as double?;
+                      final bodyFat = m['body_fat_pct'] as double?;
+                      final notes = m['notes'] as String? ?? '';
+
+                      return Dismissible(
+                        key: ValueKey('meas-${m['id']}'),
+                        direction: DismissDirection.endToStart,
+                        onDismissed: (_) => _deleteMeasurement(m),
+                        background: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          color: errorColor.withValues(alpha: 0.12),
+                          child: Icon(Icons.delete_outline, color: errorColor, size: 20),
+                        ),
+                        child: Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 14),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _formatDate(m['date'] as String),
+                                          style: KiStyles.bodySemibold(color: textPrimary),
                                         ),
-                                        child: const Icon(
-                                            Icons.monitor_weight_outlined,
-                                            size: 20,
-                                            color: AppColors.goldDark),
-                                      ),
-                                      const SizedBox(width: 14),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              _formatDate(
-                                                  m['date'] as String),
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 14,
-                                                color: textPrimary,
-                                              ),
-                                            ),
-                                            if (notes.isNotEmpty) ...[
-                                              const SizedBox(height: 2),
-                                              Text(notes,
-                                                  style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: textSecondary)),
-                                            ],
-                                          ],
-                                        ),
-                                      ),
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.end,
-                                        children: [
-                                          if (weight != null)
-                                            Text(
-                                              WeightFormat.format(weight),
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 15,
-                                                color: textPrimary,
-                                              ),
-                                            ),
-                                          if (bodyFat != null)
-                                            Text(
-                                              '${bodyFat % 1 == 0 ? bodyFat.toInt() : bodyFat.toStringAsFixed(1)}% fat',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: textSecondary,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
+                                        if (notes.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(notes,
+                                              style: KiStyles.labelSm(color: textSecondary)),
                                         ],
-                                      ),
+                                      ],
+                                    ),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      if (weight != null)
+                                        Text(
+                                          WeightFormat.format(weight),
+                                          style: KiStyles.bodySemibold(color: textPrimary),
+                                        ),
+                                      if (bodyFat != null)
+                                        Text(
+                                          '${bodyFat % 1 == 0 ? bodyFat.toInt() : bodyFat.toStringAsFixed(1)}% fat',
+                                          style: KiStyles.labelSm(color: textSecondary),
+                                        ),
                                     ],
                                   ),
-                                ),
+                                ],
                               ),
-                              if (!isLast)
-                                Divider(
-                                    height: 1,
-                                    color: border,
-                                    indent: 16,
-                                    endIndent: 16),
-                            ],
-                          );
-                        }),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Long-press an entry to delete it',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: textSecondary),
-                    ),
+                            ),
+                            Divider(
+                                height: 1,
+                                thickness: 0.5,
+                                color: borderColor),
+                          ],
+                        ),
+                      );
+                    }),
                   ],
                 ),
     );
@@ -520,7 +415,7 @@ class _WeightChart extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       painter: _ChartPainter(
-          values: values, cardColor: AppColors.cardBg(context)),
+          values: values, cardColor: AppColors.background(context)),
       size: Size.infinite,
     );
   }
@@ -595,5 +490,7 @@ class _ChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_ChartPainter old) => old.values != values;
+  bool shouldRepaint(_ChartPainter old) =>
+      old.values.length != values.length ||
+      !old.values.asMap().entries.every((e) => e.value == values[e.key]);
 }

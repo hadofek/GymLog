@@ -87,11 +87,7 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
                     const SizedBox(height: 12),
                     Text(
                       'Add Exercise',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: textPrimary,
-                      ),
+                      style: KiStyles.headlineMd(color: textPrimary),
                     ),
                     const SizedBox(height: 12),
                     TextField(
@@ -102,7 +98,7 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
                                 e.toLowerCase().contains(v.toLowerCase()))
                             .toList();
                       }),
-                      style: TextStyle(color: textPrimary),
+                      style: KiStyles.body(color: textPrimary),
                       decoration: InputDecoration(
                         hintText: 'Search exercises…',
                         hintStyle: TextStyle(color: AppColors.hintText(ctx)),
@@ -143,11 +139,7 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
                     final already = _exercises.contains(name);
                     return ListTile(
                       title: Text(name,
-                          style: TextStyle(
-                              fontWeight: FontWeight.w500,
-                              color: already
-                                  ? textSecondary
-                                  : textPrimary)),
+                          style: KiStyles.body(color: already ? textSecondary : textPrimary)),
                       trailing: already
                           ? Icon(Icons.check_circle_outline,
                               color: AppColors.gold, size: 20)
@@ -258,20 +250,13 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
                 // Name field
                 Text(
                   'TEMPLATE NAME',
-                  style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: textSecondary,
-                      letterSpacing: 1.2),
+                  style: KiStyles.label(color: textSecondary),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _nameCtrl,
                   textCapitalization: TextCapitalization.words,
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: textPrimary),
+                  style: KiStyles.bodySemibold(color: textPrimary),
                   decoration: InputDecoration(
                     hintText: 'e.g. Push Day A',
                     hintStyle: TextStyle(color: AppColors.hintText(context)),
@@ -312,16 +297,12 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
                 Row(children: [
                   Text(
                     'EXERCISES',
-                    style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: textSecondary,
-                        letterSpacing: 1.2),
+                    style: KiStyles.label(color: textSecondary),
                   ),
                   const Spacer(),
                   Text(
                     '${_exercises.length} exercises',
-                    style: TextStyle(fontSize: 12, color: textSecondary),
+                    style: KiStyles.labelSm(color: textSecondary),
                   ),
                 ]),
                 const SizedBox(height: 8),
@@ -339,7 +320,7 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
                       child: Text(
                         'No exercises yet.\nTap + to add exercises.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: textSecondary, fontSize: 14),
+                        style: KiStyles.body(color: textSecondary),
                       ),
                     ),
                   )
@@ -384,20 +365,13 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
                             child: Center(
                               child: Text(
                                 '${i + 1}',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.goldDark,
-                                ),
+                                style: KiStyles.label(color: AppColors.goldDark),
                               ),
                             ),
                           ),
                           title: Text(
                             name,
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 15,
-                                color: textPrimary),
+                            style: KiStyles.bodySemibold(color: textPrimary),
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -447,9 +421,8 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
               child: ElevatedButton.icon(
                 onPressed: _showAddExerciseSheet,
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('Add Exercise',
-                    style:
-                        TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                label: Text('Add Exercise',
+                    style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(context))),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accentContainer(context),
                   foregroundColor: AppColors.primaryBtnFg(context),

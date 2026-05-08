@@ -1,7 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/screens/muscle_map_screen.dart';
 import 'package:gymlog/screens/profile_setup_screen.dart';
@@ -32,6 +33,8 @@ class _HomeScreenState extends State<HomeScreen> {
   int _weeklyGoal = 3;
   Map<String, int> _muscleCounts = {};
   bool _showWelcomeBanner = false;
+  Map<String, dynamic>? _draft;
+  bool _loaded = false;
 
   Map<int, double> get _workedOutDays {
     final result = <int, double>{};
@@ -96,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
       normalized[key] = (normalized[key] ?? 0) + e.value;
     }
     final seenWelcome = prefs.getBool('seen_welcome') ?? false;
+    final draft = await DBHelper.loadDraft();
     setState(() {
       _workouts = w;
       _userName = prefs.getString('user_name') ?? '';
@@ -103,7 +107,40 @@ class _HomeScreenState extends State<HomeScreen> {
       _weeklyGoal = prefs.getInt('weekly_goal') ?? 3;
       _muscleCounts = normalized;
       _showWelcomeBanner = !seenWelcome && w.isEmpty;
+      _draft = draft;
+      _loaded = true;
     });
+  }
+
+  Future<void> _resumeDraft() async {
+    final draft = _draft;
+    if (draft == null) return;
+    final type = draft['type'] as String? ?? 'weighted';
+    final elapsedSeconds = draft['elapsed_seconds'] as int? ?? 0;
+    List<Map<String, dynamic>> exercises = [];
+    try {
+      final decoded = jsonDecode(draft['exercises_json'] as String) as List;
+      exercises = decoded.map((e) {
+        final ex = Map<String, dynamic>.from(e as Map);
+        ex['sets'] = (ex['sets'] as List).map((s) => Map<String, dynamic>.from(s as Map)).toList();
+        return ex;
+      }).toList();
+    } catch (_) {}
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      fadeSlideRoute(LogWorkoutScreen(
+        type: type,
+        initialExercises: exercises,
+        draftElapsedSeconds: elapsedSeconds,
+      )),
+    );
+    _load();
+  }
+
+  Future<void> _discardDraft() async {
+    await DBHelper.clearDraft();
+    if (mounted) setState(() => _draft = null);
   }
 
   Future<void> _dismissWelcomeBanner() async {
@@ -407,13 +444,22 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: Column(
           children: [
+            if (!_loaded)
+              LinearProgressIndicator(
+                backgroundColor: Colors.transparent,
+                color: AppColors.accent(context).withValues(alpha: 0.5),
+                minHeight: 2,
+              ),
             // ── KO Header ──
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 16, 0),
               child: Row(
                 children: [
                   // Left: avatar
-                  GestureDetector(
+                  Semantics(
+                    label: 'Edit profile',
+                    button: true,
+                    child: GestureDetector(
                     onTap: () async {
                       await Navigator.push(
                           context,
@@ -435,7 +481,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               style: KiStyles.bodySemibold(color: textPrimary))
                           : null,
                     ),
-                  ),
+                  )),
                   const SizedBox(width: 12),
                   // Center: GYMLOG wordmark
                   Expanded(
@@ -589,6 +635,83 @@ class _HomeScreenState extends State<HomeScreen> {
                     ], // Stack children
                     ), // Stack
 
+                    // ── Draft resume banner ──
+                    if (_draft != null) ...[
+                      Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(4, 16, 4, 0),
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent(context).withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.accent(context).withValues(alpha: 0.22)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.fitness_center_rounded,
+                                  size: 18, color: AppColors.accent(context)),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('Unfinished workout',
+                                        style: KiStyles.bodySemibold(color: textPrimary)),
+                                    Text(
+                                      () {
+                                        final secs = _draft!['elapsed_seconds'] as int? ?? 0;
+                                        final m = secs ~/ 60;
+                                        final h = m ~/ 60;
+                                        final rem = m % 60;
+                                        final timeStr = h > 0 ? '${h}h ${rem}min' : m > 0 ? '${m}min' : '<1min';
+                                        final type = WorkoutTypes.label(_draft!['type'] as String? ?? 'weighted');
+                                        return '$type · $timeStr logged';
+                                      }(),
+                                      style: KiStyles.labelSm(color: textTertiary),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Semantics(
+                                label: 'Discard draft',
+                                button: true,
+                                child: GestureDetector(
+                                  onTap: _discardDraft,
+                                  behavior: HitTestBehavior.opaque,
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Icon(Icons.delete_outline_rounded,
+                                        size: 18, color: AppColors.error(context)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Semantics(
+                                label: 'Resume draft workout',
+                                button: true,
+                                child: GestureDetector(
+                                  onTap: _resumeDraft,
+                                  behavior: HitTestBehavior.opaque,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.accentContainer(context),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text('Resume',
+                                        style: KiStyles.label(
+                                            color: AppColors.primaryBtnFg(context))),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+
                     // ── Welcome banner (first-run only) ──
                     if (_showWelcomeBanner) ...[
                       Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
@@ -611,11 +734,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                     style: KiStyles.headlineMd(color: textPrimary),
                                   ),
                                   const Spacer(),
-                                  GestureDetector(
-                                    onTap: _dismissWelcomeBanner,
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(4),
-                                      child: Icon(Icons.close_rounded, size: 16, color: textTertiary),
+                                  Semantics(
+                                    label: 'Dismiss welcome banner',
+                                    button: true,
+                                    child: GestureDetector(
+                                      onTap: _dismissWelcomeBanner,
+                                      behavior: HitTestBehavior.opaque,
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(12),
+                                        child: Icon(Icons.close_rounded, size: 14, color: textTertiary),
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -639,11 +767,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         Icon(item.$1, size: 13, color: accentContainer.withValues(alpha: 0.6)),
                                         const SizedBox(width: 4),
                                         Text(item.$2,
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w500,
-                                              color: textTertiary,
-                                            )),
+                                            style: KiStyles.label(color: textTertiary)),
                                       ],
                                     ),
                                     const SizedBox(width: 12),
@@ -791,20 +915,20 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: 12),
 
                           // Day-of-week headers — Monday first
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-                                .map((d) => SizedBox(
-                                      width: 34,
-                                      child: Center(
-                                        child: Text(
-                                          d,
-                                          style: KiStyles.labelSm(
-                                              color: textTertiary),
+                          ExcludeSemantics(
+                            child: Row(
+                              children: ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+                                  .map((d) => Expanded(
+                                        child: Center(
+                                          child: Text(
+                                            d,
+                                            style: KiStyles.labelSm(
+                                                color: textTertiary),
+                                          ),
                                         ),
-                                      ),
-                                    ))
-                                .toList(),
+                                      ))
+                                  .toList(),
+                            ),
                           ),
 
                           const SizedBox(height: 8),
@@ -832,7 +956,17 @@ class _HomeScreenState extends State<HomeScreen> {
                               final tappedDate = DateTime(
                                   _currentMonth.year, _currentMonth.month, day);
 
-                              return GestureDetector(
+                              return Semantics(
+                                label: isFuture
+                                    ? '$day, future date'
+                                    : hasWorkout
+                                        ? '$day, workout logged'
+                                        : isToday
+                                            ? '$day, today, tap to log workout'
+                                            : '$day, tap to log workout',
+                                button: !isFuture,
+                                child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
                                 onTap: isFuture
                                     ? null
                                     : hasWorkout
@@ -858,11 +992,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                       child: Center(
                                         child: Text(
                                           '$day',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: isToday || hasWorkout
-                                                ? FontWeight.w700
-                                                : FontWeight.w400,
+                                          style: (isToday || hasWorkout
+                                                  ? KiStyles.label
+                                                  : KiStyles.labelSm)(
                                             color: isToday
                                                 ? bg
                                                 : hasWorkout
@@ -890,7 +1022,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                       const SizedBox(height: 5),
                                   ],
                                 ),
-                              );
+                              ),
+                            );
                             },
                           ),
                         ],
@@ -1184,7 +1317,7 @@ class _MicroStat extends StatelessWidget {
         ),
         if (hint != null) ...[
           const SizedBox(height: 1),
-          Text(hint!, style: TextStyle(fontSize: 9, color: labelColor.withValues(alpha: 0.7))),
+          Text(hint!, style: KiStyles.labelSm(color: labelColor.withValues(alpha: 0.7))),
         ],
       ],
     );

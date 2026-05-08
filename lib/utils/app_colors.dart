@@ -6,7 +6,7 @@ class AppColors {
 
   // ── Surfaces ──
   static Color background(BuildContext ctx) =>
-      isDark(ctx) ? const Color(0xFF0B0E1A) : const Color(0xFFFFFFFF);
+      isDark(ctx) ? const Color(0xFF0B0E1A) : const Color(0xFFF9F8F7);
   static Color cardBg(BuildContext ctx) =>
       isDark(ctx) ? const Color(0xFF111827) : const Color(0xFFFFFFFF);
   static Color surfaceContainer(BuildContext ctx) =>
@@ -69,4 +69,7 @@ class AppColors {
   static const Color goldDark = Color(0xFFD97706);
   /// Live / active indicator green — always shown on dark surfaces.
   static const Color liveGreen = Color(0xFF4ADE80);
+  /// Theme-aware live/active indicator: bright green in dark mode, dark green in light mode for contrast.
+  static Color liveActivity(BuildContext ctx) =>
+      isDark(ctx) ? const Color(0xFF4ADE80) : const Color(0xFF16A34A);
 }

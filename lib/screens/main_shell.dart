@@ -50,8 +50,8 @@ class _MainShellState extends State<MainShell> {
           border: Border(
             top: BorderSide(
               color: isDark
-                  ? const Color(0xFF1C2235).withValues(alpha: 0.5)
-                  : const Color(0xFFEEEEEE),
+                  ? AppColors.border(context).withValues(alpha: 0.5)
+                  : AppColors.surfaceContainerHighest(context),
               width: 0.5,
             ),
           ),
@@ -78,17 +78,17 @@ class _MainShellState extends State<MainShell> {
             NavigationDestination(
               icon: Icon(Icons.home_outlined, color: unselected),
               selectedIcon: Icon(Icons.home_rounded, color: selected),
-              label: 'HOME',
+              label: 'Home',
             ),
             NavigationDestination(
               icon: Icon(Icons.bar_chart_outlined, color: unselected),
               selectedIcon: Icon(Icons.bar_chart_rounded, color: selected),
-              label: 'STATS',
+              label: 'Stats',
             ),
             NavigationDestination(
               icon: Icon(Icons.settings_outlined, color: unselected),
               selectedIcon: Icon(Icons.settings_rounded, color: selected),
-              label: 'SETTINGS',
+              label: 'Settings',
             ),
           ],
         ),

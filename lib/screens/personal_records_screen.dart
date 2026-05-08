@@ -97,7 +97,7 @@ class _PersonalRecordsScreenState extends State<PersonalRecordsScreen> {
         ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator(color: AppColors.accent(context)))
           : Column(
               children: [
                 // ── Search ──
@@ -128,9 +128,17 @@ class _PersonalRecordsScreenState extends State<PersonalRecordsScreen> {
                           ),
                         ),
                         if (_query.isNotEmpty)
-                          GestureDetector(
-                            onTap: () { _searchCtrl.clear(); setState(() => _query = ''); },
-                            child: Icon(Icons.close_rounded, size: 16, color: textTertiary),
+                          Semantics(
+                            label: 'Clear search',
+                            button: true,
+                            child: GestureDetector(
+                              onTap: () { _searchCtrl.clear(); setState(() => _query = ''); },
+                              behavior: HitTestBehavior.opaque,
+                              child: Padding(
+                                padding: const EdgeInsets.all(4),
+                                child: Icon(Icons.close_rounded, size: 16, color: textTertiary),
+                              ),
+                            ),
                           ),
                       ],
                     ),
@@ -234,10 +242,7 @@ class _PersonalRecordsScreenState extends State<PersonalRecordsScreen> {
                                                   ),
                                                   if (i == 0) ...[
                                                     const SizedBox(width: 6),
-                                                    Text('★',
-                                                        style: TextStyle(
-                                                            color: accentContainer,
-                                                            fontSize: 11)),
+                                                    Text('★', style: KiStyles.label(color: accentContainer)),
                                                   ],
                                                 ],
                                               ),

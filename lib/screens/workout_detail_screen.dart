@@ -8,6 +8,9 @@ import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
 import 'package:gymlog/widgets/workout_share_card.dart';
+import 'package:gymlog/utils/exercise_data.dart';
+import 'package:gymlog/utils/weight_format.dart';
+import 'package:gymlog/screens/exercise_history_screen.dart';
 
 class WorkoutDetailScreen extends StatefulWidget {
   final int workoutId;
@@ -43,6 +46,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   @override
   void initState() {
     super.initState();
+    WeightFormat.load();
     _load();
   }
 
@@ -124,13 +128,25 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final textTertiary = AppColors.textTertiary(context);
     final accentContainer = AppColors.accentContainer(context);
 
+    final isTimed = ExerciseData.isTimedExercise(set['exercise_name'] as String? ?? '');
     final saved = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: cardBg,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Edit Set', style: KiStyles.headlineMd(color: textPrimary)),
-        content: Row(children: [
+        content: isTimed
+            ? TextField(
+                controller: rCtrl,
+                keyboardType: TextInputType.number,
+                autofocus: true,
+                style: KiStyles.body(color: textPrimary),
+                decoration: InputDecoration(
+                  labelText: 'Seconds',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              )
+            : Row(children: [
           Expanded(
             child: TextField(
               controller: wCtrl,
@@ -138,7 +154,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                   const TextInputType.numberWithOptions(decimal: true),
               style: KiStyles.body(color: textPrimary),
               decoration: InputDecoration(
-                labelText: 'Weight (kg)',
+                labelText: WeightFormat.inputLabel,
                 hintText: '0 = bodyweight',
                 border:
                     OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
@@ -196,9 +212,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       SnackBar(
         content: Text(
           'Set removed',
-          style: KiStyles.body(color: const Color(0xFFE8E8E8)),
+          style: KiStyles.body(color: AppColors.textPrimary(context)),
         ),
-        backgroundColor: const Color(0xFF111827),
+        backgroundColor: AppColors.cardBg(context),
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 4),
         action: SnackBarAction(
@@ -227,6 +243,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final textPrimary = AppColors.textPrimary(context);
     final textTertiary = AppColors.textTertiary(context);
     final accentContainer = AppColors.accentContainer(context);
+    final isTimed = ExerciseData.isTimedExercise(exerciseName);
 
     final saved = await showDialog<bool>(
       context: context,
@@ -235,7 +252,18 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text('Add Set — $exerciseName',
             style: KiStyles.headlineMd(color: textPrimary)),
-        content: Row(children: [
+        content: isTimed
+            ? TextField(
+                controller: rCtrl,
+                keyboardType: TextInputType.number,
+                autofocus: true,
+                style: KiStyles.body(color: textPrimary),
+                decoration: InputDecoration(
+                  labelText: 'Seconds',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              )
+            : Row(children: [
           Expanded(
             child: TextField(
               controller: wCtrl,
@@ -244,8 +272,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               autofocus: true,
               style: KiStyles.body(color: textPrimary),
               decoration: InputDecoration(
-                labelText: 'Weight (kg)',
-                hintText: '0 = BW',
+                labelText: WeightFormat.inputLabel,
+                hintText: '0 = bodyweight',
                 border:
                     OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               ),
@@ -679,8 +707,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         actions: [
           if (_editMode)
             IconButton(
-              icon: const Icon(Icons.check_rounded,
-                  color: Color(0xFF4AE176)),
+              icon: Icon(Icons.check_rounded,
+                  color: AppColors.liveActivity(context)),
               onPressed: () => setState(() => _editMode = false),
               tooltip: 'Done editing',
             )
@@ -841,9 +869,34 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
-                                      child: Text(exName,
-                                          style: KiStyles.bodySemibold(
-                                              color: textPrimary)),
+                                      child: Semantics(
+                                        label: 'View history for $exName',
+                                        button: true,
+                                        child: GestureDetector(
+                                          onTap: () => Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => ExerciseHistoryScreen(
+                                                exerciseName: exName,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Flexible(
+                                                child: Text(exName,
+                                                    style: KiStyles.bodySemibold(
+                                                        color: textPrimary)),
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Icon(Icons.arrow_forward_ios_rounded,
+                                                  size: 11,
+                                                  color: AppColors.textTertiary(context)),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                     if (isInSuperset)
                                       Text('SS', style: KiStyles.labelSm(color: typeColor))
@@ -883,8 +936,8 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                         Expanded(
                                           child: Text(
                                             isBW
-                                                ? 'BW'
-                                                : '${s['weight']}kg',
+                                                ? 'Bodyweight'
+                                                : WeightFormat.format((s['weight'] as num).toDouble()),
                                             style: KiStyles.bodySemibold(
                                                 color: textPrimary),
                                           ),
@@ -1033,7 +1086,8 @@ class _SharePreviewDialogState extends State<_SharePreviewDialog> {
       final image = await boundary.toImage(pixelRatio: 3.0);
       final byteData =
           await image.toByteData(format: ui.ImageByteFormat.png);
-      final bytes = byteData!.buffer.asUint8List();
+      if (byteData == null) throw Exception('Failed to encode image');
+      final bytes = byteData.buffer.asUint8List();
       final hasAccess = await Gal.requestAccess();
       if (!hasAccess) {
         messenger.showSnackBar(
@@ -1086,7 +1140,7 @@ class _SharePreviewDialogState extends State<_SharePreviewDialog> {
                   child: TextButton(
                     onPressed: () => Navigator.pop(context),
                     style: TextButton.styleFrom(
-                      foregroundColor: Colors.white70,
+                      foregroundColor: AppColors.textSecondary(context),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     child: const Text('Close'),

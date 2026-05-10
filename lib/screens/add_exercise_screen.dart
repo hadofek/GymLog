@@ -51,6 +51,121 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
           .any((l) => l.toLowerCase() == e.toLowerCase()))
       .toList();
 
+  Future<void> _addCustomExercise() async {
+    final nameCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.cardBg(context),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          top: 24,
+          left: 20,
+          right: 20,
+          bottom: MediaQuery.viewInsetsOf(ctx).bottom + MediaQuery.paddingOf(ctx).bottom + 24,
+        ),
+        child: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36, height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border(ctx),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text('New exercise',
+                  style: KiStyles.headlineMd(color: AppColors.textPrimary(ctx))),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: nameCtrl,
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                textInputAction: TextInputAction.done,
+                style: KiStyles.bodySemibold(color: AppColors.textPrimary(ctx)),
+                decoration: InputDecoration(
+                  hintText: 'Exercise name',
+                  hintStyle: KiStyles.body(color: AppColors.hintText(ctx)),
+                  filled: true,
+                  fillColor: AppColors.inputFill(ctx),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none),
+                  enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.border(ctx), width: 1.5)),
+                  focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.accentContainer(ctx), width: 2)),
+                  errorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.error(ctx), width: 1.5)),
+                  focusedErrorBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColors.error(ctx), width: 2)),
+                ),
+                validator: (v) {
+                  final trimmed = v?.trim() ?? '';
+                  if (trimmed.isEmpty) return 'Enter an exercise name';
+                  final all = [..._allLibraryNames, ..._customExercises];
+                  if (all.any((e) => e.toLowerCase() == trimmed.toLowerCase())) {
+                    return 'Exercise already exists';
+                  }
+                  return null;
+                },
+                onFieldSubmitted: (_) {
+                  if (formKey.currentState!.validate()) {
+                    Navigator.pop(ctx);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: StatefulBuilder(
+                  builder: (_, setSS) => ElevatedButton(
+                    onPressed: () {
+                      if (formKey.currentState!.validate()) {
+                        Navigator.pop(ctx);
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.accentContainer(ctx),
+                      foregroundColor: AppColors.primaryBtnFg(ctx),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
+                      elevation: 0,
+                    ),
+                    child: Text('Add',
+                        style: KiStyles.bodySemibold(
+                            color: AppColors.primaryBtnFg(ctx))),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    final name = nameCtrl.text.trim();
+    nameCtrl.dispose();
+    if (name.isEmpty || !mounted) return;
+    await _pickExercise(name);
+  }
+
   Future<void> _pickExercise(String name) async {
     final last = await DBHelper.getLastSets(name);
     bool isBw = await DBHelper.isExerciseBodyweight(name);
@@ -439,16 +554,17 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                         .map((n) => _exerciseRow(n, context))
                         .toList()
                     : [
-                        if (custom.isNotEmpty) ...[
-                          _categoryHeader('MY EXERCISES', context),
-                          AnimatedSize(
-                            duration: const Duration(milliseconds: 280),
-                            curve: Curves.easeInOutCubic,
-                            child: _expandedCategory == 'MY EXERCISES'
-                                ? Column(children: custom.map((n) => _exerciseRow(n, context)).toList())
-                                : const SizedBox.shrink(),
-                          ),
-                        ],
+                        _myExercisesHeader(custom, context),
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 280),
+                          curve: Curves.easeInOutCubic,
+                          child: _expandedCategory == 'MY EXERCISES'
+                              ? Column(children: [
+                                  ...custom.map((n) => _exerciseRow(n, context)),
+                                  _addNewExerciseRow(context),
+                                ])
+                              : const SizedBox.shrink(),
+                        ),
                         ..._currentLibrary.entries.map((entry) {
                           final key = entry.key;
                           return Column(
@@ -506,6 +622,89 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                       ),
                     ),
                   ),
+                ],
+              ),
+            ),
+          ),
+          Divider(height: 1, thickness: 0.5, color: borderColor),
+        ],
+      ),
+    );
+  }
+
+  Widget _myExercisesHeader(List<String> custom, BuildContext context) {
+    final textPrimary = AppColors.textPrimary(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final borderColor = AppColors.border(context);
+    final accent = AppColors.accentContainer(context);
+    final isExpanded = _expandedCategory == 'MY EXERCISES';
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 48,
+          child: Row(
+            children: [
+              Expanded(
+                child: _Pressable(
+                  onTap: () => setState(
+                      () => _expandedCategory = isExpanded ? null : 'MY EXERCISES'),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 8, 0),
+                    child: Row(
+                      children: [
+                        Text('MY EXERCISES', style: KiStyles.body(color: textPrimary)),
+                        if (custom.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Text('${custom.length}',
+                              style: KiStyles.labelSm(color: textTertiary)),
+                        ],
+                        const Spacer(),
+                        AnimatedRotation(
+                          turns: isExpanded ? 0.25 : 0,
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeOutCubic,
+                          child: Icon(Icons.chevron_right_rounded, size: 18, color: textTertiary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: _addCustomExercise,
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  child: Icon(Icons.add_rounded, size: 20, color: accent),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Divider(height: 1, thickness: 0.5, color: borderColor),
+      ],
+    );
+  }
+
+  Widget _addNewExerciseRow(BuildContext context) {
+    final textTertiary = AppColors.textTertiary(context);
+    final borderColor = AppColors.border(context);
+    final accent = AppColors.accentContainer(context);
+
+    return _Pressable(
+      onTap: _addCustomExercise,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(36, 0, 20, 0),
+            child: SizedBox(
+              height: 44,
+              child: Row(
+                children: [
+                  Icon(Icons.add_rounded, size: 16, color: accent),
+                  const SizedBox(width: 10),
+                  Text('New exercise', style: KiStyles.body(color: textTertiary)),
                 ],
               ),
             ),

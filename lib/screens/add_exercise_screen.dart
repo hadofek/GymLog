@@ -6,6 +6,7 @@ import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
 import 'package:gymlog/utils/weight_format.dart';
+import 'package:gymlog/widgets/rest_timer_card.dart';
 
 class AddExerciseScreen extends StatefulWidget {
   final List<String> allExercises;
@@ -73,11 +74,14 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   }
 
   Future<void> _saveSet() async {
+    // Capture context before any await so timer sheet can be shown after async ops.
+    final ctx = context;
+
     if (widget.workoutType == WorkoutTypes.bodyweight && !_isWeightedExercise) {
       final r = int.tryParse(_repsController.text);
       if (r == null || r <= 0) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(ctx).showSnackBar(
             const SnackBar(content: Text('Please enter valid reps')),
           );
         }
@@ -87,6 +91,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
         _sets.add({'weight': 0.0, 'reps': r, 'bodyweight': true});
         _repsController.clear();
       });
+      if (mounted) _showTimerSheet(ctx);
       return;
     }
 
@@ -94,7 +99,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
     final r = int.tryParse(_repsController.text);
     if (w == null || r == null || w < 0 || r <= 0) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(ctx).showSnackBar(
           const SnackBar(content: Text('Please enter valid weight and reps')),
         );
       }
@@ -107,39 +112,43 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
           _weightController.clear();
           _repsController.clear();
         });
+        if (mounted) _showTimerSheet(ctx);
         return;
       }
       final name = _selectedExercise ?? '';
       if (name.isNotEmpty) {
         final isBw = await DBHelper.isExerciseBodyweight(name);
         if (isBw) {
+          if (!mounted) return;
           setState(() {
             _isBodyweight = true;
             _sets.add({'weight': w, 'reps': r});
             _weightController.clear();
             _repsController.clear();
           });
+          // ignore: use_build_context_synchronously
+          _showTimerSheet(ctx);
           return;
         }
       }
       if (!mounted) return;
       showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: AppColors.cardBg(ctx),
+        context: ctx, // ignore: use_build_context_synchronously
+        builder: (dlgCtx) => AlertDialog(
+          backgroundColor: AppColors.cardBg(dlgCtx),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text('Bodyweight exercise?',
-              style: KiStyles.headlineMd(color: AppColors.textPrimary(ctx))),
+              style: KiStyles.headlineMd(color: AppColors.textPrimary(dlgCtx))),
           content: Text('You entered 0 kg. Is this a bodyweight exercise?',
-              style: KiStyles.body(color: AppColors.textSecondary(ctx))),
+              style: KiStyles.body(color: AppColors.textSecondary(dlgCtx))),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text('No', style: KiStyles.label(color: AppColors.textSecondary(ctx))),
+              onPressed: () => Navigator.pop(dlgCtx),
+              child: Text('No', style: KiStyles.label(color: AppColors.textSecondary(dlgCtx))),
             ),
             TextButton(
               onPressed: () async {
-                Navigator.pop(ctx);
+                Navigator.pop(dlgCtx);
                 final exerciseName = _selectedExercise ?? '';
                 setState(() {
                   _isBodyweight = true;
@@ -150,9 +159,12 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                 if (exerciseName.isNotEmpty) {
                   await DBHelper.setExerciseBodyweight(exerciseName, true);
                 }
+                if (!mounted) return;
+                // ignore: use_build_context_synchronously
+                _showTimerSheet(ctx);
               },
               child: Text('Yes, bodyweight',
-                  style: KiStyles.label(color: AppColors.accentContainer(ctx))),
+                  style: KiStyles.label(color: AppColors.accentContainer(dlgCtx))),
             ),
           ],
         ),
@@ -167,15 +179,15 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
       _repsController.clear();
     });
     if (isPR && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(ctx).showSnackBar(
         SnackBar(
           content: Row(children: [
             const Icon(Icons.emoji_events_rounded, color: AppColors.gold, size: 20),
             const SizedBox(width: 8),
             Text('New Personal Record!',
-                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary(context))),
+                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary(ctx))),
           ]),
-          backgroundColor: AppColors.cardBg(context),
+          backgroundColor: AppColors.cardBg(ctx),
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -183,6 +195,64 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
         ),
       );
     }
+    if (mounted) _showTimerSheet(ctx);
+  }
+
+  void _showTimerSheet(BuildContext context) {
+    final timerGreen = WorkoutTypes.color(WorkoutTypes.cardio, context);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.cardBg(context),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          top: 24,
+          bottom: MediaQuery.paddingOf(ctx).bottom + MediaQuery.viewInsetsOf(ctx).bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border(ctx),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            RestTimerCard(
+              accentColor: timerGreen,
+              onDismiss: () => Navigator.pop(ctx),
+            ),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: timerGreen,
+                    foregroundColor: AppColors.primaryBtnFg(ctx),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20)),
+                    elevation: 0,
+                  ),
+                  child: Text('Done',
+                      style: KiStyles.bodySemibold(
+                          color: AppColors.primaryBtnFg(ctx))),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _done() {

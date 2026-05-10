@@ -118,14 +118,19 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                 validator: (v) {
                   final trimmed = v?.trim() ?? '';
                   if (trimmed.isEmpty) return 'Enter an exercise name';
+                  // Normalize: strip all spaces and lowercase for fuzzy matching.
+                  // This catches "benchpress" matching "Bench Press", etc.
+                  String norm(String s) =>
+                      s.toLowerCase().replaceAll(RegExp(r'\s+'), '');
+                  final normInput = norm(trimmed);
                   final all = [..._allLibraryNames, ..._customExercises];
-                  if (all.any((e) => e.toLowerCase() == trimmed.toLowerCase())) {
+                  if (all.any((e) => norm(e) == normInput)) {
                     return 'Exercise already exists';
                   }
                   return null;
                 },
                 onFieldSubmitted: (_) {
-                  if (formKey.currentState!.validate()) {
+                  if (formKey.currentState?.validate() == true) {
                     Navigator.pop(ctx);
                   }
                 },
@@ -133,10 +138,9 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
-                child: StatefulBuilder(
-                  builder: (_, setSS) => ElevatedButton(
+                child: ElevatedButton(
                     onPressed: () {
-                      if (formKey.currentState!.validate()) {
+                      if (formKey.currentState?.validate() == true) {
                         Navigator.pop(ctx);
                       }
                     },
@@ -152,7 +156,6 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                         style: KiStyles.bodySemibold(
                             color: AppColors.primaryBtnFg(ctx))),
                   ),
-                ),
               ),
             ],
           ),

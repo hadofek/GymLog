@@ -40,12 +40,6 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   // ── Workout tick notifier — updates only the timer strip, not the full screen ──
   final _tickNotifier = ValueNotifier<int>(0);
 
-  // ── Per-set rest timer ──
-  final _restTickNotifier = ValueNotifier<int>(0);
-  Timer? _restTimer;
-  int? _restTarget; // seconds, null = free-counting
-  bool _restVisible = false;
-
   @override
   void initState() {
     super.initState();
@@ -76,26 +70,9 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   @override
   void dispose() {
     _ticker?.cancel();
-    _restTimer?.cancel();
     _workoutStopwatch.stop();
     _tickNotifier.dispose();
-    _restTickNotifier.dispose();
     super.dispose();
-  }
-
-  void _startRestTimer() {
-    _restTimer?.cancel();
-    _restTickNotifier.value = 0;
-    FocusManager.instance.primaryFocus?.unfocus();
-    if (mounted) setState(() => _restVisible = true);
-    _restTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      _restTickNotifier.value++;
-    });
-  }
-
-  void _dismissRestTimer() {
-    _restTimer?.cancel();
-    if (mounted) setState(() { _restVisible = false; _restTarget = null; });
   }
 
   void _confirmDeleteExercise(int exIndex) {
@@ -373,8 +350,9 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     final rCtrl = TextEditingController(text: rCtrlInitial);
 
     bool showWeightField = !isBodyweight;
+    bool timerPhase = false;
 
-    final result = await showModalBottomSheet<({double weight, int reps})>(
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.cardBg(context),
@@ -385,6 +363,53 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
           final accent = _accentColor(ctx);
           final textPrimary = AppColors.textPrimary(ctx);
           final textTertiary = AppColors.textTertiary(ctx);
+          final timerGreen = WorkoutTypes.color(WorkoutTypes.cardio, ctx);
+
+          if (timerPhase) {
+            return Padding(
+              padding: EdgeInsets.only(
+                top: 24,
+                bottom: MediaQuery.viewInsetsOf(ctx).bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 36, height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.border(ctx),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _RestTimerCard(
+                    accentColor: timerGreen,
+                    onDismiss: () => Navigator.pop(ctx),
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: timerGreen,
+                          foregroundColor: AppColors.primaryBtnFg(ctx),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          elevation: 0,
+                        ),
+                        child: Text('Done', style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(ctx))),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
 
           void adjustWeight(double delta) {
             final current = double.tryParse(wCtrl.text) ?? 0.0;
@@ -427,7 +452,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                Text('Add Set', style: KiStyles.headlineMd(color: textPrimary)),
+                Text('Log Set', style: KiStyles.headlineMd(color: textPrimary)),
                 Text(exName, style: KiStyles.label(color: textTertiary)),
                 const SizedBox(height: 16),
                 if (prevHint.isNotEmpty) ...[
@@ -579,7 +604,20 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                           ? (double.tryParse(wCtrl.text.isEmpty ? '0' : wCtrl.text) ?? 0.0)
                           : 0.0;
                       FocusScope.of(ctx).unfocus();
-                      Navigator.pop(ctx, (weight: weight, reps: reps));
+                      // Save set immediately into parent state
+                      final prevMax = prevSets.isEmpty
+                          ? 0.0
+                          : prevSets
+                              .map((s) => (s['weight'] as num).toDouble())
+                              .reduce((a, b) => a > b ? a : b);
+                      final isPR = !isBodyweight && prevSets.isNotEmpty && weight > prevMax;
+                      setState(() {
+                        (_exercises[exIndex]['sets'] as List)
+                            .add({'weight': weight, 'reps': reps, if (isPR) 'isPR': true});
+                      });
+                      _saveDraft();
+                      // Switch sheet to timer phase
+                      sheetSetState(() => timerPhase = true);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: accent,
@@ -588,7 +626,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       elevation: 0,
                     ),
-                    child: Text('Add Set', style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(ctx))),
+                    child: Text('Log Set', style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(ctx))),
                   ),
                 ),
               ],
@@ -598,20 +636,6 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
       ),
     );
 
-    if (result != null && mounted) {
-      final prevMax = prevSets.isEmpty
-          ? 0.0
-          : prevSets
-              .map((s) => (s['weight'] as num).toDouble())
-              .reduce((a, b) => a > b ? a : b);
-      final isPR = !isBodyweight && prevSets.isNotEmpty && result.weight > prevMax;
-      setState(() {
-        (_exercises[exIndex]['sets'] as List)
-            .add({'weight': result.weight, 'reps': result.reps, if (isPR) 'isPR': true});
-      });
-      _saveDraft();
-      _startRestTimer();
-    }
   }
 
   Future<void> _saveWorkout() async {
@@ -905,16 +929,6 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
               ),
             ),
 
-
-            // ── Per-set rest timer card ──
-            if (_restVisible)
-              _RestTimerCard(
-                tickNotifier: _restTickNotifier,
-                target: _restTarget,
-                accentColor: _accentColor(context),
-                onDismiss: _dismissRestTimer,
-                onSetTarget: (secs) => setState(() => _restTarget = secs),
-              ),
 
             // ── Bottom action area ──
             SafeArea(
@@ -1263,18 +1277,12 @@ class _SetBadge extends StatelessWidget {
 // ── Per-set rest timer card ────────────────────────────────────────────────────
 
 class _RestTimerCard extends StatefulWidget {
-  final ValueNotifier<int> tickNotifier;
-  final int? target;
   final Color accentColor;
   final VoidCallback onDismiss;
-  final ValueChanged<int> onSetTarget;
 
   const _RestTimerCard({
-    required this.tickNotifier,
-    required this.target,
     required this.accentColor,
     required this.onDismiss,
-    required this.onSetTarget,
   });
 
   @override
@@ -1282,6 +1290,9 @@ class _RestTimerCard extends StatefulWidget {
 }
 
 class _RestTimerCardState extends State<_RestTimerCard> {
+  int _ticks = 0;
+  Timer? _timer;
+  int? _target;
   bool _editing = false;
   final _minCtrl = TextEditingController();
   final _secCtrl = TextEditingController();
@@ -1289,7 +1300,16 @@ class _RestTimerCardState extends State<_RestTimerCard> {
   String? _inputError;
 
   @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => _ticks++);
+    });
+  }
+
+  @override
   void dispose() {
+    _timer?.cancel();
     _minCtrl.dispose();
     _secCtrl.dispose();
     _secFocus.dispose();
@@ -1306,15 +1326,13 @@ class _RestTimerCardState extends State<_RestTimerCard> {
       setState(() => _inputError = 'Enter a time');
       return;
     }
-    // Normalize: sec overflow into minutes naturally (90sec = 1m30s = 90 total)
     final totalSec = (minVal ?? 0) * 60 + (secVal ?? 0);
     if (totalSec <= 0) {
       setState(() => _inputError = 'Enter a time');
       return;
     }
-    setState(() { _editing = false; _inputError = null; });
+    setState(() { _editing = false; _inputError = null; _target = totalSec; });
     FocusManager.instance.primaryFocus?.unfocus();
-    widget.onSetTarget(totalSec);
   }
 
   String _fmt(int ticks) {
@@ -1325,198 +1343,175 @@ class _RestTimerCardState extends State<_RestTimerCard> {
 
   @override
   Widget build(BuildContext context) {
-    final bg = AppColors.cardBg(context);
     final textTertiary = AppColors.textTertiary(context);
     final borderCol = AppColors.border(context);
     final errorCol = AppColors.error(context);
+    final target = _target;
+    final isOvertime = target != null && _ticks >= target;
+    final timerColor = isOvertime ? errorCol : widget.accentColor;
 
-    return ValueListenableBuilder<int>(
-      valueListenable: widget.tickNotifier,
-      builder: (ctx, ticks, _) {
-        final target = widget.target;
-        final isOvertime = target != null && ticks >= target;
-        final timerColor = isOvertime ? errorCol : widget.accentColor;
-
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isOvertime
-                    ? errorCol.withValues(alpha: 0.5)
-                    : borderCol,
-                width: 1.5,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+        decoration: BoxDecoration(
+          color: AppColors.cardBg(context),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isOvertime ? errorCol.withValues(alpha: 0.5) : borderCol,
+            width: 1.5,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Top row: dot + REST label + timer + edit + X ──
+            Row(
               children: [
-                // ── Top row: dot + REST label + timer + edit + X ──
-                Row(
+                Container(
+                  width: 6, height: 6,
+                  decoration: BoxDecoration(color: timerColor, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 6),
+                ExcludeSemantics(
+                  child: Text('REST', style: KiStyles.labelSm(color: textTertiary)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Semantics(
+                    label: 'Rest time: ${_fmt(_ticks)}',
+                    child: Text(
+                      _fmt(_ticks),
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: timerColor,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ),
+                ),
+                // Edit / confirm icon
+                Semantics(
+                  label: _editing ? 'Confirm target time' : 'Set target time',
+                  button: true,
+                  child: GestureDetector(
+                    onTap: _editing
+                        ? _submitTarget
+                        : () => setState(() {
+                              _editing = true;
+                              _inputError = null;
+                              _minCtrl.clear();
+                              _secCtrl.clear();
+                            }),
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                      child: Icon(
+                        _editing ? Icons.check_rounded : Icons.edit_rounded,
+                        size: 16, color: textTertiary,
+                      ),
+                    ),
+                  ),
+                ),
+                // Dismiss icon
+                Semantics(
+                  label: 'Dismiss rest timer',
+                  button: true,
+                  child: GestureDetector(
+                    onTap: widget.onDismiss,
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                      child: Icon(Icons.close_rounded, size: 16, color: textTertiary),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // ── Edit mode: min:sec input ──
+            if (_editing) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _TimeField(
+                    controller: _minCtrl,
+                    hint: 'min',
+                    accentColor: widget.accentColor,
+                    textInputAction: TextInputAction.next,
+                    onSubmitted: (_) => FocusScope.of(context).requestFocus(_secFocus),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(':', style: KiStyles.headlineMd(color: textTertiary)),
+                  ),
+                  _TimeField(
+                    controller: _secCtrl,
+                    hint: 'sec',
+                    focusNode: _secFocus,
+                    accentColor: widget.accentColor,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _submitTarget(),
+                  ),
+                  if (_inputError != null) ...[
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(_inputError!, style: KiStyles.labelSm(color: errorCol)),
+                    ),
+                  ],
+                ],
+              ),
+
+            // ── Progress bar (target set, not editing) ──
+            ] else if (target != null) ...[
+              const SizedBox(height: 8),
+              LayoutBuilder(builder: (_, constraints) {
+                final progress = (_ticks / target).clamp(0.0, 1.0);
+                return Stack(
                   children: [
                     Container(
-                      width: 6, height: 6,
+                      height: 3,
+                      width: constraints.maxWidth,
                       decoration: BoxDecoration(
-                        color: timerColor, shape: BoxShape.circle,
+                        color: timerColor.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    ExcludeSemantics(
-                      child: Text('REST',
-                          style: KiStyles.labelSm(color: textTertiary)),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Semantics(
-                        label: 'Rest time: ${_fmt(ticks)}',
-                        child: Text(
-                          _fmt(ticks),
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            color: timerColor,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Edit / confirm icon
-                    Semantics(
-                      label: _editing ? 'Confirm target time' : 'Set target time',
-                      button: true,
-                      child: GestureDetector(
-                        onTap: _editing
-                            ? _submitTarget
-                            : () => setState(() {
-                                  _editing = true;
-                                  _inputError = null;
-                                  _minCtrl.clear();
-                                  _secCtrl.clear();
-                                }),
-                        behavior: HitTestBehavior.opaque,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 10),
-                          child: Icon(
-                            _editing
-                                ? Icons.check_rounded
-                                : Icons.edit_rounded,
-                            size: 16,
-                            color: textTertiary,
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Dismiss icon
-                    Semantics(
-                      label: 'Dismiss rest timer',
-                      button: true,
-                      child: GestureDetector(
-                        onTap: widget.onDismiss,
-                        behavior: HitTestBehavior.opaque,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 10),
-                          child: Icon(Icons.close_rounded,
-                              size: 16, color: textTertiary),
-                        ),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 600),
+                      curve: Curves.easeOut,
+                      height: 3,
+                      width: constraints.maxWidth * progress,
+                      decoration: BoxDecoration(
+                        color: timerColor,
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
                   ],
-                ),
-
-                // ── Edit mode: min:sec input ──
-                if (_editing) ...[
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      _TimeField(
-                        controller: _minCtrl,
-                        hint: 'min',
-                        accentColor: widget.accentColor,
-                        textInputAction: TextInputAction.next,
-                        onSubmitted: (_) =>
-                            FocusScope.of(ctx).requestFocus(_secFocus),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Text(':',
-                            style:
-                                KiStyles.headlineMd(color: textTertiary)),
-                      ),
-                      _TimeField(
-                        controller: _secCtrl,
-                        hint: 'sec',
-                        focusNode: _secFocus,
-                        accentColor: widget.accentColor,
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: (_) => _submitTarget(),
-                      ),
-                      if (_inputError != null) ...[
-                        const SizedBox(width: 10),
-                        Flexible(
-                          child: Text(_inputError!,
-                              style: KiStyles.labelSm(color: errorCol)),
-                        ),
-                      ],
-                    ],
+                );
+              }),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Text(
+                    'TARGET ${_fmt(target)}',
+                    style: KiStyles.labelSm(color: isOvertime ? errorCol : textTertiary),
                   ),
-
-                // ── Progress bar (target set, not editing) ──
-                ] else if (target != null) ...[
-                  const SizedBox(height: 8),
-                  LayoutBuilder(builder: (ctx, constraints) {
-                    final progress = (ticks / target).clamp(0.0, 1.0);
-                    return Stack(
-                      children: [
-                        Container(
-                          height: 3,
-                          width: constraints.maxWidth,
-                          decoration: BoxDecoration(
-                            color: timerColor.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 600),
-                          curve: Curves.easeOut,
-                          height: 3,
-                          width: constraints.maxWidth * progress,
-                          decoration: BoxDecoration(
-                            color: timerColor,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      ],
-                    );
-                  }),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        'TARGET ${_fmt(target)}',
-                        style: KiStyles.labelSm(
-                            color: isOvertime ? errorCol : textTertiary),
-                      ),
-                      if (isOvertime) ...[
-                        const SizedBox(width: 6),
-                        Text(
-                          '+${_fmt(ticks - target)}',
-                          style: KiStyles.labelSm(color: errorCol),
-                        ),
-                      ],
-                    ],
-                  ),
+                  if (isOvertime) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      '+${_fmt(_ticks - target)}',
+                      style: KiStyles.labelSm(color: errorCol),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-          ),
-        );
-      },
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

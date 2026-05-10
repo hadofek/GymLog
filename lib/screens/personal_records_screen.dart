@@ -4,6 +4,7 @@ import 'package:gymlog/screens/exercise_history_screen.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/exercise_data.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/utils/transitions.dart';
 import 'package:gymlog/widgets/gymlog_wordmark.dart';
 import 'package:gymlog/utils/weight_format.dart';
 
@@ -173,8 +174,7 @@ class _PersonalRecordsScreenState extends State<PersonalRecordsScreen> {
                             return InkWell(
                               onTap: () => Navigator.push(
                                 context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
+                                fadeSlideRoute(
                                       ExerciseHistoryScreen(exerciseName: name),
                                 ),
                               ),

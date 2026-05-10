@@ -7,6 +7,7 @@ import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
 import 'package:gymlog/utils/weight_format.dart';
+import 'package:gymlog/widgets/gymlog_wordmark.dart';
 import 'package:gymlog/widgets/rest_timer_card.dart';
 
 class AddExerciseScreen extends StatefulWidget {
@@ -72,6 +73,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   List<Map<String, dynamic>> _lastSets = [];
   bool? _isBodyweight;
   bool _isWeightedExercise = false;
+  bool _isTimed = false;
   double _exercisePR = 0;
   bool _isShowingAddSheet = false;
 
@@ -173,15 +175,40 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
     setState(() {
       _selectedExercise = name;
       _lastSets = last;
-      _isBodyweight = isBw ? true : null;
+      _isTimed = ExerciseData.isTimedExercise(name);
+      _isBodyweight = (!_isTimed && (isBw || ExerciseData.isCoreBodyweightExercise(name))) ? true : null;
       _exercisePR = pr;
       _isWeightedExercise = false;
       _sets.clear();
     });
   }
 
+  static String _fmtSecs(int s) {
+    if (s < 60) return '${s}s';
+    final m = s ~/ 60;
+    final rem = s % 60;
+    return rem == 0 ? '${m}m' : '${m}m ${rem}s';
+  }
+
   void _saveSet() {
-    if (widget.workoutType == WorkoutTypes.bodyweight && !_isWeightedExercise) {
+    if (_isTimed) {
+      final secs = int.tryParse(_repsController.text);
+      if (secs == null || secs <= 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Enter a duration.')),
+        );
+        return;
+      }
+      setState(() {
+        _sets.add({'weight': 0.0, 'reps': secs, 'timed': true});
+        _repsController.clear();
+      });
+      _showTimerSheet(context);
+      return;
+    }
+
+    final isBwMode = widget.workoutType == WorkoutTypes.bodyweight || _isBodyweight == true;
+    if (isBwMode && !_isWeightedExercise) {
       final r = int.tryParse(_repsController.text);
       if (r == null || r <= 0) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -358,51 +385,56 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   @override
   Widget build(BuildContext context) {
     final bg = AppColors.background(context);
-    final textPrimary = AppColors.textPrimary(context);
-    final textSecondary = AppColors.textSecondary(context);
 
     return Scaffold(
       backgroundColor: bg,
-      appBar: AppBar(
-        backgroundColor: bg,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_rounded, color: textSecondary),
-          onPressed: () {
-            if (_selectedExercise != null) {
-              setState(() {
-                _selectedExercise = null;
-                _sets.clear();
-              });
-            } else {
-              Navigator.pop(context);
-            }
-          },
-        ),
-        title: Text(
-          _selectedExercise ?? 'Add Exercise',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: textPrimary,
-          ),
-        ),
-        actions: [
-          if (_selectedExercise != null && _sets.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: GestureDetector(
-                onTap: _done,
-                child: Text('Done', style: KiStyles.bodySemibold(color: textPrimary)),
-              ),
+      body: Column(
+        children: [
+          // ── Custom header ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: Icon(Icons.arrow_back_rounded, color: AppColors.textSecondary(context)),
+                  onPressed: () {
+                    if (_selectedExercise != null) {
+                      setState(() {
+                        _selectedExercise = null;
+                        _sets.clear();
+                      });
+                    } else {
+                      Navigator.pop(context);
+                    }
+                  },
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                const SizedBox(width: 8),
+                const Expanded(child: GymlogWordmark()),
+                Text(
+                  _selectedExercise != null ? 'LOG SETS' : 'ADD EXERCISE',
+                  style: KiStyles.label(color: AppColors.textSecondary(context)),
+                ),
+                if (_selectedExercise != null && _sets.isNotEmpty) ...[
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: _done,
+                    child: Text('Done', style: KiStyles.bodySemibold(color: AppColors.textPrimary(context))),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+              ],
             ),
+          ),
+          Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
+          Expanded(
+            child: _selectedExercise == null
+                ? _buildBrowse(context)
+                : _buildLogSets(context),
+          ),
         ],
       ),
-      body: _selectedExercise == null
-          ? _buildBrowse(context)
-          : _buildLogSets(context),
     );
   }
 
@@ -462,7 +494,13 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                       _searchController.clear();
                       setState(() => _searchQuery = '');
                     },
-                    child: Icon(Icons.close_rounded, size: 16, color: textTertiary),
+                    child: SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: Center(
+                        child: Icon(Icons.close_rounded, size: 16, color: textTertiary),
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -858,9 +896,11 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                               ),
                               const SizedBox(width: 16),
                               Text(
-                                e.value['bodyweight'] == true
-                                    ? 'Bodyweight  ×  ${e.value['reps']} reps'
-                                    : '${WeightFormat.format((e.value['weight'] as num).toDouble())}  ×  ${e.value['reps']} reps',
+                                e.value['timed'] == true
+                                    ? _fmtSecs(e.value['reps'] as int)
+                                    : e.value['bodyweight'] == true
+                                        ? 'Bodyweight  ×  ${e.value['reps']} reps'
+                                        : '${WeightFormat.format((e.value['weight'] as num).toDouble())}  ×  ${e.value['reps']} reps',
                                 style: KiStyles.bodySemibold(color: textPrimary),
                               ),
                               if (e.value['isPR'] == true) ...[
@@ -872,8 +912,14 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                               GestureDetector(
                                 onTap: () =>
                                     setState(() => _sets.removeAt(e.key)),
-                                child: Icon(Icons.close,
-                                    size: 16, color: textTertiary),
+                                child: SizedBox(
+                                  width: 44,
+                                  height: 44,
+                                  child: Center(
+                                    child: Icon(Icons.close,
+                                        size: 16, color: textTertiary),
+                                  ),
+                                ),
                               ),
                             ]),
                           ),
@@ -894,8 +940,8 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                   ),
                 ),
 
-                // ── Bodyweight toggle ──
-                if (widget.workoutType == WorkoutTypes.bodyweight) ...[
+                // ── Bodyweight toggle (hidden for timed exercises) ──
+                if (!_isTimed && (widget.workoutType == WorkoutTypes.bodyweight || _isBodyweight == true)) ...[
                   Row(children: [
                     Text('Add weight',
                         style: KiStyles.body(color: textPrimary)),
@@ -910,34 +956,101 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                   const SizedBox(height: 12),
                 ],
 
-                // ── Weight + reps inputs ──
-                Row(children: [
-                  if (widget.workoutType != WorkoutTypes.bodyweight ||
-                      _isWeightedExercise) ...[
-                    Expanded(
-                      child: _flatField(
-                        controller: _weightController,
-                        label: WeightFormat.inputLabel,
-                        keyboard: const TextInputType.numberWithOptions(
-                            decimal: true),
-                        textPrimary: textPrimary,
-                        textTertiary: textTertiary,
-                        borderColor: borderColor,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                  ],
-                  Expanded(
-                    child: _flatField(
-                      controller: _repsController,
-                      label: 'Reps',
-                      keyboard: TextInputType.number,
-                      textPrimary: textPrimary,
-                      textTertiary: textTertiary,
-                      borderColor: borderColor,
+                // ── Timed exercise: seconds field + quick-add buttons ──
+                if (_isTimed) ...[
+                  TextField(
+                    controller: _repsController,
+                    keyboardType: TextInputType.number,
+                    style: KiStyles.bodySemibold(color: AppColors.textPrimary(context)),
+                    decoration: InputDecoration(
+                      labelText: 'Seconds',
+                      labelStyle: KiStyles.labelSm(color: AppColors.textTertiary(context)),
+                      hintText: '0',
+                      hintStyle: TextStyle(color: AppColors.textTertiary(context)),
+                      filled: true,
+                      fillColor: AppColors.inputFill(context),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide:
+                          BorderSide(color: AppColors.border(context))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide:
+                          BorderSide(color: AppColors.accentContainer(context), width: 1.5)),
                     ),
                   ),
-                ]),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [10, 20, 30, 60].map((s) {
+                      return Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(right: s != 60 ? 8.0 : 0.0),
+                          child: OutlinedButton(
+                            onPressed: () {
+                              final cur = int.tryParse(_repsController.text) ?? 0;
+                              _repsController.text = '${cur + s}';
+                            },
+                            style: OutlinedButton.styleFrom(
+                              side: BorderSide(color: borderColor),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                            ),
+                            child: Text('+${s}s',
+                                style: KiStyles.labelSm(color: textSecondary)),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ] else ...[
+                  // ── Weight + reps inputs ──
+                  Row(children: [
+                    if ((widget.workoutType != WorkoutTypes.bodyweight && _isBodyweight != true) || _isWeightedExercise) ...[
+                      Expanded(
+                        child: TextField(
+                          controller: _weightController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          style: KiStyles.bodySemibold(color: AppColors.textPrimary(context)),
+                          decoration: InputDecoration(
+                            labelText: WeightFormat.inputLabel,
+                            labelStyle: KiStyles.labelSm(color: AppColors.textTertiary(context)),
+                            hintText: '0',
+                            hintStyle: TextStyle(color: AppColors.textTertiary(context)),
+                            filled: true,
+                            fillColor: AppColors.inputFill(context),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide:
+                                BorderSide(color: AppColors.border(context))),
+                            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide:
+                                BorderSide(color: AppColors.accentContainer(context), width: 1.5)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                    ],
+                    Expanded(
+                      child: TextField(
+                        controller: _repsController,
+                        keyboardType: TextInputType.number,
+                        style: KiStyles.bodySemibold(color: AppColors.textPrimary(context)),
+                        decoration: InputDecoration(
+                          labelText: 'Reps',
+                          labelStyle: KiStyles.labelSm(color: AppColors.textTertiary(context)),
+                          hintText: '0',
+                          hintStyle: TextStyle(color: AppColors.textTertiary(context)),
+                          filled: true,
+                          fillColor: AppColors.inputFill(context),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide:
+                              BorderSide(color: AppColors.border(context))),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide:
+                              BorderSide(color: AppColors.accentContainer(context), width: 1.5)),
+                        ),
+                      ),
+                    ),
+                  ]),
+                ],
 
                 const SizedBox(height: 20),
 
@@ -987,38 +1100,6 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
               ),
             ),
           ),
-      ],
-    );
-  }
-
-  Widget _flatField({
-    required TextEditingController controller,
-    required String label,
-    required TextInputType keyboard,
-    required Color textPrimary,
-    required Color textTertiary,
-    required Color borderColor,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: KiStyles.labelSm(color: textTertiary)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          keyboardType: keyboard,
-          style: KiStyles.headlineMd(color: textPrimary),
-          decoration: InputDecoration(
-            border: UnderlineInputBorder(
-                borderSide: BorderSide(color: borderColor, width: 1)),
-            enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: borderColor, width: 1)),
-            focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: textPrimary, width: 1.5)),
-            isDense: true,
-            contentPadding: const EdgeInsets.symmetric(vertical: 6),
-          ),
-        ),
       ],
     );
   }

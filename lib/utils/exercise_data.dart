@@ -104,6 +104,16 @@ class ExerciseData {
   static bool isTimedExercise(String name) =>
       _timedLower.contains(name.toLowerCase().trim());
 
+  /// Core exercises that are bodyweight by default (reps only, no weight field)
+  /// but can optionally have weight added. Excludes timed exercises.
+  static const Set<String> _bodyweightCoreLower = {
+    'crunch', 'sit up', 'leg raise', 'russian twist', 'ab wheel rollout',
+    'cable crunch', 'hanging knee raise', 'bicycle crunch', 'mountain climber',
+  };
+
+  static bool isCoreBodyweightExercise(String name) =>
+      _bodyweightCoreLower.contains(name.toLowerCase().trim());
+
   /// Returns the muscle group category for a known exercise, or null if not found.
   /// Category names match the keys in [full] (e.g. 'Chest', 'Back', 'Legs').
   static String? muscleGroupFor(String exerciseName) {

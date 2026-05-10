@@ -4,6 +4,7 @@ import 'package:gymlog/screens/workout_detail_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/utils/transitions.dart';
 import 'package:gymlog/widgets/gymlog_wordmark.dart';
 
 class MonthWorkoutsScreen extends StatefulWidget {
@@ -145,8 +146,7 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
                       onTap: () async {
                         final deleted = await Navigator.push<bool>(
                             context,
-                            MaterialPageRoute(
-                                builder: (_) => WorkoutDetailScreen(
+                            fadeSlideRoute(WorkoutDetailScreen(
                                     workoutId: w['id'],
                                     date: w['date'],
                                     durationSeconds:

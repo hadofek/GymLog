@@ -797,13 +797,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                 style: KiStyles.body(color: textSecondary),
                               ),
                               const SizedBox(height: 14),
-                              Row(
+                              Wrap(
+                                spacing: 12,
+                                runSpacing: 6,
                                 children: [
                                   for (final item in [
                                     (Icons.calendar_today_rounded, 'Log a workout'),
                                     (Icons.bar_chart_rounded, 'Track progress'),
                                     (Icons.local_fire_department_rounded, 'Build streaks'),
-                                  ]) ...[
+                                  ])
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
@@ -813,8 +815,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                             style: KiStyles.label(color: textTertiary)),
                                       ],
                                     ),
-                                    const SizedBox(width: 12),
-                                  ],
                                 ],
                               ),
                             ],
@@ -1156,7 +1156,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Start logging.',
+                              'No workouts yet.',
                               style: KiStyles.headlineLg(color: textPrimary),
                             ),
                             const SizedBox(height: 6),

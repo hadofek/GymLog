@@ -9,6 +9,7 @@ import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
 import 'package:gymlog/utils/weight_format.dart';
+import 'package:gymlog/utils/transitions.dart';
 import 'package:gymlog/widgets/gymlog_wordmark.dart';
 import 'package:gymlog/widgets/rest_timer_card.dart';
 import 'package:gymlog/widgets/tip_overlay.dart';
@@ -36,6 +37,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   late Stopwatch _workoutStopwatch;
   int _elapsedOffset = 0;
   Timer? _ticker;
+  Timer? _draftDebounce;
   int _nextSupersetGroup = 1;
 
   // ── Workout tick notifier — updates only the timer strip, not the full screen ──
@@ -71,6 +73,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   @override
   void dispose() {
     _ticker?.cancel();
+    _draftDebounce?.cancel();
     _workoutStopwatch.stop();
     _tickNotifier.dispose();
     super.dispose();
@@ -174,7 +177,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     final removed = Map<String, dynamic>.from(
         (_exercises[exIdx]['sets'] as List)[setIdx] as Map);
     setState(() => (_exercises[exIdx]['sets'] as List).removeAt(setIdx));
-    _saveDraft();
+    _saveDraftDebounced();
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(
@@ -188,11 +191,16 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                 final sets = _exercises[exIdx]['sets'] as List;
                 sets.insert(setIdx.clamp(0, sets.length), removed);
               });
-              _saveDraft();
+              _saveDraftDebounced();
             }
           },
         ),
       ));
+  }
+
+  void _saveDraftDebounced() {
+    _draftDebounce?.cancel();
+    _draftDebounce = Timer(const Duration(milliseconds: 500), _saveDraft);
   }
 
   void _saveDraft() {
@@ -333,9 +341,8 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   Future<void> _addExercise() async {
     final result = await Navigator.push(
         context,
-        MaterialPageRoute(
-            builder: (_) => AddExerciseScreen(
-                allExercises: _allExercises, workoutType: widget.type)));
+        fadeSlideRoute(AddExerciseScreen(
+            allExercises: _allExercises, workoutType: widget.type)));
     if (result != null) {
       final last = await DBHelper.getLastSets(result['name'] as String);
       if (mounted) {
@@ -375,7 +382,8 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     final exName = _exercises[exIndex]['name'] as String;
     final isTimed = ExerciseData.isTimedExercise(exName);
     final isExBW = await DBHelper.isExerciseBodyweight(exName);
-    final isBodyweight = isTimed || widget.type == WorkoutTypes.bodyweight || isExBW;
+    final isCoreBodyweight = ExerciseData.isCoreBodyweightExercise(exName);
+    final isBodyweight = isTimed || widget.type == WorkoutTypes.bodyweight || isExBW || isCoreBodyweight;
 
     final cachedSets = _exercises[exIndex]['lastSets'] as List?;
     final prevSets = (cachedSets != null && cachedSets.isNotEmpty)
@@ -653,6 +661,67 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     }
   }
 
+  Future<void> _confirmFinish() async {
+    final setCount = _exercises.fold<int>(
+        0, (sum, ex) => sum + (ex['sets'] as List).length);
+    if (setCount < 2) {
+      // Only 0 or 1 set — no accidental finish risk, save immediately
+      await _saveWorkout();
+      return;
+    }
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: AppColors.cardBg(context),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Finish workout?',
+                  style: KiStyles.headlineMd(color: AppColors.textPrimary(ctx))),
+              const SizedBox(height: 6),
+              Text(
+                '$setCount sets logged · ${_exercises.length} exercise${_exercises.length != 1 ? 's' : ''}',
+                style: KiStyles.body(color: AppColors.textTertiary(ctx)),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accentContainer(ctx),
+                    foregroundColor: AppColors.primaryBtnFg(ctx),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    elevation: 0,
+                  ),
+                  child: Text('Finish',
+                      style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(ctx))),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                  child: Text('Keep going',
+                      style: KiStyles.bodySemibold(color: AppColors.textTertiary(ctx))),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (confirmed == true && mounted) await _saveWorkout();
+  }
+
   Future<void> _saveWorkout() async {
     if (_exercises.isEmpty) return;
     try {
@@ -700,15 +769,13 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
       if (!mounted) return;
       await Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => WorkoutSummaryScreen(
-            workoutId: workoutId,
-            durationSeconds: totalDuration,
-            type: widget.type,
-            exercises: List<Map<String, dynamic>>.from(_exercises),
-            prs: prs,
-          ),
-        ),
+        fadeSlideRoute(WorkoutSummaryScreen(
+          workoutId: workoutId,
+          durationSeconds: totalDuration,
+          type: widget.type,
+          exercises: List<Map<String, dynamic>>.from(_exercises),
+          prs: prs,
+        )),
       );
     } catch (e) {
       if (mounted) {
@@ -850,7 +917,6 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                             '${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}',
                             style: KiStyles.headlineMd(color: textPrimary),
                           ),
-                          ExcludeSemantics(child: Text('TAP TO CHANGE', style: KiStyles.labelSm(color: textTertiary))),
                         ],
                       ),
                     ),
@@ -977,7 +1043,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: _saveWorkout,
+                          onPressed: _confirmFinish,
                           icon: const Icon(Icons.task_alt_rounded,
                               size: 20),
                           label: Text('Finish Workout',
@@ -1175,9 +1241,12 @@ class _ExerciseCard extends StatelessWidget {
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () => onRemoveSet(exIndex, e.key),
-                        child: Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Icon(Icons.close, size: 14, color: textTertiary),
+                        child: SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: Center(
+                            child: Icon(Icons.close, size: 14, color: textTertiary),
+                          ),
                         ),
                       ),
                     ),

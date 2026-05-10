@@ -7,6 +7,7 @@ import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/utils/transitions.dart';
 import 'package:gymlog/widgets/gymlog_wordmark.dart';
 import 'package:gymlog/widgets/workout_share_card.dart';
 import 'package:gymlog/utils/exercise_data.dart';
@@ -864,11 +865,9 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                         child: GestureDetector(
                                           onTap: () => Navigator.push(
                                             context,
-                                            MaterialPageRoute(
-                                              builder: (_) => ExerciseHistoryScreen(
+                                            fadeSlideRoute(ExerciseHistoryScreen(
                                                 exerciseName: exName,
-                                              ),
-                                            ),
+                                            )),
                                           ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,

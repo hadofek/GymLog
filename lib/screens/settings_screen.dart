@@ -7,6 +7,7 @@ import 'package:gymlog/screens/exercise_library_screen.dart';
 import 'package:gymlog/screens/profile_setup_screen.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/utils/transitions.dart';
 import 'package:gymlog/utils/weight_format.dart';
 import 'package:gymlog/widgets/gymlog_wordmark.dart';
 import 'package:gymlog/widgets/tip_overlay.dart';
@@ -148,8 +149,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onTap: () async {
               await Navigator.push(
                 context,
-                MaterialPageRoute(
-                    builder: (_) => const ProfileSetupScreen(isEditing: true)),
+                fadeSlideRoute(const ProfileSetupScreen(isEditing: true)),
               );
               _loadPrefs();
             },
@@ -241,7 +241,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _SettingsRow(
             label: 'Exercise Library',
             onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const ExerciseLibraryScreen())),
+                fadeSlideRoute(const ExerciseLibraryScreen())),
             textPrimary: textPrimary,
             textSecondary: textSecondary,
           ),
@@ -249,7 +249,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _SettingsRow(
             label: 'Body Measurements',
             onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const BodyMeasurementsScreen())),
+                fadeSlideRoute(const BodyMeasurementsScreen())),
             textPrimary: textPrimary,
             textSecondary: textSecondary,
           ),

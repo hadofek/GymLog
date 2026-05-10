@@ -6,6 +6,7 @@ import 'package:gymlog/screens/main_shell.dart';
 import 'package:gymlog/screens/body_measurements_screen.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/utils/transitions.dart';
 
 class ProfileSetupScreen extends StatefulWidget {
   final bool isEditing;
@@ -444,9 +445,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                     OutlinedButton.icon(
                       onPressed: () => Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (_) =>
-                                const BodyMeasurementsScreen()),
+                        fadeSlideRoute(const BodyMeasurementsScreen()),
                       ),
                       icon: Icon(Icons.monitor_weight_outlined,
                           color: textPrimary, size: 18),

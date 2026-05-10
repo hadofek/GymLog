@@ -4,6 +4,7 @@ import 'package:gymlog/screens/workout_summary_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/utils/transitions.dart';
 import 'package:gymlog/widgets/gymlog_wordmark.dart';
 
 class FlexibilityLogScreen extends StatefulWidget {
@@ -97,16 +98,14 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
       ];
       await Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => WorkoutSummaryScreen(
-            workoutId: workoutId,
-            durationSeconds: _durationSeconds,
-            type: WorkoutTypes.flexibility,
-            exercises: const [],
-            prs: prs,
-            activityDetails: details,
-          ),
-        ),
+        fadeSlideRoute(WorkoutSummaryScreen(
+          workoutId: workoutId,
+          durationSeconds: _durationSeconds,
+          type: WorkoutTypes.flexibility,
+          exercises: const [],
+          prs: prs,
+          activityDetails: details,
+        )),
       );
     } catch (e) {
       if (mounted) {

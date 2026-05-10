@@ -5,6 +5,7 @@ import 'package:gymlog/screens/personal_records_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/utils/transitions.dart';
 import 'package:gymlog/widgets/gymlog_wordmark.dart';
 import 'package:gymlog/widgets/tip_overlay.dart';
 
@@ -101,15 +102,15 @@ class _StatsScreenState extends State<StatsScreen> {
   Widget _buildSkeleton(BuildContext context) {
     final c = AppColors.cardBg(context);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
       children: [
-        _Bone(height: 48, color: c),
-        const SizedBox(height: 1),
-        _Bone(height: 120, color: c),
-        const SizedBox(height: 1),
-        _Bone(height: 140, color: c),
-        const SizedBox(height: 1),
+        _Bone(height: 40, color: c),
+        const SizedBox(height: 16),
         _Bone(height: 100, color: c),
+        const SizedBox(height: 16),
+        _Bone(height: 120, color: c),
+        const SizedBox(height: 16),
+        _Bone(height: 80, color: c),
       ],
     );
   }
@@ -349,9 +350,7 @@ class _StatsScreenState extends State<StatsScreen> {
                         InkWell(
                           onTap: () => Navigator.push(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) => ExerciseHistoryScreen(exerciseName: name),
-                            ),
+                            fadeSlideRoute(ExerciseHistoryScreen(exerciseName: name)),
                           ),
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 13),
@@ -403,7 +402,7 @@ class _StatsScreenState extends State<StatsScreen> {
           Divider(height: 1, thickness: 0.5, color: border),
           GestureDetector(
             onTap: () => Navigator.push(context,
-                MaterialPageRoute(builder: (_) => const PersonalRecordsScreen())),
+                fadeSlideRoute(const PersonalRecordsScreen())),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 18),
               child: Row(
@@ -471,15 +470,49 @@ class _Divider extends StatelessWidget {
   }
 }
 
-class _Bone extends StatelessWidget {
+class _Bone extends StatefulWidget {
   final double height;
   final Color color;
   const _Bone({required this.height, required this.color});
+  @override
+  State<_Bone> createState() => _BoneState();
+}
+
+class _BoneState extends State<_Bone> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  late final Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _opacity = Tween(begin: 0.35, end: 0.75).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-        width: double.infinity, height: height, color: color);
+    return FadeTransition(
+      opacity: _opacity,
+      child: Container(
+        width: double.infinity,
+        height: widget.height,
+        decoration: BoxDecoration(
+          color: widget.color,
+          borderRadius: BorderRadius.circular(8),
+        ),
+      ),
+    );
   }
 }
 

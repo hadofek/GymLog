@@ -5,6 +5,7 @@ import 'package:gymlog/screens/template_edit_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/utils/transitions.dart';
 import 'package:gymlog/widgets/gymlog_wordmark.dart';
 import 'package:gymlog/widgets/tip_overlay.dart';
 
@@ -61,12 +62,10 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
     if (!mounted) return;
 
     await nav.push(
-      MaterialPageRoute(
-        builder: (_) => LogWorkoutScreen(
-          type: type,
-          initialExercises: exercises,
-        ),
-      ),
+      fadeSlideRoute(LogWorkoutScreen(
+        type: type,
+        initialExercises: exercises,
+      )),
     );
     if (mounted) _load();
   }
@@ -78,14 +77,12 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
     if (!mounted) return;
     final updated = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (_) => TemplateEditScreen(
-          templateId: templateId,
-          templateName: template['name'] as String,
-          templateType: template['type'] as String? ?? WorkoutTypes.weighted,
-          exercises: exerciseNames,
-        ),
-      ),
+      fadeSlideRoute(TemplateEditScreen(
+        templateId: templateId,
+        templateName: template['name'] as String,
+        templateType: template['type'] as String? ?? WorkoutTypes.weighted,
+        exercises: exerciseNames,
+      )),
     );
     if (updated == true) _load();
   }
@@ -145,15 +142,13 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
     if (type == null || !mounted) return;
     final updated = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (_) => TemplateEditScreen(
-          templateId: -1,
-          templateName: '',
-          templateType: type,
-          exercises: const [],
-          createMode: true,
-        ),
-      ),
+      fadeSlideRoute(TemplateEditScreen(
+        templateId: -1,
+        templateName: '',
+        templateType: type,
+        exercises: const [],
+        createMode: true,
+      )),
     );
     if (updated == true) _load();
   }

@@ -6,11 +6,17 @@ import 'package:gymlog/utils/ki_styles.dart';
 class RestTimerCard extends StatefulWidget {
   final Color accentColor;
   final VoidCallback onDismiss;
+  final ValueNotifier<int>? externalTickNotifier;
+  final int? initialTarget;
+  final ValueChanged<int?>? onTargetChanged;
 
   const RestTimerCard({
     super.key,
     required this.accentColor,
     required this.onDismiss,
+    this.externalTickNotifier,
+    this.initialTarget,
+    this.onTargetChanged,
   });
 
   @override
@@ -18,7 +24,7 @@ class RestTimerCard extends StatefulWidget {
 }
 
 class _RestTimerCardState extends State<RestTimerCard> {
-  final _tickNotifier = ValueNotifier<int>(0);
+  late final ValueNotifier<int> _tickNotifier;
   Timer? _timer;
   int? _target;
   bool _editing = false;
@@ -30,14 +36,22 @@ class _RestTimerCardState extends State<RestTimerCard> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) _tickNotifier.value++;
-    });
+    _target = widget.initialTarget;
+    if (widget.externalTickNotifier != null) {
+      _tickNotifier = widget.externalTickNotifier!;
+    } else {
+      _tickNotifier = ValueNotifier<int>(0);
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) _tickNotifier.value++;
+      });
+    }
   }
 
   @override
   void dispose() {
-    _tickNotifier.dispose();
+    if (widget.externalTickNotifier == null) {
+      _tickNotifier.dispose();
+    }
     _timer?.cancel();
     _minCtrl.dispose();
     _secCtrl.dispose();
@@ -61,7 +75,12 @@ class _RestTimerCardState extends State<RestTimerCard> {
       return;
     }
     FocusManager.instance.primaryFocus?.unfocus();
-    setState(() { _editing = false; _inputError = null; _target = totalSec; });
+    setState(() {
+      _editing = false;
+      _inputError = null;
+      _target = totalSec;
+    });
+    widget.onTargetChanged?.call(totalSec);
   }
 
   String _fmt(int ticks) {

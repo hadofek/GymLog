@@ -50,7 +50,9 @@
       "Bash(find:*)",
       "Bash(npx impeccable:*)",
       "Bash(head -1289 \"C:/Users/zvyon/StudioProjects/gymlog/lib/screens/log_workout_screen.dart\")",
-      "Bash(cp /tmp/log_workout_trimmed.dart \"C:/Users/zvyon/StudioProjects/gymlog/lib/screens/log_workout_screen.dart\")"
+      "Bash(cp /tmp/log_workout_trimmed.dart \"C:/Users/zvyon/StudioProjects/gymlog/lib/screens/log_workout_screen.dart\")",
+      "Bash(flutter upgrade:*)",
+      "Bash(flutter devices:*)"
     ]
   }
 }

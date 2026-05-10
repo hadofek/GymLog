@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:ui' as ui;
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:gal/gal.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/workout_types.dart';
@@ -39,6 +41,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
   bool _photoExists = false;
   bool _editMode = false;
   bool _isSharing = false;
+  List<Map<String, dynamic>>? _gpsPoints;
   final GlobalKey _shareCardKey = GlobalKey();
 
   bool get _isWeightedType =>
@@ -72,6 +75,11 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       _photoExists = _photoPath.isNotEmpty && File(_photoPath).existsSync();
       if (grouped.isEmpty) _editMode = false;
     });
+
+    if (widget.type == WorkoutTypes.cardio) {
+      final pts = await DBHelper.getGpsRoute(widget.workoutId);
+      if (mounted) setState(() => _gpsPoints = pts);
+    }
   }
 
   Future<void> _shareWorkout() async {
@@ -651,6 +659,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
               ],
             ),
           ),
+        if (_gpsPoints != null && _gpsPoints!.length >= 2) ...[
+          const SizedBox(height: 20),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              height: 220,
+              child: _RouteMapWidget(points: _gpsPoints!),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -1185,6 +1203,86 @@ class _SharePreviewDialogState extends State<_SharePreviewDialog> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _RouteMapWidget extends StatefulWidget {
+  final List<Map<String, dynamic>> points;
+  const _RouteMapWidget({required this.points});
+  @override
+  State<_RouteMapWidget> createState() => _RouteMapWidgetState();
+}
+
+class _RouteMapWidgetState extends State<_RouteMapWidget> {
+  late final MapController _ctrl;
+  late final List<LatLng> _latLngs;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = MapController();
+    _latLngs = widget.points
+        .map((p) => LatLng((p['lat'] as num).toDouble(), (p['lng'] as num).toDouble()))
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = AppColors.accentContainer(context);
+    // Compute bounding box
+    final lats = _latLngs.map((p) => p.latitude);
+    final lngs = _latLngs.map((p) => p.longitude);
+    final center = LatLng(
+      (lats.reduce((a, b) => a + b)) / _latLngs.length,
+      (lngs.reduce((a, b) => a + b)) / _latLngs.length,
+    );
+
+    return FlutterMap(
+      mapController: _ctrl,
+      options: MapOptions(
+          initialCenter: center,
+          initialZoom: 14,
+          interactionOptions: const InteractionOptions(flags: InteractiveFlag.none)),
+      children: [
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.Yonatanzvi.gymlog',
+        ),
+        PolylineLayer(
+          polylines: [
+            Polyline(points: _latLngs, color: accent, strokeWidth: 3.5),
+          ],
+        ),
+        MarkerLayer(
+          markers: [
+            Marker(
+              point: _latLngs.first,
+              width: 12,
+              height: 12,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+              ),
+            ),
+            Marker(
+              point: _latLngs.last,
+              width: 14,
+              height: 14,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.error(context),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

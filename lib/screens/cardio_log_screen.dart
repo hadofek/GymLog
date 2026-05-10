@@ -4,6 +4,7 @@ import 'package:gymlog/screens/workout_summary_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/screens/gps_tracking_screen.dart';
 import 'package:gymlog/utils/transitions.dart';
 import 'package:gymlog/widgets/gymlog_wordmark.dart';
 
@@ -27,6 +28,7 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
   final _avgSpeedFocus = FocusNode();
   final _notesFocus = FocusNode();
   late DateTime _workoutDate;
+  List<Map<String, dynamic>>? _gpsPoints;
 
   static const _suggestions = [
     'Running', 'Cycling', 'Swimming', 'Rowing',
@@ -103,6 +105,10 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
         notes: notesParts.join('\n'),
       );
 
+      if (_gpsPoints != null && _gpsPoints!.isNotEmpty) {
+        await DBHelper.saveGpsRoute(workoutId, _gpsPoints!);
+      }
+
       final prs = await DBHelper.getNonWeightedPRs(workoutId);
 
       if (!mounted) return;
@@ -132,9 +138,11 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
     }
   }
 
-  InputDecoration _fieldDecoration(String hint) {
+  InputDecoration _fieldDecoration(String hint, {String? label}) {
     final accent = AppColors.accentContainer(context);
     return InputDecoration(
+      labelText: label,
+      labelStyle: KiStyles.labelSm(color: AppColors.textTertiary(context)),
       hintText: hint,
       hintStyle: KiStyles.body(color: AppColors.hintText(context)),
       filled: true,
@@ -262,6 +270,59 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── GPS tracking entry point ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 8, 0, 20),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final result = await Navigator.push<GpsTrackingResult>(
+                      context,
+                      fadeSlideRoute(const GpsTrackingScreen()),
+                    );
+                    if (result != null && mounted) {
+                      setState(() {
+                        _gpsPoints = result.points;
+
+                        // Distance — leave blank if GPS didn't capture movement
+                        if (result.distanceKm > 0.001) {
+                          _distanceController.text =
+                              result.distanceKm.toStringAsFixed(2);
+                        }
+
+                        // Duration — round up to nearest minute so sub-minute
+                        // runs (e.g. 20s) don't produce 0h 0m
+                        final totalMinutes =
+                            (result.durationSeconds / 60).ceil();
+                        final h = totalMinutes ~/ 60;
+                        final m = totalMinutes % 60;
+                        if (h > 0) _hoursController.text = h.toString();
+                        _minutesController.text = m.toString();
+
+                        // Avg speed km/h
+                        if (result.durationSeconds > 0 &&
+                            result.distanceKm > 0.001) {
+                          final kmh = result.distanceKm /
+                              (result.durationSeconds / 3600);
+                          _avgSpeedController.text =
+                              kmh.toStringAsFixed(1);
+                        }
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.route_rounded, size: 18),
+                  label: const Text('Track with GPS'),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: AppColors.border(context)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    foregroundColor: AppColors.textPrimary(context),
+                  ),
+                ),
+              ),
+            ),
+
             // Date selector
             Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
             Semantics(
@@ -354,7 +415,7 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
                   textInputAction: TextInputAction.next,
                   onSubmitted: (_) => FocusScope.of(context).requestFocus(_minutesFocus),
                   style: KiStyles.bodySemibold(color: textPrimary),
-                  decoration: _fieldDecoration('Hours'),
+                  decoration: _fieldDecoration('0', label: 'Hours'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -366,7 +427,7 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
                   textInputAction: TextInputAction.next,
                   onSubmitted: (_) => FocusScope.of(context).requestFocus(_distanceFocus),
                   style: KiStyles.bodySemibold(color: textPrimary),
-                  decoration: _fieldDecoration('Minutes'),
+                  decoration: _fieldDecoration('0', label: 'Minutes'),
                 ),
               ),
             ]),
@@ -385,7 +446,7 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
                   textInputAction: TextInputAction.next,
                   onSubmitted: (_) => FocusScope.of(context).requestFocus(_avgSpeedFocus),
                   style: KiStyles.bodySemibold(color: textPrimary),
-                  decoration: _fieldDecoration('Distance (km)'),
+                  decoration: _fieldDecoration('0.00', label: 'Distance (km)'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -398,7 +459,7 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
                   textInputAction: TextInputAction.next,
                   onSubmitted: (_) => FocusScope.of(context).requestFocus(_notesFocus),
                   style: KiStyles.bodySemibold(color: textPrimary),
-                  decoration: _fieldDecoration('Avg speed (km/h)'),
+                  decoration: _fieldDecoration('0.0', label: 'Avg speed (km/h)'),
                 ),
               ),
             ]),

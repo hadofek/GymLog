@@ -77,6 +77,12 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   double _exercisePR = 0;
   bool _isShowingAddSheet = false;
 
+  // ── Rest Timer State (Elevated) ──
+  Timer? _restTimer;
+  int? _restTarget;
+  bool _isResting = false;
+  final _restTickNotifier = ValueNotifier<int>(0);
+
 
   Map<String, List<String>> get _currentLibrary =>
       widget.workoutType == WorkoutTypes.bodyweight
@@ -203,6 +209,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
         _sets.add({'weight': 0.0, 'reps': secs, 'timed': true});
         _repsController.clear();
       });
+      _startRestTimer();
       _showTimerSheet(context);
       return;
     }
@@ -220,6 +227,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
         _sets.add({'weight': 0.0, 'reps': r, 'bodyweight': true});
         _repsController.clear();
       });
+      _startRestTimer();
       _showTimerSheet(context);
       return;
     }
@@ -240,6 +248,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
           _weightController.clear();
           _repsController.clear();
         });
+        _startRestTimer();
         _showTimerSheet(context);
         return;
       }
@@ -270,7 +279,10 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                   _repsController.clear();
                 });
                 // Show timer before the async DB write so context is still valid.
-                if (mounted) _showTimerSheet(context);
+                if (mounted) {
+                  _startRestTimer();
+                  _showTimerSheet(context);
+                }
                 if (exerciseName.isNotEmpty) {
                   await DBHelper.setExerciseBodyweight(exerciseName, true);
                 }
@@ -308,12 +320,30 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
         ),
       );
     }
+    _startRestTimer();
     _showTimerSheet(context);
   }
 
-  void _showTimerSheet(BuildContext context) {
+  void _startRestTimer() {
+    _restTimer?.cancel();
+    _restTickNotifier.value = 0;
+    setState(() => _isResting = true);
+    _restTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) _restTickNotifier.value++;
+    });
+  }
+
+  void _stopRestTimer() {
+    _restTimer?.cancel();
+    setState(() {
+      _isResting = false;
+      _restTickNotifier.value = 0;
+    });
+  }
+
+  Future<void> _showTimerSheet(BuildContext context) async {
     final timerGreen = WorkoutTypes.color(WorkoutTypes.cardio, context);
-    showModalBottomSheet<void>(
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -325,45 +355,51 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
           top: 24,
           bottom: MediaQuery.viewInsetsOf(ctx).bottom + 24,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Center(
-              child: Container(
-                width: 36, height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.border(ctx),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            RestTimerCard(
-              accentColor: timerGreen,
-              onDismiss: () => Navigator.pop(ctx),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: timerGreen,
-                    foregroundColor: AppColors.primaryBtnFg(ctx),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20)),
-                    elevation: 0,
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(
+                child: Container(
+                  width: 36, height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border(ctx),
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  child: Text('Done',
-                      style: KiStyles.bodySemibold(
-                          color: AppColors.primaryBtnFg(ctx))),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              RestTimerCard(
+                accentColor: timerGreen,
+                onDismiss: () => Navigator.pop(ctx),
+                externalTickNotifier: _restTickNotifier,
+                initialTarget: _restTarget,
+                onTargetChanged: (newTarget) => setState(() => _restTarget = newTarget),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: timerGreen,
+                      foregroundColor: AppColors.primaryBtnFg(ctx),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
+                      elevation: 0,
+                    ),
+                    child: Text('Done',
+                        style: KiStyles.bodySemibold(
+                            color: AppColors.primaryBtnFg(ctx))),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -371,7 +407,12 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
 
   void _done() {
     if (_selectedExercise == null || _sets.isEmpty) return;
-    Navigator.pop(context, {'name': _selectedExercise!, 'sets': _sets});
+    Navigator.pop(context, {
+      'name': _selectedExercise!,
+      'sets': _sets,
+      'restTarget': _restTarget,
+      'restTicks': _isResting ? _restTickNotifier.value : null,
+    });
   }
 
   @override
@@ -379,6 +420,8 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
     _searchController.dispose();
     _weightController.dispose();
     _repsController.dispose();
+    _restTimer?.cancel();
+    _restTickNotifier.dispose();
     super.dispose();
   }
 
@@ -428,6 +471,29 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
             ),
           ),
           Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
+
+          // ── Sticky Rest Bar (Fixed outside scroll) ──
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 400),
+            transitionBuilder: (child, anim) => SizeTransition(
+              sizeFactor: anim,
+              axisAlignment: -1.0,
+              child: FadeTransition(opacity: anim, child: child),
+            ),
+            child: _isResting
+                ? _StickyRestBar(
+                    tickNotifier: _restTickNotifier,
+                    target: _restTarget,
+                    accentColor: WorkoutTypes.color(WorkoutTypes.cardio, context),
+                    onStop: _stopRestTimer,
+                    onMaximize: () async {
+                      await _showTimerSheet(context);
+                      if (mounted) setState(() {});
+                    },
+                  )
+                : const SizedBox.shrink(),
+          ),
+
           Expanded(
             child: _selectedExercise == null
                 ? _buildBrowse(context)
@@ -1105,7 +1171,193 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   }
 }
 
-// ── Spring-press widget (iOS-like) ────────────────────────────────────────────
+// ── Sticky Rest Bar (Minimized view) ──────────────────────────────────────────
+
+class _StickyRestBar extends StatelessWidget {
+  final ValueNotifier<int> tickNotifier;
+  final int? target;
+  final Color accentColor;
+  final VoidCallback onStop;
+  final VoidCallback onMaximize;
+
+  const _StickyRestBar({
+    required this.tickNotifier,
+    required this.target,
+    required this.accentColor,
+    required this.onStop,
+    required this.onMaximize,
+  });
+
+  String _fmt(int ticks) {
+    final m = ticks ~/ 60;
+    final s = (ticks % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTertiary = AppColors.textTertiary(context);
+    final errorCol = AppColors.error(context);
+
+    return ValueListenableBuilder<int>(
+      valueListenable: tickNotifier,
+      builder: (context, ticks, _) {
+        final isOvertime = target != null && ticks >= target!;
+        final color = isOvertime ? errorCol : accentColor;
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          height: 56,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: AppColors.cardBg(context),
+            border: Border(
+              bottom: BorderSide(color: AppColors.border(context), width: 1),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onMaximize,
+              child: Stack(
+                children: [
+                  // Progress background
+                  if (target != null && !isOvertime)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 600),
+                        width: MediaQuery.of(context).size.width *
+                            (ticks / target!).clamp(0.0, 1.0),
+                        height: double.infinity,
+                        color: accentColor.withValues(alpha: 0.12),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      children: [
+                        _PulseDot(color: color),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'RESTING · ${_fmt(ticks)}',
+                                style: KiStyles.bodySemibold(color: color),
+                              ),
+                              if (target != null)
+                                Text(
+                                  isOvertime ? 'OVERTIME' : 'GOAL ${_fmt(target!)}',
+                                  style: KiStyles.labelSm(
+                                      color: isOvertime ? errorCol : textTertiary),
+                                ),
+                            ],
+                          ),
+                        ),
+                        // Stop button
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: onStop,
+                            borderRadius: BorderRadius.circular(20),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color:
+                                    AppColors.error(context).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                    color: AppColors.error(context)
+                                        .withValues(alpha: 0.2)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.stop_rounded,
+                                      size: 14, color: AppColors.error(context)),
+                                  const SizedBox(width: 4),
+                                  Text('STOP',
+                                      style: KiStyles.labelSm(
+                                          color: AppColors.error(context))),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Icon(Icons.expand_less_rounded,
+                            size: 20, color: textTertiary),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PulseDot extends StatefulWidget {
+  final Color color;
+  const _PulseDot({required this.color});
+
+  @override
+  State<_PulseDot> createState() => _PulseDotState();
+}
+
+class _PulseDotState extends State<_PulseDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+  @override
+  void initState() {
+    super.initState();
+    _ctrl =
+        AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))
+          ..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _ctrl,
+      builder: (_, __) => Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(
+          color: widget.color.withValues(alpha: 0.4 + (0.6 * _ctrl.value)),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+                color: widget.color.withValues(alpha: 0.3 * _ctrl.value),
+                blurRadius: 4,
+                spreadRadius: 2),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _Pressable extends StatefulWidget {
   final Widget child;
   final VoidCallback onTap;

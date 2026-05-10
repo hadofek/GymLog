@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
+import 'dart:convert';
 
 class DBHelper {
   static Database? _db;
@@ -122,7 +123,7 @@ class DBHelper {
 
   static Future<Database> _initDB() async {
     final path = p.join(await getDatabasesPath(), 'gymlog.db');
-    final d = await openDatabase(path, version: 9, onCreate: (db, v) async {
+    final d = await openDatabase(path, version: 10, onCreate: (db, v) async {
       await db.execute('''
         CREATE TABLE exercises (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -188,6 +189,13 @@ class DBHelper {
           saved_at TEXT NOT NULL
         )
       ''');
+      await db.execute('''
+        CREATE TABLE gps_routes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workout_id INTEGER NOT NULL,
+          points_json TEXT NOT NULL
+        )
+      ''');
     }, onUpgrade: (db, oldV, newV) async {
       if (oldV < 2) {
         try {
@@ -210,6 +218,7 @@ class DBHelper {
       if (oldV < 7) await _ensureV7Columns(db);
       if (oldV < 8) await _deduplicateExercises(db);
       if (oldV < 9) await _ensureV9Tables(db);
+      if (oldV < 10) await _ensureV10Tables(db);
     });
     await _ensureV4Columns(d);
     await _ensureV5Columns(d);
@@ -217,7 +226,20 @@ class DBHelper {
     await _ensureV6Columns(d);
     await _ensureV7Columns(d);
     await _ensureV9Tables(d);
+    await _ensureV10Tables(d);
     return d;
+  }
+
+  static Future<void> _ensureV10Tables(Database d) async {
+    try {
+      await d.execute('''
+        CREATE TABLE IF NOT EXISTS gps_routes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          workout_id INTEGER NOT NULL,
+          points_json TEXT NOT NULL
+        )
+      ''');
+    } catch (_) {}
   }
 
   static Future<void> _ensureV9Tables(Database d) async {
@@ -417,6 +439,7 @@ class DBHelper {
 
   static Future<void> deleteWorkout(int workoutId) async {
     final d = await db;
+    await d.delete('gps_routes', where: 'workout_id = ?', whereArgs: [workoutId]);
     await d.delete('sets', where: 'workout_id = ?', whereArgs: [workoutId]);
     await d.delete('workouts', where: 'id = ?', whereArgs: [workoutId]);
   }
@@ -650,6 +673,28 @@ class DBHelper {
   static Future<void> clearDraft() async {
     final d = await db;
     await d.delete('workout_drafts', where: 'id = 1');
+  }
+
+  // ── GPS Routes ─────────────────────────────────────────────────────────────
+
+  /// Saves a GPS route for a workout. Points is a list of maps with keys:
+  /// 'lat' (double), 'lng' (double), 'alt' (double), 'ts' (int, epoch ms).
+  static Future<void> saveGpsRoute(int workoutId, List<Map<String, dynamic>> points) async {
+    final d = await db;
+    await d.insert('gps_routes', {
+      'workout_id': workoutId,
+      'points_json': jsonEncode(points),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  /// Returns the GPS points for a workout, or null if none saved.
+  static Future<List<Map<String, dynamic>>?> getGpsRoute(int workoutId) async {
+    final d = await db;
+    final rows = await d.query('gps_routes',
+        where: 'workout_id = ?', whereArgs: [workoutId]);
+    if (rows.isEmpty) return null;
+    final raw = jsonDecode(rows.first['points_json'] as String) as List;
+    return raw.cast<Map<String, dynamic>>();
   }
 
   // ── Measurements ───────────────────────────────────────────────────────────

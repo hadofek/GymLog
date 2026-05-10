@@ -29,6 +29,42 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
 
+  // Cache for performance
+  late List<String> _libraryNames;
+  late List<String> _customExercises;
+  late List<String> _allExercisesCombined;
+
+  @override
+  void initState() {
+    super.initState();
+    _initCaches();
+  }
+
+  @override
+  void didUpdateWidget(AddExerciseScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.allExercises != widget.allExercises ||
+        oldWidget.workoutType != widget.workoutType) {
+      _initCaches();
+    }
+  }
+
+  void _initCaches() {
+    _libraryNames = (widget.workoutType == WorkoutTypes.bodyweight
+            ? ExerciseData.bodyweight
+            : ExerciseData.weighted)
+        .values
+        .expand((e) => e)
+        .toList();
+
+    final libSet = _libraryNames.map((e) => e.toLowerCase()).toSet();
+    _customExercises = widget.allExercises
+        .where((e) => !libSet.contains(e.toLowerCase()))
+        .toList();
+
+    _allExercisesCombined = [..._libraryNames, ..._customExercises];
+  }
+
   // ── Log sets phase ──
   final _weightController = TextEditingController();
   final _repsController = TextEditingController();
@@ -37,20 +73,13 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   bool? _isBodyweight;
   bool _isWeightedExercise = false;
   double _exercisePR = 0;
+  bool _isShowingAddSheet = false;
 
 
   Map<String, List<String>> get _currentLibrary =>
       widget.workoutType == WorkoutTypes.bodyweight
           ? ExerciseData.bodyweight
           : ExerciseData.weighted;
-
-  List<String> get _allLibraryNames =>
-      _currentLibrary.values.expand((e) => e).toList();
-
-  List<String> get _customExercises => widget.allExercises
-      .where((e) => !_allLibraryNames
-          .any((l) => l.toLowerCase() == e.toLowerCase()))
-      .toList();
 
   // ── Fuzzy duplicate detection ──────────────────────────────────────────────
 
@@ -61,34 +90,46 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
     if (a == b) return 0;
     if (a.isEmpty) return b.length;
     if (b.isEmpty) return a.length;
-    final d = List.generate(
-        a.length + 1, (i) => List.filled(b.length + 1, 0));
-    for (var i = 0; i <= a.length; i++) { d[i][0] = i; }
-    for (var j = 0; j <= b.length; j++) { d[0][j] = j; }
-    for (var i = 1; i <= a.length; i++) {
-      for (var j = 1; j <= b.length; j++) {
-        final cost = a[i - 1] == b[j - 1] ? 0 : 1;
-        d[i][j] = [
-          d[i - 1][j] + 1,
-          d[i][j - 1] + 1,
-          d[i - 1][j - 1] + cost,
-        ].reduce(min);
-      }
+
+    // Standard optimization: ensure 'a' is shorter to save space.
+    if (a.length > b.length) {
+      final temp = a; a = b; b = temp;
     }
-    return d[a.length][b.length];
+
+    final n = a.length;
+    final m = b.length;
+    List<int> prev = List<int>.generate(n + 1, (i) => i);
+    List<int> curr = List<int>.filled(n + 1, 0);
+
+    for (int j = 1; j <= m; j++) {
+      curr[0] = j;
+      for (int i = 1; i <= n; i++) {
+        final cost = a[i - 1] == b[j - 1] ? 0 : 1;
+        curr[i] = min(
+          min(curr[i - 1] + 1, prev[i] + 1),
+          prev[i - 1] + cost,
+        );
+      }
+      final temp = prev;
+      prev = curr;
+      curr = temp;
+    }
+    return prev[n];
   }
 
   /// Returns the existing exercise name that fuzzy-matches [input], or null.
-  /// Threshold: 15% of the longer name's length, clamped to [1, 2].
-  /// This catches single-char typos and space/case variants without
-  /// false-positives on short similar names like "Pull Up" vs "Push Up".
   String? _fuzzyMatch(String input) {
     final na = _norm(input);
     if (na.isEmpty) return null;
-    final all = [..._allLibraryNames, ..._customExercises];
-    for (final e in all) {
+
+    for (final e in _allExercisesCombined) {
       final nb = _norm(e);
       if (na == nb) return e;
+
+      // Quick length filter: if lengths differ by more than the max possible
+      // threshold (2), they can't match.
+      if ((na.length - nb.length).abs() > 2) continue;
+
       final maxLen = max(na.length, nb.length);
       final threshold = (maxLen * 0.15).floor().clamp(1, 2);
       if (_levenshtein(na, nb) <= threshold) return e;
@@ -97,114 +138,24 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   }
 
   Future<void> _addCustomExercise() async {
-    final nameCtrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
+    if (_isShowingAddSheet) return;
+    _isShowingAddSheet = true;
 
-    await showModalBottomSheet<void>(
+    final name = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: AppColors.cardBg(context),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          top: 24,
-          left: 20,
-          right: 20,
-          bottom: MediaQuery.viewInsetsOf(ctx).bottom + MediaQuery.paddingOf(ctx).bottom + 24,
-        ),
-        child: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36, height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.border(ctx),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text('New exercise',
-                  style: KiStyles.headlineMd(color: AppColors.textPrimary(ctx))),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: nameCtrl,
-                autofocus: true,
-                textCapitalization: TextCapitalization.words,
-                textInputAction: TextInputAction.done,
-                style: KiStyles.bodySemibold(color: AppColors.textPrimary(ctx)),
-                decoration: InputDecoration(
-                  hintText: 'Exercise name',
-                  hintStyle: KiStyles.body(color: AppColors.hintText(ctx)),
-                  filled: true,
-                  fillColor: AppColors.inputFill(ctx),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none),
-                  enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.border(ctx), width: 1.5)),
-                  focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.accentContainer(ctx), width: 2)),
-                  errorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.error(ctx), width: 1.5)),
-                  focusedErrorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColors.error(ctx), width: 2)),
-                ),
-                validator: (v) {
-                  final trimmed = v?.trim() ?? '';
-                  if (trimmed.isEmpty) return 'Enter an exercise name';
-                  final match = _fuzzyMatch(trimmed);
-                  if (match != null) return 'Already exists as "$match"';
-                  return null;
-                },
-                onFieldSubmitted: (_) {
-                  if (formKey.currentState?.validate() == true) {
-                    Navigator.pop(ctx);
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                    onPressed: () {
-                      if (formKey.currentState?.validate() == true) {
-                        Navigator.pop(ctx);
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.accentContainer(ctx),
-                      foregroundColor: AppColors.primaryBtnFg(ctx),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20)),
-                      elevation: 0,
-                    ),
-                    child: Text('Add',
-                        style: KiStyles.bodySemibold(
-                            color: AppColors.primaryBtnFg(ctx))),
-                  ),
-              ),
-            ],
-          ),
-        ),
+      builder: (ctx) => _AddCustomExerciseSheet(
+        fuzzyMatch: _fuzzyMatch,
       ),
     );
 
-    final name = nameCtrl.text.trim();
-    nameCtrl.dispose();
-    if (name.isEmpty || !mounted) return;
-    await _pickExercise(name);
+    _isShowingAddSheet = false;
+    if (name == null || name.trim().isEmpty || !mounted) return;
+    await _pickExercise(name.trim());
   }
 
   Future<void> _pickExercise(String name) async {
@@ -229,38 +180,32 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
     });
   }
 
-  Future<void> _saveSet() async {
-    // Capture context before any await so timer sheet can be shown after async ops.
-    final ctx = context;
-
+  void _saveSet() {
     if (widget.workoutType == WorkoutTypes.bodyweight && !_isWeightedExercise) {
       final r = int.tryParse(_repsController.text);
       if (r == null || r <= 0) {
-        if (mounted) {
-          ScaffoldMessenger.of(ctx).showSnackBar(
-            const SnackBar(content: Text('Please enter valid reps')),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter valid reps')),
+        );
         return;
       }
       setState(() {
         _sets.add({'weight': 0.0, 'reps': r, 'bodyweight': true});
         _repsController.clear();
       });
-      if (mounted) _showTimerSheet(ctx);
+      _showTimerSheet(context);
       return;
     }
 
     final w = double.tryParse(_weightController.text);
     final r = int.tryParse(_repsController.text);
     if (w == null || r == null || w < 0 || r <= 0) {
-      if (mounted) {
-        ScaffoldMessenger.of(ctx).showSnackBar(
-          const SnackBar(content: Text('Please enter valid weight and reps')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter valid weight and reps')),
+      );
       return;
     }
+
     if (w == 0) {
       if (_isBodyweight == true) {
         setState(() {
@@ -268,28 +213,13 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
           _weightController.clear();
           _repsController.clear();
         });
-        if (mounted) _showTimerSheet(ctx);
+        _showTimerSheet(context);
         return;
       }
-      final name = _selectedExercise ?? '';
-      if (name.isNotEmpty) {
-        final isBw = await DBHelper.isExerciseBodyweight(name);
-        if (isBw) {
-          if (!mounted) return;
-          setState(() {
-            _isBodyweight = true;
-            _sets.add({'weight': w, 'reps': r});
-            _weightController.clear();
-            _repsController.clear();
-          });
-          // ignore: use_build_context_synchronously
-          _showTimerSheet(ctx);
-          return;
-        }
-      }
-      if (!mounted) return;
+      // _pickExercise already queried is_bodyweight; if it were true _isBodyweight
+      // would already be set. Show the dialog synchronously — no DB call needed.
       showDialog(
-        context: ctx, // ignore: use_build_context_synchronously
+        context: context,
         builder: (dlgCtx) => AlertDialog(
           backgroundColor: AppColors.cardBg(dlgCtx),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -312,12 +242,11 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                   _weightController.clear();
                   _repsController.clear();
                 });
+                // Show timer before the async DB write so context is still valid.
+                if (mounted) _showTimerSheet(context);
                 if (exerciseName.isNotEmpty) {
                   await DBHelper.setExerciseBodyweight(exerciseName, true);
                 }
-                if (!mounted) return;
-                // ignore: use_build_context_synchronously
-                _showTimerSheet(ctx);
               },
               child: Text('Yes, bodyweight',
                   style: KiStyles.label(color: AppColors.accentContainer(dlgCtx))),
@@ -327,6 +256,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
       );
       return;
     }
+
     final isPR = w > 0 && _exercisePR > 0 && w > _exercisePR;
     if (w > _exercisePR) _exercisePR = w;
     setState(() {
@@ -334,16 +264,16 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
       _weightController.clear();
       _repsController.clear();
     });
-    if (isPR && mounted) {
-      ScaffoldMessenger.of(ctx).showSnackBar(
+    if (isPR) {
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(children: [
             const Icon(Icons.emoji_events_rounded, color: AppColors.gold, size: 20),
             const SizedBox(width: 8),
             Text('New Personal Record!',
-                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary(ctx))),
+                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary(context))),
           ]),
-          backgroundColor: AppColors.cardBg(ctx),
+          backgroundColor: AppColors.cardBg(context),
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -351,7 +281,7 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
         ),
       );
     }
-    if (mounted) _showTimerSheet(ctx);
+    _showTimerSheet(context);
   }
 
   void _showTimerSheet(BuildContext context) {
@@ -359,13 +289,14 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: AppColors.cardBg(context),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
           top: 24,
-          bottom: MediaQuery.paddingOf(ctx).bottom + MediaQuery.viewInsetsOf(ctx).bottom + 24,
+          bottom: MediaQuery.viewInsetsOf(ctx).bottom + 24,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -478,11 +409,10 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
   // ── Phase 1: Browse ────────────────────────────────────────────────────────
 
   List<String> get _searchResults {
-    final q = _searchQuery.toLowerCase();
+    final q = _searchQuery.toLowerCase().trim();
     if (q.isEmpty) return [];
-    final all = [..._allLibraryNames, ..._customExercises];
     final seen = <String>{};
-    return all
+    return _allExercisesCombined
         .where((e) => e.toLowerCase().contains(q) && seen.add(e.toLowerCase()))
         .toList();
   }
@@ -1141,6 +1071,120 @@ class _PressableState extends State<_Pressable>
         animation: _scale,
         builder: (_, child) => Transform.scale(scale: _scale.value, child: child),
         child: widget.child,
+      ),
+    );
+  }
+}
+
+class _AddCustomExerciseSheet extends StatefulWidget {
+  final String? Function(String) fuzzyMatch;
+  const _AddCustomExerciseSheet({required this.fuzzyMatch});
+
+  @override
+  State<_AddCustomExerciseSheet> createState() => _AddCustomExerciseSheetState();
+}
+
+class _AddCustomExerciseSheetState extends State<_AddCustomExerciseSheet> {
+  final _nameCtrl = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_formKey.currentState?.validate() == true) {
+      Navigator.pop(context, _nameCtrl.text);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        top: 24,
+        left: 20,
+        right: 20,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 24,
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border(context),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text('New exercise',
+                style: KiStyles.headlineMd(color: AppColors.textPrimary(context))),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _nameCtrl,
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+              textInputAction: TextInputAction.done,
+              style: KiStyles.bodySemibold(color: AppColors.textPrimary(context)),
+              decoration: InputDecoration(
+                hintText: 'Exercise name',
+                hintStyle: KiStyles.body(color: AppColors.hintText(context)),
+                filled: true,
+                fillColor: AppColors.inputFill(context),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.border(context), width: 1.5)),
+                focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.accentContainer(context), width: 2)),
+                errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.error(context), width: 1.5)),
+                focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.error(context), width: 2)),
+              ),
+              validator: (v) {
+                final trimmed = v?.trim() ?? '';
+                if (trimmed.isEmpty) return 'Enter an exercise name';
+                final match = widget.fuzzyMatch(trimmed);
+                if (match != null) return 'Already exists as "$match"';
+                return null;
+              },
+              onFieldSubmitted: (_) => _submit(),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _submit,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accentContainer(context),
+                  foregroundColor: AppColors.primaryBtnFg(context),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20)),
+                  elevation: 0,
+                ),
+                child: Text('Add',
+                    style: KiStyles.bodySemibold(
+                        color: AppColors.primaryBtnFg(context))),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

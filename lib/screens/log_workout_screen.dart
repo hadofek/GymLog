@@ -212,13 +212,14 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: AppColors.cardBg(context),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
         padding: EdgeInsets.only(
           top: 24,
-          bottom: MediaQuery.paddingOf(ctx).bottom + MediaQuery.viewInsetsOf(ctx).bottom + 24,
+          bottom: MediaQuery.viewInsetsOf(ctx).bottom + 24,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -413,6 +414,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: AppColors.cardBg(context),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
@@ -680,7 +682,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
             'setNumber': setNum++,
             'weight': (s['weight'] as num).toDouble(),
             'reps': reps,
-            if (supersetGroup != null) 'supersetGroup': supersetGroup,
+            'supersetGroup': ?supersetGroup,
           });
         }
       }

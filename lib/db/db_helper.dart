@@ -455,7 +455,7 @@ class DBHelper {
       'set_number': setNumber,
       'weight': weight,
       'reps': reps,
-      if (supersetGroup != null) 'superset_group': supersetGroup,
+      'superset_group': ?supersetGroup,
     };
     await d.insert('sets', data);
   }
@@ -664,9 +664,9 @@ class DBHelper {
     final d = await db;
     await d.insert('measurements', {
       'date': date,
-      if (weightKg != null) 'weight_kg': weightKg,
-      if (heightCm != null) 'height_cm': heightCm,
-      if (bodyFatPct != null) 'body_fat_pct': bodyFatPct,
+      'weight_kg': ?weightKg,
+      'height_cm': ?heightCm,
+      'body_fat_pct': ?bodyFatPct,
       'notes': notes,
     });
   }

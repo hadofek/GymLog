@@ -407,6 +407,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     final rCtrl = TextEditingController(text: rCtrlInitial);
 
     bool showWeightField = !isBodyweight;
+    bool setWasLogged = false;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -624,10 +625,8 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                             .add({'weight': weight, 'reps': reps, if (isPR) 'isPR': true});
                       });
                       _saveDraft();
+                      setWasLogged = true;
                       Navigator.pop(ctx);
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) _showTimerSheet(context);
-                      });
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: accent,
@@ -646,6 +645,9 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
       ),
     );
 
+    if (setWasLogged && mounted) {
+      _showTimerSheet(context);
+    }
   }
 
   Future<void> _saveWorkout() async {

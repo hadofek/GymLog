@@ -340,7 +340,10 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     final isExBW = await DBHelper.isExerciseBodyweight(exName);
     final isBodyweight = isTimed || widget.type == WorkoutTypes.bodyweight || isExBW;
 
-    final prevSets = await DBHelper.getLastSets(exName);
+    final cachedSets = _exercises[exIndex]['lastSets'] as List?;
+    final prevSets = (cachedSets != null && cachedSets.isNotEmpty)
+        ? cachedSets
+        : await DBHelper.getLastSets(exName);
     String prevHint = '';
     double seedWeight = prefillWeight ?? 0.0;
     int seedReps = prefillReps ?? 0;
@@ -471,7 +474,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                                   },
                                   style: OutlinedButton.styleFrom(
                                     padding: EdgeInsets.zero,
-                                    minimumSize: const Size(0, 32),
+                                    minimumSize: const Size(0, 44),
                                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                     side: BorderSide(color: AppColors.border(ctx)),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -772,7 +775,6 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                   // Workout clock
                   Semantics(
                     label: 'Elapsed time: $_elapsedDisplay',
-                    liveRegion: true,
                     child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -1077,7 +1079,7 @@ class _ExerciseCard extends StatelessWidget {
                     behavior: HitTestBehavior.opaque,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                      child: Icon(Icons.more_horiz_rounded,
+                      child: Icon(Icons.delete_outline_rounded,
                           size: 18, color: textTertiary.withValues(alpha: 0.6)),
                     ),
                   ),
@@ -1231,7 +1233,10 @@ class _SupersetConnector extends StatelessWidget {
   Widget build(BuildContext context) {
     final textTertiary = AppColors.textTertiary(context);
     final borderColor = AppColors.border(context);
-    return GestureDetector(
+    return Semantics(
+      label: isLinked ? 'Superset: tap to unlink' : 'Tap to link as superset',
+      button: true,
+      child: GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Padding(
@@ -1265,7 +1270,7 @@ class _SupersetConnector extends StatelessWidget {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 

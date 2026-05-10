@@ -510,8 +510,9 @@ class _ChartPainter extends CustomPainter {
       // "PR" label above PR points
       if (isPR) {
         const labelStyle = TextStyle(
-          fontSize: 9,
-          fontWeight: FontWeight.w800,
+          fontFamily: 'SpaceGrotesk',
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
           color: AppColors.gold,
           letterSpacing: 0.5,
         );

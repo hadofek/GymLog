@@ -137,7 +137,59 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
     final accentContainer = AppColors.accentContainer(context);
     final flexColor = WorkoutTypes.color(WorkoutTypes.flexibility, context);
 
-    return Scaffold(
+    bool hasData() =>
+        _activityController.text.trim().isNotEmpty ||
+        _hoursController.text.trim().isNotEmpty ||
+        _minutesController.text.trim().isNotEmpty ||
+        _notesController.text.trim().isNotEmpty;
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (!hasData()) { Navigator.pop(context); return; }
+        final discard = await showModalBottomSheet<bool>(
+          context: context,
+          backgroundColor: AppColors.cardBg(context),
+          shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+          builder: (ctx) => Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Discard session?',
+                    style: KiStyles.headlineMd(color: AppColors.textPrimary(ctx))),
+                const SizedBox(height: 8),
+                Text('Your entered data will be lost.',
+                    style: KiStyles.body(color: AppColors.textSecondary(ctx))),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.error(ctx),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20)),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: Text('Discard', style: KiStyles.bodySemibold(color: Colors.white)),
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: Text('Keep editing',
+                      style: KiStyles.body(color: AppColors.textSecondary(ctx))),
+                ),
+              ],
+            ),
+          ),
+        );
+        if (discard == true && context.mounted) Navigator.pop(context);
+      },
+      child: Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: bg,
@@ -273,10 +325,7 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
                 child: TextField(
                   controller: _hoursController,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: textPrimary),
+                  style: KiStyles.bodySemibold(color: textPrimary),
                   decoration: _fieldDecoration('Hours'),
                 ),
               ),
@@ -285,10 +334,7 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
                 child: TextField(
                   controller: _minutesController,
                   keyboardType: TextInputType.number,
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: textPrimary),
+                  style: KiStyles.bodySemibold(color: textPrimary),
                   decoration: _fieldDecoration('Minutes'),
                 ),
               ),
@@ -312,6 +358,6 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 }

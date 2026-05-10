@@ -72,4 +72,10 @@ class AppColors {
   /// Theme-aware live/active indicator: bright green in dark mode, dark green in light mode for contrast.
   static Color liveActivity(BuildContext ctx) =>
       isDark(ctx) ? const Color(0xFF4ADE80) : const Color(0xFF16A34A);
+
+  // ── Muscle map heatmap spectrum (fixed — not theme-adaptive by design) ──
+  static const Color muscleMapBlue   = Color(0xFF2868D4);
+  static const Color muscleMapPurple = Color(0xFF7238CC);
+  static const Color muscleMapPink   = Color(0xFFCC2E7A);
+  static const Color muscleMapRed    = Color(0xFFD83638);
 }

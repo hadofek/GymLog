@@ -38,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _loaded = false;
 
   final _statScrollCtrl = ScrollController();
-  bool _statCanScroll = false;
+  final _statCanScrollNotifier = ValueNotifier<bool>(false);
 
   Map<int, double> get _workedOutDays {
     final result = <int, double>{};
@@ -91,16 +91,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onStatScroll() {
     if (!_statScrollCtrl.hasClients) return;
-    final canScroll = _statScrollCtrl.position.maxScrollExtent > 0 &&
+    _statCanScrollNotifier.value = _statScrollCtrl.position.maxScrollExtent > 0 &&
         _statScrollCtrl.position.pixels <
             _statScrollCtrl.position.maxScrollExtent - 4;
-    if (canScroll != _statCanScroll) setState(() => _statCanScroll = canScroll);
   }
 
   @override
   void dispose() {
     _statScrollCtrl.removeListener(_onStatScroll);
     _statScrollCtrl.dispose();
+    _statCanScrollNotifier.dispose();
     super.dispose();
   }
 
@@ -661,16 +661,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
-                    if (_statCanScroll)
-                      Positioned(
-                        right: 6, top: 0, bottom: 0,
-                        child: IgnorePointer(
-                          child: Center(
-                            child: Icon(Icons.chevron_right_rounded,
-                                size: 14, color: textTertiary),
-                          ),
-                        ),
-                      ),
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _statCanScrollNotifier,
+                      builder: (_, canScroll, __) => canScroll
+                          ? Positioned(
+                              right: 6, top: 0, bottom: 0,
+                              child: IgnorePointer(
+                                child: Center(
+                                  child: Icon(Icons.chevron_right_rounded,
+                                      size: 14, color: textTertiary),
+                                ),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                     ], // Stack children
                     ), // Stack
 
@@ -1124,13 +1128,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                 const SizedBox(height: 10),
                                 Row(
                                   children: [
-                                    _ColorDot(color: const Color(0xFF2868D4)),
+                                    const _ColorDot(color: AppColors.muscleMapBlue),
                                     const SizedBox(width: 4),
-                                    _ColorDot(color: const Color(0xFF7238CC)),
+                                    const _ColorDot(color: AppColors.muscleMapPurple),
                                     const SizedBox(width: 4),
-                                    _ColorDot(color: const Color(0xFFCC2E7A)),
+                                    const _ColorDot(color: AppColors.muscleMapPink),
                                     const SizedBox(width: 4),
-                                    _ColorDot(color: const Color(0xFFD83638)),
+                                    const _ColorDot(color: AppColors.muscleMapRed),
                                     const SizedBox(width: 6),
                                     Text('fewer → more sessions per muscle', style: KiStyles.labelSm(color: textTertiary)),
                                   ],

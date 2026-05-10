@@ -465,7 +465,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
         padding: EdgeInsets.fromLTRB(
-            20, 16, 20, 24 + MediaQuery.of(ctx).viewInsets.bottom),
+            20, 16, 20, 24 + MediaQuery.viewInsetsOf(ctx).bottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -738,14 +738,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                         TextButton(
                           onPressed: () => Navigator.pop(ctx, true),
                           style: TextButton.styleFrom(
-                            backgroundColor: AppColors.error(context)
-                                .withValues(alpha: 0.12),
+                            backgroundColor: AppColors.error(context),
+                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8)),
                           ),
                           child: Text('Delete',
-                              style: KiStyles.label(
-                                  color: AppColors.error(context))),
+                              style: KiStyles.label(color: Colors.white)),
                         ),
                       ],
                     ),
@@ -939,16 +938,30 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                                   color: textPrimary)),
                                         ),
                                         if (_editMode) ...[
-                                          GestureDetector(
-                                            onTap: () => _editSet(s),
-                                            child: Icon(Icons.edit_outlined,
-                                                size: 16, color: textSecondary),
+                                          Semantics(
+                                            label: 'Edit set ${s['set_number']}',
+                                            button: true,
+                                            child: GestureDetector(
+                                              onTap: () => _editSet(s),
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(8),
+                                                child: Icon(Icons.edit_outlined,
+                                                    size: 16, color: textSecondary),
+                                              ),
+                                            ),
                                           ),
-                                          const SizedBox(width: 14),
-                                          GestureDetector(
-                                            onTap: () => _deleteSet(s),
-                                            child: Icon(Icons.close,
-                                                size: 16, color: errorColor),
+                                          const SizedBox(width: 6),
+                                          Semantics(
+                                            label: 'Delete set ${s['set_number']}',
+                                            button: true,
+                                            child: GestureDetector(
+                                              onTap: () => _deleteSet(s),
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(8),
+                                                child: Icon(Icons.close,
+                                                    size: 16, color: errorColor),
+                                              ),
+                                            ),
                                           ),
                                         ],
                                       ]),
@@ -981,21 +994,28 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                     const SizedBox(height: 4),
                                     Divider(height: 1, color: borderColor),
                                     const SizedBox(height: 8),
-                                    GestureDetector(
-                                      onTap: () =>
-                                          _addSetToExercise(exName),
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.add,
-                                              size: 14,
-                                              color: AppColors.accentContainer(context)),
-                                          const SizedBox(width: 6),
-                                          Text('Add set',
-                                              style: KiStyles.label(
-                                                  color: textSecondary)),
-                                        ],
+                                    Semantics(
+                                      label: 'Add set to $exName',
+                                      button: true,
+                                      child: GestureDetector(
+                                        onTap: () =>
+                                            _addSetToExercise(exName),
+                                        child: SizedBox(
+                                          height: 44,
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(Icons.add,
+                                                  size: 14,
+                                                  color: AppColors.accentContainer(context)),
+                                              const SizedBox(width: 6),
+                                              Text('Add set',
+                                                  style: KiStyles.label(
+                                                      color: textSecondary)),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ],

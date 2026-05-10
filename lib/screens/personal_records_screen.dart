@@ -186,8 +186,8 @@ class _PersonalRecordsScreenState extends State<PersonalRecordsScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         // Rank number
-                                        SizedBox(
-                                          width: 28,
+                                        ConstrainedBox(
+                                          constraints: const BoxConstraints(minWidth: 28),
                                           child: Text(
                                             (i + 1).toString().padLeft(2, '0'),
                                             style: KiStyles.labelSm(

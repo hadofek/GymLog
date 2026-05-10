@@ -417,7 +417,11 @@ class _UnitToggle extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: ['kg', 'lbs'].map((unit) {
           final selected = value == unit;
-          return GestureDetector(
+          return Semantics(
+            label: '$unit, ${selected ? 'selected' : 'not selected'}',
+            button: true,
+            excludeSemantics: true,
+            child: GestureDetector(
             onTap: () { if (!selected) onChanged(unit); },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 160),
@@ -437,7 +441,7 @@ class _UnitToggle extends StatelessWidget {
                 ),
               ),
             ),
-          );
+          ));
         }).toList(),
       ),
     );

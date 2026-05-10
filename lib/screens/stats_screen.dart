@@ -18,14 +18,13 @@ class _StatsScreenState extends State<StatsScreen> {
   Map<String, dynamic>? _stats;
   bool _loading = true;
   final _statScrollCtrl = ScrollController();
-  bool _statCanScroll = false;
+  final _statCanScrollNotifier = ValueNotifier<bool>(false);
 
   void _onStatScroll() {
     final ctrl = _statScrollCtrl;
     if (!ctrl.hasClients) return;
-    final canScroll = ctrl.position.maxScrollExtent > 0 &&
+    _statCanScrollNotifier.value = ctrl.position.maxScrollExtent > 0 &&
         ctrl.position.pixels < ctrl.position.maxScrollExtent - 4;
-    if (canScroll != _statCanScroll) setState(() => _statCanScroll = canScroll);
   }
 
   @override
@@ -40,6 +39,7 @@ class _StatsScreenState extends State<StatsScreen> {
   void dispose() {
     _statScrollCtrl.removeListener(_onStatScroll);
     _statScrollCtrl.dispose();
+    _statCanScrollNotifier.dispose();
     super.dispose();
   }
 
@@ -234,16 +234,20 @@ class _StatsScreenState extends State<StatsScreen> {
                   ),
                 ),
               ),
-              if (_statCanScroll)
-                Positioned(
-                  right: 6, top: 0, bottom: 0,
-                  child: IgnorePointer(
-                    child: Center(
-                      child: Icon(Icons.chevron_right_rounded,
-                          size: 14, color: textTertiary),
-                    ),
-                  ),
-                ),
+              ValueListenableBuilder<bool>(
+                valueListenable: _statCanScrollNotifier,
+                builder: (_, canScroll, __) => canScroll
+                    ? Positioned(
+                        right: 6, top: 0, bottom: 0,
+                        child: IgnorePointer(
+                          child: Center(
+                            child: Icon(Icons.chevron_right_rounded,
+                                size: 14, color: textTertiary),
+                          ),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
             ],
           ),
 
@@ -302,8 +306,8 @@ class _StatsScreenState extends State<StatsScreen> {
                           Text('$pct%',
                               style: KiStyles.bodySemibold(color: textPrimary)),
                           const SizedBox(width: 12),
-                          SizedBox(
-                            width: 32,
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(minWidth: 32),
                             child: Text(
                               '$count',
                               textAlign: TextAlign.right,
@@ -410,9 +414,6 @@ class _StatsScreenState extends State<StatsScreen> {
                       children: [
                         Text('PERSONAL RECORDS',
                             style: KiStyles.label(color: textTertiary)),
-                        const SizedBox(height: 4),
-                        Text('All-time bests for every exercise',
-                            style: KiStyles.body(color: textPrimary)),
                       ],
                     ),
                   ),
@@ -501,12 +502,7 @@ class _StatPreview extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-            color: color.withValues(alpha: 0.3),
-            letterSpacing: 0.8,
-          ),
+          style: KiStyles.labelSm(color: color.withValues(alpha: 0.3)),
         ),
       ],
     );

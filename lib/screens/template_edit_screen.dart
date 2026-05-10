@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/widgets/gymlog_wordmark.dart';
 
 class TemplateEditScreen extends StatefulWidget {
   final int templateId;
@@ -202,17 +203,7 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
         scrolledUnderElevation: 0,
         title: Row(
           children: [
-            Text(
-              'GYMLOG',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                fontStyle: FontStyle.italic,
-                letterSpacing: 2,
-                color: AppColors.accentContainer(context),
-              ),
-            ),
+            const GymlogWordmark(),
             const SizedBox(width: 10),
             Text(widget.createMode ? 'NEW TEMPLATE' : 'EDIT TEMPLATE',
                 style: KiStyles.label(

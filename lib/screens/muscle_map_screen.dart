@@ -5,6 +5,7 @@ import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/body_svg_paths.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/widgets/gymlog_wordmark.dart';
 
 enum _Period { daily, weekly, monthly, yearly, allTime }
 
@@ -240,19 +241,7 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
                         size: 20, color: textPrimary),
                   ),
                   const SizedBox(width: 16),
-                  Expanded(
-                    child: Text(
-                      'GYMLOG',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        fontStyle: FontStyle.italic,
-                        letterSpacing: 3,
-                        color: accentContainer,
-                      ),
-                    ),
-                  ),
+                  const Expanded(child: GymlogWordmark()),
                   Text('MUSCLE MAP',
                       style: KiStyles.label(color: textTertiary)),
                 ],

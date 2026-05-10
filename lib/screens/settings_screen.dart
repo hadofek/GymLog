@@ -8,6 +8,7 @@ import 'package:gymlog/screens/profile_setup_screen.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
 import 'package:gymlog/utils/weight_format.dart';
+import 'package:gymlog/widgets/gymlog_wordmark.dart';
 import 'package:gymlog/widgets/tip_overlay.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -134,19 +135,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            Expanded(
-              child: Text(
-                'GYMLOG',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  fontStyle: FontStyle.italic,
-                  letterSpacing: 3,
-                  color: accentContainer,
-                ),
-              ),
-            ),
+            const Expanded(child: GymlogWordmark()),
             Text('SETTINGS', style: KiStyles.label(color: textSecondary)),
           ],
         ),

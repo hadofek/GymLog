@@ -5,6 +5,7 @@ import 'package:gymlog/screens/personal_records_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/widgets/gymlog_wordmark.dart';
 import 'package:gymlog/widgets/tip_overlay.dart';
 
 class StatsScreen extends StatefulWidget {
@@ -16,11 +17,30 @@ class StatsScreen extends StatefulWidget {
 class _StatsScreenState extends State<StatsScreen> {
   Map<String, dynamic>? _stats;
   bool _loading = true;
+  final _statScrollCtrl = ScrollController();
+  bool _statCanScroll = false;
+
+  void _onStatScroll() {
+    final ctrl = _statScrollCtrl;
+    if (!ctrl.hasClients) return;
+    final canScroll = ctrl.position.maxScrollExtent > 0 &&
+        ctrl.position.pixels < ctrl.position.maxScrollExtent - 4;
+    if (canScroll != _statCanScroll) setState(() => _statCanScroll = canScroll);
+  }
 
   @override
   void initState() {
     super.initState();
+    _statScrollCtrl.addListener(_onStatScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onStatScroll());
     _load();
+  }
+
+  @override
+  void dispose() {
+    _statScrollCtrl.removeListener(_onStatScroll);
+    _statScrollCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -60,19 +80,7 @@ class _StatsScreenState extends State<StatsScreen> {
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
                 children: [
-                  Expanded(
-                    child: Text(
-                      'GYMLOG',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        fontStyle: FontStyle.italic,
-                        letterSpacing: 3,
-                        color: accentContainer,
-                      ),
-                    ),
-                  ),
+                  const Expanded(child: GymlogWordmark()),
                   Text('STATS', style: KiStyles.label(color: textSecondary)),
                 ],
               ),
@@ -82,7 +90,7 @@ class _StatsScreenState extends State<StatsScreen> {
               child: _loading
                   ? _buildSkeleton(context)
                   : _buildBody(textPrimary, textSecondary, textTertiary,
-                      accentContainer, border),
+                      accentContainer, border, bg),
             ),
           ],
         ),
@@ -112,6 +120,7 @@ class _StatsScreenState extends State<StatsScreen> {
     Color textTertiary,
     Color accentContainer,
     Color border,
+    Color bg,
   ) {
     final stats = _stats!;
     final totalWorkouts = stats['total_workouts'] as int;
@@ -162,49 +171,80 @@ class _StatsScreenState extends State<StatsScreen> {
 
           // ── Stat strip ──
           Divider(height: 1, thickness: 0.5, color: border),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 18),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  _MicroStat(
-                    value: '$totalWorkouts',
-                    label: 'WORKOUTS',
-                    valueColor: textPrimary,
-                    labelColor: textTertiary,
+          Stack(
+            children: [
+              SingleChildScrollView(
+                controller: _statScrollCtrl,
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.only(right: 40),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _MicroStat(
+                        value: '$totalWorkouts',
+                        label: 'WORKOUTS',
+                        valueColor: textPrimary,
+                        labelColor: textTertiary,
+                      ),
+                      _Divider(color: border),
+                      _MicroStat(
+                        value: '$longestStreak',
+                        label: 'BEST STREAK',
+                        valueColor: textPrimary,
+                        labelColor: textTertiary,
+                      ),
+                      _Divider(color: border),
+                      _MicroStat(
+                        value: _fmtDuration(totalSeconds),
+                        label: 'TOTAL TIME',
+                        valueColor: textPrimary,
+                        labelColor: textTertiary,
+                      ),
+                      if (totalDistanceKm > 0) ...[
+                        _Divider(color: border),
+                        _MicroStat(
+                          value: totalDistanceKm >= 1000
+                              ? '${(totalDistanceKm / 1000).toStringAsFixed(1)}k km'
+                              : totalDistanceKm % 1 == 0
+                                  ? '${totalDistanceKm.toInt()} km'
+                                  : '${totalDistanceKm.toStringAsFixed(1)} km',
+                          label: 'DISTANCE',
+                          valueColor: textPrimary,
+                          labelColor: textTertiary,
+                        ),
+                      ],
+                    ],
                   ),
-                  _Divider(color: border),
-                  _MicroStat(
-                    value: '$longestStreak',
-                    label: 'BEST STREAK',
-                    valueColor: textPrimary,
-                    labelColor: textTertiary,
-                  ),
-                  _Divider(color: border),
-                  _MicroStat(
-                    value: _fmtDuration(totalSeconds),
-                    label: 'TOTAL TIME',
-                    valueColor: textPrimary,
-                    labelColor: textTertiary,
-                  ),
-                  if (totalDistanceKm > 0) ...[
-                    _Divider(color: border),
-                    _MicroStat(
-                      value: totalDistanceKm >= 1000
-                          ? '${(totalDistanceKm / 1000).toStringAsFixed(1)}k km'
-                          : totalDistanceKm % 1 == 0
-                              ? '${totalDistanceKm.toInt()} km'
-                              : '${totalDistanceKm.toStringAsFixed(1)} km',
-                      label: 'DISTANCE',
-                      valueColor: textPrimary,
-                      labelColor: textTertiary,
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
+              Positioned(
+                right: 0, top: 0, bottom: 0,
+                child: IgnorePointer(
+                  child: Container(
+                    width: 40,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [bg.withValues(alpha: 0), bg],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              if (_statCanScroll)
+                Positioned(
+                  right: 6, top: 0, bottom: 0,
+                  child: IgnorePointer(
+                    child: Center(
+                      child: Icon(Icons.chevron_right_rounded,
+                          size: 14, color: textTertiary),
+                    ),
+                  ),
+                ),
+            ],
           ),
 
           // ── Training split ──

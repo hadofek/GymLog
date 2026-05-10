@@ -7,6 +7,7 @@ import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/widgets/gymlog_wordmark.dart';
 import 'package:gymlog/widgets/workout_share_card.dart';
 import 'package:gymlog/utils/exercise_data.dart';
 import 'package:gymlog/utils/weight_format.dart';
@@ -692,17 +693,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         // Title: GYMLOG wordmark + type badge side by side
-        title: Text(
-          'GYMLOG',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-            fontStyle: FontStyle.italic,
-            letterSpacing: 3,
-            color: accentContainer,
-          ),
-        ),
+        title: const GymlogWordmark(),
         // Single overflow menu replaces the crowded action buttons
         actions: [
           if (_editMode)

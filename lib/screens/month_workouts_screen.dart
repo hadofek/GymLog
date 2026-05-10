@@ -4,6 +4,7 @@ import 'package:gymlog/screens/workout_detail_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/widgets/gymlog_wordmark.dart';
 
 class MonthWorkoutsScreen extends StatefulWidget {
   final List<Map<String, dynamic>> workouts;
@@ -94,17 +95,7 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
         scrolledUnderElevation: 0,
         title: Row(
           children: [
-            Text(
-              'GYMLOG',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                fontStyle: FontStyle.italic,
-                letterSpacing: 2,
-                color: accentContainer,
-              ),
-            ),
+            const GymlogWordmark(),
             const SizedBox(width: 10),
             Text(
               widget.monthLabel.toUpperCase(),

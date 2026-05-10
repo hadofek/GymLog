@@ -4,6 +4,7 @@ import 'package:gymlog/screens/workout_summary_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/widgets/gymlog_wordmark.dart';
 
 class CardioLogScreen extends StatefulWidget {
   final DateTime? initialDate;
@@ -163,17 +164,7 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'GYMLOG',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                fontStyle: FontStyle.italic,
-                letterSpacing: 2,
-                color: accentContainer,
-              ),
-            ),
+            const GymlogWordmark(),
             const SizedBox(width: 10),
             Text(
               WorkoutTypes.label(WorkoutTypes.cardio).toUpperCase(),

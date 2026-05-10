@@ -9,8 +9,19 @@ class WorkoutTypes {
 
   static const List<String> all = [weighted, cardio, bodyweight, flexibility];
 
-  static Color color(String type, BuildContext ctx) =>
-      AppColors.accentContainer(ctx);
+  static Color color(String type, BuildContext ctx) {
+    final isDark = AppColors.isDark(ctx);
+    switch (type) {
+      case cardio:
+        return isDark ? const Color(0xFF4ADE80) : const Color(0xFF16A34A);
+      case bodyweight:
+        return isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB);
+      case flexibility:
+        return isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED);
+      default: // weighted
+        return isDark ? const Color(0xFFF59E0B) : const Color(0xFFD97706);
+    }
+  }
 
   static IconData icon(String type) {
     switch (type) {

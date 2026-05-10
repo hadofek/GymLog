@@ -4,6 +4,7 @@ import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/exercise_data.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/widgets/gymlog_wordmark.dart';
 import 'package:gymlog/utils/weight_format.dart';
 
 class ExerciseHistoryScreen extends StatefulWidget {
@@ -157,17 +158,7 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
         scrolledUnderElevation: 0,
         title: Row(
           children: [
-            Text(
-              'GYMLOG',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                fontStyle: FontStyle.italic,
-                letterSpacing: 2,
-                color: accentContainer,
-              ),
-            ),
+            const GymlogWordmark(),
             const SizedBox(width: 10),
             Expanded(
               child: Text(

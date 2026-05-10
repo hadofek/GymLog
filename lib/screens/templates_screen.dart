@@ -5,6 +5,7 @@ import 'package:gymlog/screens/template_edit_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
+import 'package:gymlog/widgets/gymlog_wordmark.dart';
 import 'package:gymlog/widgets/tip_overlay.dart';
 
 class TemplatesScreen extends StatefulWidget {
@@ -314,19 +315,7 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
         automaticallyImplyLeading: false,
         title: Row(
           children: [
-            Expanded(
-              child: Text(
-                'GYMLOG',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  fontStyle: FontStyle.italic,
-                  letterSpacing: 3,
-                  color: accentContainer,
-                ),
-              ),
-            ),
+            const Expanded(child: GymlogWordmark()),
             Text('TEMPLATES',
                 style: KiStyles.label(
                     color: AppColors.textTertiary(context))),

@@ -17,6 +17,7 @@ import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
 import 'package:gymlog/utils/transitions.dart';
+import 'package:gymlog/widgets/gymlog_wordmark.dart';
 import 'package:gymlog/widgets/tip_overlay.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -35,6 +36,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _showWelcomeBanner = false;
   Map<String, dynamic>? _draft;
   bool _loaded = false;
+
+  final _statScrollCtrl = ScrollController();
+  bool _statCanScroll = false;
 
   Map<int, double> get _workedOutDays {
     final result = <int, double>{};
@@ -80,10 +84,27 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    _statScrollCtrl.addListener(_onStatScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onStatScroll());
+    _loadFull();
   }
 
-  Future<void> _load() async {
+  void _onStatScroll() {
+    if (!_statScrollCtrl.hasClients) return;
+    final canScroll = _statScrollCtrl.position.maxScrollExtent > 0 &&
+        _statScrollCtrl.position.pixels <
+            _statScrollCtrl.position.maxScrollExtent - 4;
+    if (canScroll != _statCanScroll) setState(() => _statCanScroll = canScroll);
+  }
+
+  @override
+  void dispose() {
+    _statScrollCtrl.removeListener(_onStatScroll);
+    _statScrollCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadFull() async {
     final since30 = DateTime.now().subtract(const Duration(days: 30));
     final results = await Future.wait([
       DBHelper.getWorkouts(),
@@ -112,6 +133,30 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  /// Lightweight refresh after workout sessions — skips SharedPreferences
+  /// (user name/photo/weekly goal don't change during a workout).
+  Future<void> _refreshWorkouts() async {
+    final since30 = DateTime.now().subtract(const Duration(days: 30));
+    final results = await Future.wait([
+      DBHelper.getWorkouts(),
+      DBHelper.getMuscleGroupCounts(since: since30),
+    ]);
+    final w = results[0] as List<Map<String, dynamic>>;
+    final rawCounts = results[1] as Map<String, int>;
+    final normalized = <String, int>{};
+    for (final e in rawCounts.entries) {
+      final key = _normalizeGroup(e.key);
+      normalized[key] = (normalized[key] ?? 0) + e.value;
+    }
+    final draft = await DBHelper.loadDraft();
+    if (!mounted) return;
+    setState(() {
+      _workouts = w;
+      _muscleCounts = normalized;
+      _draft = draft;
+    });
+  }
+
   Future<void> _resumeDraft() async {
     final draft = _draft;
     if (draft == null) return;
@@ -135,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen> {
         draftElapsedSeconds: elapsedSeconds,
       )),
     );
-    _load();
+    _refreshWorkouts();
   }
 
   Future<void> _discardDraft() async {
@@ -171,12 +216,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final type = last['type'] as String? ?? WorkoutTypes.weighted;
     if (type == WorkoutTypes.cardio) {
       await Navigator.push(context, fadeSlideRoute(CardioLogScreen(initialDate: DateTime.now())));
-      _load();
+      _refreshWorkouts();
       return;
     }
     if (type == WorkoutTypes.flexibility) {
       await Navigator.push(context, fadeSlideRoute(FlexibilityLogScreen(initialDate: DateTime.now())));
-      _load();
+      _refreshWorkouts();
       return;
     }
     final sets = await DBHelper.getSetsForWorkout(last['id'] as int);
@@ -198,7 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
         initialExercises: initialExercises,
       )),
     );
-    _load();
+    _refreshWorkouts();
   }
 
   Future<void> _startWorkout(DateTime date) async {
@@ -278,7 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
           context,
           fadeSlideRoute(LogWorkoutScreen(initialDate: date, type: type)));
     }
-    _load();
+    _refreshWorkouts();
   }
 
   String _workoutTypeSubtitle(String type) {
@@ -465,7 +510,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           context,
                           fadeSlideRoute(
                               const ProfileSetupScreen(isEditing: true)));
-                      _load();
+                      _refreshWorkouts();
                     },
                     child: CircleAvatar(
                       radius: 18,
@@ -484,19 +529,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   )),
                   const SizedBox(width: 12),
                   // Center: GYMLOG wordmark
-                  Expanded(
-                    child: Text(
-                      'GYMLOG',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        fontStyle: FontStyle.italic,
-                        letterSpacing: 3,
-                        color: accentContainer,
-                      ),
-                    ),
-                  ),
+                  const Expanded(child: GymlogWordmark()),
                   // Right: templates
                   Semantics(
                     label: 'Templates',
@@ -513,12 +546,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 color: textTertiary, size: 20),
                             const SizedBox(height: 2),
                             Text('TEMPLATES',
-                                style: TextStyle(
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w700,
-                                  color: textTertiary,
-                                  letterSpacing: 0.5,
-                                )),
+                                style: KiStyles.labelSm(color: textTertiary)),
                           ],
                         ),
                       ),
@@ -533,7 +561,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // ── Scrollable body ──
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.of(context).padding.bottom + 40),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -543,6 +571,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Stack(
                       children: [
                     SingleChildScrollView(
+                      controller: _statScrollCtrl,
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.fromLTRB(4, 16, 40, 16),
                       child: Row(
@@ -632,6 +661,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
+                    if (_statCanScroll)
+                      Positioned(
+                        right: 6, top: 0, bottom: 0,
+                        child: IgnorePointer(
+                          child: Center(
+                            child: Icon(Icons.chevron_right_rounded,
+                                size: 14, color: textTertiary),
+                          ),
+                        ),
+                      ),
                     ], // Stack children
                     ), // Stack
 
@@ -795,7 +834,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               type: w['type'] as String? ?? WorkoutTypes.weighted,
                             )),
                           );
-                          _load();
+                          _refreshWorkouts();
                         },
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(4, 14, 4, 14),
@@ -973,7 +1012,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ? () async {
                                             await _showDaySheet(
                                                 tappedDate, day, monthWorkouts);
-                                            _load();
+                                            _refreshWorkouts();
                                           }
                                         : () => _startWorkout(tappedDate),
                                 child: Column(
@@ -1044,7 +1083,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: GestureDetector(
                         onTap: () async {
                           await Navigator.push(context, fadeSlideRoute(const MuscleMapScreen()));
-                          _load();
+                          _refreshWorkouts();
                         },
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(4, 14, 4, 14),
@@ -1230,7 +1269,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           workouts: monthWorkouts,
                           monthLabel: _monthLabel,
                           initialDay: day)));
-                  if (mounted) _load();
+                  if (mounted) _refreshWorkouts();
                 },
               ),
               _SheetTile(

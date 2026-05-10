@@ -9,6 +9,7 @@ import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
 import 'package:gymlog/utils/weight_format.dart';
+import 'package:gymlog/widgets/gymlog_wordmark.dart';
 import 'package:gymlog/widgets/tip_overlay.dart';
 
 class LogWorkoutScreen extends StatefulWidget {
@@ -142,10 +143,10 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                       backgroundColor: AppColors.error(ctx),
                       foregroundColor: AppColors.primaryBtnFg(ctx),
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       elevation: 0,
                     ),
-                    child: Text('Remove $exName', style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(ctx))),
+                    child: Text('Remove', style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(ctx))),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -254,7 +255,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                   foregroundColor: AppColors.background(ctx),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(20)),
                   elevation: 0,
                 ),
                 child: Text('Resume',
@@ -515,7 +516,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                                           onPressed: () => adjustWeight(delta),
                                           style: OutlinedButton.styleFrom(
                                             padding: EdgeInsets.zero,
-                                            minimumSize: const Size(0, 32),
+                                            minimumSize: const Size(0, 44),
                                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                             side: BorderSide(color: AppColors.border(ctx)),
                                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -580,7 +581,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                       backgroundColor: accent,
                       foregroundColor: AppColors.primaryBtnFg(ctx),
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       elevation: 0,
                     ),
                     child: Text('Add Set', style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(ctx))),
@@ -737,19 +738,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                     constraints: const BoxConstraints(),
                   ),
                   const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'GYMLOG',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        fontStyle: FontStyle.italic,
-                        letterSpacing: 3,
-                        color: accentContainer,
-                      ),
-                    ),
-                  ),
+                  const Expanded(child: GymlogWordmark()),
                   // Live indicator (decorative — exclude from semantics)
                   ExcludeSemantics(
                     child: Row(

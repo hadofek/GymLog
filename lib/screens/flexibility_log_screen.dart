@@ -18,6 +18,9 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
   final _hoursController = TextEditingController();
   final _minutesController = TextEditingController();
   final _notesController = TextEditingController();
+  final _hoursFocus = FocusNode();
+  final _minutesFocus = FocusNode();
+  final _notesFocus = FocusNode();
   late DateTime _workoutDate;
 
   static const _suggestions = [
@@ -37,6 +40,9 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
     _hoursController.dispose();
     _minutesController.dispose();
     _notesController.dispose();
+    _hoursFocus.dispose();
+    _minutesFocus.dispose();
+    _notesFocus.dispose();
     super.dispose();
   }
 
@@ -271,6 +277,8 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
             TextField(
               controller: _activityController,
               onChanged: (_) => setState(() {}),
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => FocusScope.of(context).requestFocus(_hoursFocus),
               style: KiStyles.bodySemibold(color: textPrimary),
               decoration: _fieldDecoration('e.g. Yoga'),
             ),
@@ -324,7 +332,10 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
               Expanded(
                 child: TextField(
                   controller: _hoursController,
+                  focusNode: _hoursFocus,
                   keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(context).requestFocus(_minutesFocus),
                   style: KiStyles.bodySemibold(color: textPrimary),
                   decoration: _fieldDecoration('Hours'),
                 ),
@@ -333,7 +344,10 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
               Expanded(
                 child: TextField(
                   controller: _minutesController,
+                  focusNode: _minutesFocus,
                   keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(context).requestFocus(_notesFocus),
                   style: KiStyles.bodySemibold(color: textPrimary),
                   decoration: _fieldDecoration('Minutes'),
                 ),
@@ -346,7 +360,9 @@ class _FlexibilityLogScreenState extends State<FlexibilityLogScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: _notesController,
+              focusNode: _notesFocus,
               maxLines: 3,
+              textInputAction: TextInputAction.done,
               style: KiStyles.body(color: textPrimary),
               decoration: _fieldDecoration('How did it go? (optional)')
                   .copyWith(

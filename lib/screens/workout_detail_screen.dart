@@ -678,7 +678,6 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final textTertiary = AppColors.textTertiary(context);
     final borderColor = AppColors.border(context);
     final typeColor = WorkoutTypes.color(widget.type, context);
-    final accentContainer = AppColors.accentContainer(context);
     final errorColor = AppColors.error(context);
 
     return Scaffold(

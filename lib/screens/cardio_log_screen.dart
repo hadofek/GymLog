@@ -20,6 +20,11 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
   final _hoursController = TextEditingController();
   final _minutesController = TextEditingController();
   final _notesController = TextEditingController();
+  final _hoursFocus = FocusNode();
+  final _minutesFocus = FocusNode();
+  final _distanceFocus = FocusNode();
+  final _avgSpeedFocus = FocusNode();
+  final _notesFocus = FocusNode();
   late DateTime _workoutDate;
 
   static const _suggestions = [
@@ -41,6 +46,11 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
     _hoursController.dispose();
     _minutesController.dispose();
     _notesController.dispose();
+    _hoursFocus.dispose();
+    _minutesFocus.dispose();
+    _distanceFocus.dispose();
+    _avgSpeedFocus.dispose();
+    _notesFocus.dispose();
     super.dispose();
   }
 
@@ -286,6 +296,8 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
             TextField(
               controller: _activityController,
               onChanged: (_) => setState(() {}),
+              textInputAction: TextInputAction.next,
+              onSubmitted: (_) => FocusScope.of(context).requestFocus(_hoursFocus),
               style: KiStyles.bodySemibold(color: textPrimary),
               decoration: _fieldDecoration('e.g. Running'),
             ),
@@ -338,7 +350,10 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
               Expanded(
                 child: TextField(
                   controller: _hoursController,
+                  focusNode: _hoursFocus,
                   keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(context).requestFocus(_minutesFocus),
                   style: KiStyles.bodySemibold(color: textPrimary),
                   decoration: _fieldDecoration('Hours'),
                 ),
@@ -347,7 +362,10 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
               Expanded(
                 child: TextField(
                   controller: _minutesController,
+                  focusNode: _minutesFocus,
                   keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(context).requestFocus(_distanceFocus),
                   style: KiStyles.bodySemibold(color: textPrimary),
                   decoration: _fieldDecoration('Minutes'),
                 ),
@@ -362,8 +380,11 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
               Expanded(
                 child: TextField(
                   controller: _distanceController,
+                  focusNode: _distanceFocus,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(context).requestFocus(_avgSpeedFocus),
                   style: KiStyles.bodySemibold(color: textPrimary),
                   decoration: _fieldDecoration('Distance (km)'),
                 ),
@@ -372,8 +393,11 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
               Expanded(
                 child: TextField(
                   controller: _avgSpeedController,
+                  focusNode: _avgSpeedFocus,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(context).requestFocus(_notesFocus),
                   style: KiStyles.bodySemibold(color: textPrimary),
                   decoration: _fieldDecoration('Avg speed (km/h)'),
                 ),
@@ -386,7 +410,9 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
             const SizedBox(height: 8),
             TextField(
               controller: _notesController,
+              focusNode: _notesFocus,
               maxLines: 3,
+              textInputAction: TextInputAction.done,
               style: KiStyles.body(color: textPrimary),
               decoration: _fieldDecoration('How did it go? (optional)')
                   .copyWith(

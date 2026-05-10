@@ -147,7 +147,6 @@ class _ExerciseHistoryScreenState extends State<ExerciseHistoryScreen> {
         .map((e) => (e['total_reps'] as num).toDouble())
         .toList();
 
-    final accentContainer = AppColors.accentContainer(context);
     final textTertiary = AppColors.textTertiary(context);
 
     return Scaffold(

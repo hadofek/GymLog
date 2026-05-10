@@ -61,6 +61,8 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
     final weightCtrl = TextEditingController();
     final bodyFatCtrl = TextEditingController();
     final notesCtrl = TextEditingController();
+    final bodyFatFocus = FocusNode();
+    final notesFocus = FocusNode();
     final card = AppColors.cardBg(context);
     final textPrimary = AppColors.textPrimary(context);
     final textSecondary = AppColors.textSecondary(context);
@@ -100,7 +102,7 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => Padding(
         padding: EdgeInsets.fromLTRB(
-            20, 16, 20, 24 + MediaQuery.of(ctx).viewInsets.bottom),
+            20, 16, 20, 24 + MediaQuery.viewInsetsOf(ctx).bottom),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,6 +126,8 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
                 child: TextField(
                   controller: weightCtrl,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(ctx).requestFocus(bodyFatFocus),
                   style: KiStyles.body(color: textPrimary),
                   decoration: fieldDec(WeightFormat.inputLabel, 'e.g. 75.5'),
                 ),
@@ -132,7 +136,10 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
               Expanded(
                 child: TextField(
                   controller: bodyFatCtrl,
+                  focusNode: bodyFatFocus,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => FocusScope.of(ctx).requestFocus(notesFocus),
                   style: KiStyles.body(color: textPrimary),
                   decoration: fieldDec('Body fat (%)', 'e.g. 18.5'),
                 ),
@@ -141,6 +148,9 @@ class _BodyMeasurementsScreenState extends State<BodyMeasurementsScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: notesCtrl,
+              focusNode: notesFocus,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => FocusScope.of(ctx).unfocus(),
               style: KiStyles.body(color: textPrimary),
               decoration: fieldDec('Notes (optional)', 'e.g. morning weight'),
             ),

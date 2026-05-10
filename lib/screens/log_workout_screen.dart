@@ -37,12 +37,14 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   Timer? _ticker;
   int _nextSupersetGroup = 1;
 
-  // ── Rest timer ──
-  final Stopwatch _restStopwatch = Stopwatch();
-  bool _restActive = false;
-
-  // ── Timer tick notifier — updates only the timer strip, not the full screen ──
+  // ── Workout tick notifier — updates only the timer strip, not the full screen ──
   final _tickNotifier = ValueNotifier<int>(0);
+
+  // ── Per-set rest timer ──
+  final _restTickNotifier = ValueNotifier<int>(0);
+  Timer? _restTimer;
+  int? _restTarget; // seconds, null = free-counting
+  bool _restVisible = false;
 
   @override
   void initState() {
@@ -74,20 +76,26 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   @override
   void dispose() {
     _ticker?.cancel();
+    _restTimer?.cancel();
     _workoutStopwatch.stop();
-    _restStopwatch.stop();
     _tickNotifier.dispose();
+    _restTickNotifier.dispose();
     super.dispose();
   }
 
-  void _startRest([int? exIndex]) {
-    _restStopwatch..reset()..start();
-    if (mounted) setState(() => _restActive = true);
+  void _startRestTimer() {
+    _restTimer?.cancel();
+    _restTickNotifier.value = 0;
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (mounted) setState(() => _restVisible = true);
+    _restTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _restTickNotifier.value++;
+    });
   }
 
-  void _dismissRest() {
-    _restStopwatch.stop();
-    if (mounted) setState(() => _restActive = false);
+  void _dismissRestTimer() {
+    _restTimer?.cancel();
+    if (mounted) setState(() { _restVisible = false; _restTarget = null; });
   }
 
   void _confirmDeleteExercise(int exIndex) {
@@ -164,13 +172,6 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
         );
       },
     );
-  }
-
-  String get _restDisplay {
-    final e = _restStopwatch.elapsed;
-    final m = e.inMinutes.remainder(60).toString().padLeft(1, '0');
-    final s = e.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$m:$s';
   }
 
   String get _elapsedDisplay {
@@ -309,7 +310,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
         if (!_allExercises.contains(result['name'])) {
           _allExercises.add(result['name'] as String);
         }
-        _startRest(_exercises.length - 1);
+        // Rest timer starts only after a set is logged, not on exercise add
       }
     }
   }
@@ -609,6 +610,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
             .add({'weight': result.weight, 'reps': result.reps, if (isPR) 'isPR': true});
       });
       _saveDraft();
+      _startRestTimer();
     }
   }
 
@@ -625,30 +627,32 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
       final dateStr =
           '${date.day}/${date.month}/${date.year}  ${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
       final totalDuration = _workoutStopwatch.elapsed.inSeconds + _elapsedOffset;
-      final workoutId = await DBHelper.insertWorkout(
-        dateStr,
-        totalDuration,
-        type: widget.type,
-      );
+      // Build flat set list for batch insert
+      final allSets = <Map<String, dynamic>>[];
       for (final ex in _exercises) {
         final muscleGroup = ExerciseData.muscleGroupFor(ex['name'] as String);
         await DBHelper.insertExercise(ex['name'] as String, muscleGroup: muscleGroup);
         final sets = ex['sets'] as List;
         final supersetGroup = ex['supersetGroup'] as int?;
         int setNum = 1;
-        for (int i = 0; i < sets.length; i++) {
-          final reps = sets[i]['reps'] as int;
-          if (reps <= 0) continue; // skip placeholder sets from empty templates
-          await DBHelper.insertSet(
-            workoutId,
-            ex['name'] as String,
-            setNum++,
-            (sets[i]['weight'] as num).toDouble(),
-            reps,
-            supersetGroup: supersetGroup,
-          );
+        for (final s in sets) {
+          final reps = s['reps'] as int;
+          if (reps <= 0) continue;
+          allSets.add({
+            'exerciseName': ex['name'],
+            'setNumber': setNum++,
+            'weight': (s['weight'] as num).toDouble(),
+            'reps': reps,
+            if (supersetGroup != null) 'supersetGroup': supersetGroup,
+          });
         }
       }
+      final workoutId = await DBHelper.saveWorkoutWithSets(
+        dateStr,
+        totalDuration,
+        type: widget.type,
+        sets: allSets,
+      );
 
       final prs = await DBHelper.getPersonalBestsInWorkout(workoutId);
       await DBHelper.clearDraft();
@@ -793,72 +797,25 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                   const SizedBox(width: 24),
                   Container(width: 1, height: 36, color: AppColors.border(context)),
                   const SizedBox(width: 24),
-                  // Rest timer (replaces DATE when active)
-                  if (_restActive)
-                    Expanded(
+                  Semantics(
+                    label: 'Workout date: ${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}. Tap to change.',
+                    button: true,
+                    child: GestureDetector(
+                      onTap: _pickDate,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 6, height: 6,
-                                decoration: BoxDecoration(
-                                  color: AppColors.liveActivity(context),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text('REST', style: KiStyles.labelSm(color: AppColors.liveActivity(context))),
-                              const Spacer(),
-                              Semantics(
-                                label: 'Dismiss rest timer',
-                                button: true,
-                                child: GestureDetector(
-                                  onTap: _dismissRest,
-                                  behavior: HitTestBehavior.opaque,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(14),
-                                    child: Icon(Icons.close_rounded, size: 13, color: textTertiary),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
+                          ExcludeSemantics(child: Text('DATE', style: KiStyles.labelSm(color: textTertiary))),
                           const SizedBox(height: 4),
                           Text(
-                            _restDisplay,
-                            style: TextStyle(
-                              fontFamily: 'Lexend',
-                              fontSize: 22,
-                              fontWeight: FontWeight.w800,
-                              color: textPrimary,
-                              letterSpacing: 1,
-                            ),
+                            '${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}',
+                            style: KiStyles.headlineMd(color: textPrimary),
                           ),
+                          ExcludeSemantics(child: Text('TAP TO CHANGE', style: KiStyles.labelSm(color: textTertiary))),
                         ],
                       ),
-                    )
-                  else
-                    Semantics(
-                      label: 'Workout date: ${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}. Tap to change.',
-                      button: true,
-                      child: GestureDetector(
-                        onTap: _pickDate,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ExcludeSemantics(child: Text('DATE', style: KiStyles.labelSm(color: textTertiary))),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}',
-                              style: KiStyles.headlineMd(color: textPrimary),
-                            ),
-                            ExcludeSemantics(child: Text('TAP TO CHANGE', style: KiStyles.labelSm(color: textTertiary))),
-                          ],
-                        ),
-                      ),
                     ),
+                  ),
                 ],
               ),
             ),
@@ -948,6 +905,16 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
               ),
             ),
 
+
+            // ── Per-set rest timer card ──
+            if (_restVisible)
+              _RestTimerCard(
+                tickNotifier: _restTickNotifier,
+                target: _restTarget,
+                accentColor: _accentColor(context),
+                onDismiss: _dismissRestTimer,
+                onSetTarget: (secs) => setState(() => _restTarget = secs),
+              ),
 
             // ── Bottom action area ──
             SafeArea(
@@ -1288,6 +1255,321 @@ class _SetBadge extends StatelessWidget {
       child: Text(
         '$number',
         style: KiStyles.label(color: color.withValues(alpha: 0.6)),
+      ),
+    );
+  }
+}
+
+// ── Per-set rest timer card ────────────────────────────────────────────────────
+
+class _RestTimerCard extends StatefulWidget {
+  final ValueNotifier<int> tickNotifier;
+  final int? target;
+  final Color accentColor;
+  final VoidCallback onDismiss;
+  final ValueChanged<int> onSetTarget;
+
+  const _RestTimerCard({
+    required this.tickNotifier,
+    required this.target,
+    required this.accentColor,
+    required this.onDismiss,
+    required this.onSetTarget,
+  });
+
+  @override
+  State<_RestTimerCard> createState() => _RestTimerCardState();
+}
+
+class _RestTimerCardState extends State<_RestTimerCard> {
+  bool _editing = false;
+  final _minCtrl = TextEditingController();
+  final _secCtrl = TextEditingController();
+  final _secFocus = FocusNode();
+  String? _inputError;
+
+  @override
+  void dispose() {
+    _minCtrl.dispose();
+    _secCtrl.dispose();
+    _secFocus.dispose();
+    super.dispose();
+  }
+
+  void _submitTarget() {
+    final minTxt = _minCtrl.text.trim();
+    final secTxt = _secCtrl.text.trim();
+    final minVal = minTxt.isEmpty ? null : int.tryParse(minTxt);
+    final secVal = secTxt.isEmpty ? null : int.tryParse(secTxt);
+
+    if (minVal == null && secVal == null) {
+      setState(() => _inputError = 'Enter a time');
+      return;
+    }
+    // Normalize: sec overflow into minutes naturally (90sec = 1m30s = 90 total)
+    final totalSec = (minVal ?? 0) * 60 + (secVal ?? 0);
+    if (totalSec <= 0) {
+      setState(() => _inputError = 'Enter a time');
+      return;
+    }
+    setState(() { _editing = false; _inputError = null; });
+    FocusManager.instance.primaryFocus?.unfocus();
+    widget.onSetTarget(totalSec);
+  }
+
+  String _fmt(int ticks) {
+    final m = ticks ~/ 60;
+    final s = (ticks % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = AppColors.cardBg(context);
+    final textTertiary = AppColors.textTertiary(context);
+    final borderCol = AppColors.border(context);
+    final errorCol = AppColors.error(context);
+
+    return ValueListenableBuilder<int>(
+      valueListenable: widget.tickNotifier,
+      builder: (ctx, ticks, _) {
+        final target = widget.target;
+        final isOvertime = target != null && ticks >= target;
+        final timerColor = isOvertime ? errorCol : widget.accentColor;
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isOvertime
+                    ? errorCol.withValues(alpha: 0.5)
+                    : borderCol,
+                width: 1.5,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Top row: dot + REST label + timer + edit + X ──
+                Row(
+                  children: [
+                    Container(
+                      width: 6, height: 6,
+                      decoration: BoxDecoration(
+                        color: timerColor, shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    ExcludeSemantics(
+                      child: Text('REST',
+                          style: KiStyles.labelSm(color: textTertiary)),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Semantics(
+                        label: 'Rest time: ${_fmt(ticks)}',
+                        child: Text(
+                          _fmt(ticks),
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            color: timerColor,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Edit / confirm icon
+                    Semantics(
+                      label: _editing ? 'Confirm target time' : 'Set target time',
+                      button: true,
+                      child: GestureDetector(
+                        onTap: _editing
+                            ? _submitTarget
+                            : () => setState(() {
+                                  _editing = true;
+                                  _inputError = null;
+                                  _minCtrl.clear();
+                                  _secCtrl.clear();
+                                }),
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 10),
+                          child: Icon(
+                            _editing
+                                ? Icons.check_rounded
+                                : Icons.edit_rounded,
+                            size: 16,
+                            color: textTertiary,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Dismiss icon
+                    Semantics(
+                      label: 'Dismiss rest timer',
+                      button: true,
+                      child: GestureDetector(
+                        onTap: widget.onDismiss,
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 10),
+                          child: Icon(Icons.close_rounded,
+                              size: 16, color: textTertiary),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // ── Edit mode: min:sec input ──
+                if (_editing) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      _TimeField(
+                        controller: _minCtrl,
+                        hint: 'min',
+                        accentColor: widget.accentColor,
+                        textInputAction: TextInputAction.next,
+                        onSubmitted: (_) =>
+                            FocusScope.of(ctx).requestFocus(_secFocus),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text(':',
+                            style:
+                                KiStyles.headlineMd(color: textTertiary)),
+                      ),
+                      _TimeField(
+                        controller: _secCtrl,
+                        hint: 'sec',
+                        focusNode: _secFocus,
+                        accentColor: widget.accentColor,
+                        textInputAction: TextInputAction.done,
+                        onSubmitted: (_) => _submitTarget(),
+                      ),
+                      if (_inputError != null) ...[
+                        const SizedBox(width: 10),
+                        Flexible(
+                          child: Text(_inputError!,
+                              style: KiStyles.labelSm(color: errorCol)),
+                        ),
+                      ],
+                    ],
+                  ),
+
+                // ── Progress bar (target set, not editing) ──
+                ] else if (target != null) ...[
+                  const SizedBox(height: 8),
+                  LayoutBuilder(builder: (ctx, constraints) {
+                    final progress = (ticks / target).clamp(0.0, 1.0);
+                    return Stack(
+                      children: [
+                        Container(
+                          height: 3,
+                          width: constraints.maxWidth,
+                          decoration: BoxDecoration(
+                            color: timerColor.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 600),
+                          curve: Curves.easeOut,
+                          height: 3,
+                          width: constraints.maxWidth * progress,
+                          decoration: BoxDecoration(
+                            color: timerColor,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(
+                        'TARGET ${_fmt(target)}',
+                        style: KiStyles.labelSm(
+                            color: isOvertime ? errorCol : textTertiary),
+                      ),
+                      if (isOvertime) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          '+${_fmt(ticks - target)}',
+                          style: KiStyles.labelSm(color: errorCol),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// Small time input field helper
+class _TimeField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hint;
+  final FocusNode? focusNode;
+  final Color accentColor;
+  final TextInputAction textInputAction;
+  final ValueChanged<String>? onSubmitted;
+
+  const _TimeField({
+    required this.controller,
+    required this.hint,
+    required this.accentColor,
+    required this.textInputAction,
+    this.focusNode,
+    this.onSubmitted,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 64,
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        keyboardType: TextInputType.number,
+        textAlign: TextAlign.center,
+        textInputAction: textInputAction,
+        style: KiStyles.bodySemibold(color: AppColors.textPrimary(context)),
+        onSubmitted: onSubmitted,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: KiStyles.body(color: AppColors.hintText(context)),
+          filled: true,
+          fillColor: AppColors.inputFill(context),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none),
+          enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide:
+                  BorderSide(color: AppColors.border(context))),
+          focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide:
+                  BorderSide(color: accentColor, width: 2)),
+        ),
       ),
     );
   }

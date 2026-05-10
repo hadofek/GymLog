@@ -336,6 +336,39 @@ class DBHelper {
     });
   }
 
+  /// Insert a full workout and all its sets in a single transaction.
+  /// [sets] entries: {exerciseName, setNumber, weight, reps, supersetGroup?}
+  static Future<int> saveWorkoutWithSets(
+    String date,
+    int durationSeconds, {
+    required String type,
+    double distanceKm = 0,
+    String notes = '',
+    required List<Map<String, dynamic>> sets,
+  }) async {
+    final d = await db;
+    return await d.transaction<int>((txn) async {
+      final workoutId = await txn.insert('workouts', {
+        'date': date,
+        'duration_seconds': durationSeconds,
+        'type': type,
+        'distance_km': distanceKm,
+        'notes': notes,
+      });
+      for (final s in sets) {
+        await txn.insert('sets', {
+          'workout_id': workoutId,
+          'exercise_name': s['exerciseName'],
+          'set_number': s['setNumber'],
+          'weight': s['weight'],
+          'reps': s['reps'],
+          if (s['supersetGroup'] != null) 'superset_group': s['supersetGroup'],
+        });
+      }
+      return workoutId;
+    });
+  }
+
   static Future<Map<String, dynamic>?> getWorkoutById(int id) async {
     final d = await db;
     final rows = await d.query('workouts', where: 'id = ?', whereArgs: [id]);

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' show min, max;
 import 'package:flutter/material.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/utils/exercise_data.dart';
@@ -50,6 +51,50 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
       .where((e) => !_allLibraryNames
           .any((l) => l.toLowerCase() == e.toLowerCase()))
       .toList();
+
+  // ── Fuzzy duplicate detection ──────────────────────────────────────────────
+
+  static String _norm(String s) =>
+      s.toLowerCase().replaceAll(RegExp(r'\s+'), '');
+
+  static int _levenshtein(String a, String b) {
+    if (a == b) return 0;
+    if (a.isEmpty) return b.length;
+    if (b.isEmpty) return a.length;
+    final d = List.generate(
+        a.length + 1, (i) => List.filled(b.length + 1, 0));
+    for (var i = 0; i <= a.length; i++) { d[i][0] = i; }
+    for (var j = 0; j <= b.length; j++) { d[0][j] = j; }
+    for (var i = 1; i <= a.length; i++) {
+      for (var j = 1; j <= b.length; j++) {
+        final cost = a[i - 1] == b[j - 1] ? 0 : 1;
+        d[i][j] = [
+          d[i - 1][j] + 1,
+          d[i][j - 1] + 1,
+          d[i - 1][j - 1] + cost,
+        ].reduce(min);
+      }
+    }
+    return d[a.length][b.length];
+  }
+
+  /// Returns the existing exercise name that fuzzy-matches [input], or null.
+  /// Threshold: 15% of the longer name's length, clamped to [1, 2].
+  /// This catches single-char typos and space/case variants without
+  /// false-positives on short similar names like "Pull Up" vs "Push Up".
+  String? _fuzzyMatch(String input) {
+    final na = _norm(input);
+    if (na.isEmpty) return null;
+    final all = [..._allLibraryNames, ..._customExercises];
+    for (final e in all) {
+      final nb = _norm(e);
+      if (na == nb) return e;
+      final maxLen = max(na.length, nb.length);
+      final threshold = (maxLen * 0.15).floor().clamp(1, 2);
+      if (_levenshtein(na, nb) <= threshold) return e;
+    }
+    return null;
+  }
 
   Future<void> _addCustomExercise() async {
     final nameCtrl = TextEditingController();
@@ -118,15 +163,8 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                 validator: (v) {
                   final trimmed = v?.trim() ?? '';
                   if (trimmed.isEmpty) return 'Enter an exercise name';
-                  // Normalize: strip all spaces and lowercase for fuzzy matching.
-                  // This catches "benchpress" matching "Bench Press", etc.
-                  String norm(String s) =>
-                      s.toLowerCase().replaceAll(RegExp(r'\s+'), '');
-                  final normInput = norm(trimmed);
-                  final all = [..._allLibraryNames, ..._customExercises];
-                  if (all.any((e) => norm(e) == normInput)) {
-                    return 'Exercise already exists';
-                  }
+                  final match = _fuzzyMatch(trimmed);
+                  if (match != null) return 'Already exists as "$match"';
                   return null;
                 },
                 onFieldSubmitted: (_) {
@@ -597,6 +635,53 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
     final borderColor = AppColors.border(context);
     final accent = AppColors.accentContainer(context);
 
+    final match = _fuzzyMatch(name);
+
+    // Fuzzy match found — redirect to the existing exercise instead of creating a duplicate.
+    if (match != null) {
+      return _Pressable(
+        onTap: () => _pickExercise(match),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+              child: SizedBox(
+                height: 52,
+                child: Row(
+                  children: [
+                    Icon(Icons.swap_horiz_rounded, size: 16, color: accent),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'Use  ',
+                              style: KiStyles.labelSm(color: textTertiary),
+                            ),
+                            TextSpan(
+                              text: '"$match"',
+                              style: KiStyles.bodySemibold(color: textPrimary),
+                            ),
+                            TextSpan(
+                              text: '  (already exists)',
+                              style: KiStyles.labelSm(color: textTertiary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Divider(height: 1, thickness: 0.5, color: borderColor),
+          ],
+        ),
+      );
+    }
+
+    // No match — show the normal "Add [name]" row.
     return _Pressable(
       onTap: () => _pickExercise(name),
       child: Column(

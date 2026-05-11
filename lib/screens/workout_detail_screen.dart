@@ -6,6 +6,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:gal/gal.dart';
 import 'package:gymlog/db/db_helper.dart';
+import 'package:gymlog/utils/date_display.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
@@ -115,7 +116,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       barrierColor: Colors.black87,
       builder: (ctx) => _SharePreviewDialog(
         shareCardKey: _shareCardKey,
-        date: widget.date,
+        date: DateDisplay.format(widget.date),
         durationSeconds: widget.durationSeconds,
         exerciseCount: _grouped.length,
         totalSets: totalSets,
@@ -138,68 +139,108 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final textTertiary = AppColors.textTertiary(context);
     final accentContainer = AppColors.accentContainer(context);
 
+    InputDecoration fieldDec(String label, BuildContext ctx) => InputDecoration(
+      labelText: label,
+      labelStyle: KiStyles.labelSm(color: AppColors.textTertiary(ctx)),
+      filled: true,
+      fillColor: AppColors.inputFill(ctx),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: AppColors.border(ctx))),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: accentContainer, width: 1.5)),
+    );
+
     final isTimed = ExerciseData.isTimedExercise(set['exercise_name'] as String? ?? '');
-    final saved = await showDialog<bool>(
+    final saved = await showModalBottomSheet<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: cardBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Edit Set', style: KiStyles.headlineMd(color: textPrimary)),
-        content: isTimed
-            ? TextField(
-                controller: rCtrl,
-                keyboardType: TextInputType.number,
-                autofocus: true,
-                style: KiStyles.body(color: textPrimary),
-                decoration: InputDecoration(
-                  labelText: 'Seconds',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: cardBg,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 20, right: 20, top: 24,
+          bottom: MediaQuery.viewInsetsOf(ctx).bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border(ctx),
+                  borderRadius: BorderRadius.circular(2),
                 ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text('Edit Set', style: KiStyles.headlineMd(color: textPrimary)),
+            Text(set['exercise_name'] as String? ?? '', style: KiStyles.label(color: textTertiary)),
+            const SizedBox(height: 16),
+            if (isTimed)
+              TextField(
+                controller: rCtrl,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                style: KiStyles.body(color: textPrimary),
+                decoration: fieldDec('Seconds', ctx),
               )
-            : Row(children: [
-          Expanded(
-            child: TextField(
-              controller: wCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              style: KiStyles.body(color: textPrimary),
-              decoration: InputDecoration(
-                labelText: WeightFormat.inputLabel,
-                hintText: '0 = bodyweight',
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            else
+              Row(children: [
+                Expanded(
+                  flex: 3,
+                  child: TextField(
+                    controller: wCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: KiStyles.body(color: textPrimary),
+                    decoration: fieldDec(WeightFormat.inputLabel, ctx),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: TextField(
+                    controller: rCtrl,
+                    keyboardType: TextInputType.number,
+                    style: KiStyles.body(color: textPrimary),
+                    decoration: fieldDec('Reps', ctx),
+                  ),
+                ),
+              ]),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accentContainer,
+                  foregroundColor: AppColors.primaryBtnFg(ctx),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  elevation: 0,
+                ),
+                child: Text('Save', style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(ctx))),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextField(
-              controller: rCtrl,
-              keyboardType: TextInputType.number,
-              style: KiStyles.body(color: textPrimary),
-              decoration: InputDecoration(
-                labelText: 'Reps',
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                child: Text('Cancel', style: KiStyles.bodySemibold(color: AppColors.textTertiary(ctx))),
               ),
             ),
-          ),
-        ]),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel', style: KiStyles.label(color: textTertiary)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(
-              backgroundColor: accentContainer.withValues(alpha: 0.12),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-            ),
-            child: Text('Save', style: KiStyles.label(color: accentContainer)),
-          ),
-        ],
+          ],
+        ),
       ),
     );
     if (saved == true) {
@@ -253,71 +294,109 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final textPrimary = AppColors.textPrimary(context);
     final textTertiary = AppColors.textTertiary(context);
     final accentContainer = AppColors.accentContainer(context);
-    final isTimed = ExerciseData.isTimedExercise(exerciseName);
+    InputDecoration fieldDec(String label, BuildContext ctx) => InputDecoration(
+      labelText: label,
+      labelStyle: KiStyles.labelSm(color: AppColors.textTertiary(ctx)),
+      filled: true,
+      fillColor: AppColors.inputFill(ctx),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: AppColors.border(ctx))),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: accentContainer, width: 1.5)),
+    );
 
-    final saved = await showDialog<bool>(
+    final isTimed = ExerciseData.isTimedExercise(exerciseName);
+    final saved = await showModalBottomSheet<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: cardBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Add Set — $exerciseName',
-            style: KiStyles.headlineMd(color: textPrimary)),
-        content: isTimed
-            ? TextField(
-                controller: rCtrl,
-                keyboardType: TextInputType.number,
-                autofocus: true,
-                style: KiStyles.body(color: textPrimary),
-                decoration: InputDecoration(
-                  labelText: 'Seconds',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: cardBg,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 20, right: 20, top: 24,
+          bottom: MediaQuery.viewInsetsOf(ctx).bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border(ctx),
+                  borderRadius: BorderRadius.circular(2),
                 ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text('Add Set', style: KiStyles.headlineMd(color: textPrimary)),
+            Text(exerciseName, style: KiStyles.label(color: textTertiary)),
+            const SizedBox(height: 16),
+            if (isTimed)
+              TextField(
+                controller: rCtrl,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                style: KiStyles.body(color: textPrimary),
+                decoration: fieldDec('Seconds', ctx),
               )
-            : Row(children: [
-          Expanded(
-            child: TextField(
-              controller: wCtrl,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              autofocus: true,
-              style: KiStyles.body(color: textPrimary),
-              decoration: InputDecoration(
-                labelText: WeightFormat.inputLabel,
-                hintText: '0 = bodyweight',
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            else
+              Row(children: [
+                Expanded(
+                  flex: 3,
+                  child: TextField(
+                    controller: wCtrl,
+                    autofocus: true,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: KiStyles.body(color: textPrimary),
+                    decoration: fieldDec(WeightFormat.inputLabel, ctx),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: TextField(
+                    controller: rCtrl,
+                    keyboardType: TextInputType.number,
+                    style: KiStyles.body(color: textPrimary),
+                    decoration: fieldDec('Reps', ctx),
+                  ),
+                ),
+              ]),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accentContainer,
+                  foregroundColor: AppColors.primaryBtnFg(ctx),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  elevation: 0,
+                ),
+                child: Text('Add', style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(ctx))),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextField(
-              controller: rCtrl,
-              keyboardType: TextInputType.number,
-              style: KiStyles.body(color: textPrimary),
-              decoration: InputDecoration(
-                labelText: 'Reps',
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                child: Text('Cancel', style: KiStyles.bodySemibold(color: AppColors.textTertiary(ctx))),
               ),
             ),
-          ),
-        ]),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel', style: KiStyles.label(color: textTertiary)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(
-              backgroundColor: accentContainer.withValues(alpha: 0.12),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
-            ),
-            child: Text('Add', style: KiStyles.label(color: accentContainer)),
-          ),
-        ],
+          ],
+        ),
       ),
     );
     if (saved == true) {
@@ -340,40 +419,86 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
     final textTertiary = AppColors.textTertiary(context);
     final accentContainer = AppColors.accentContainer(context);
 
-    final saved = await showDialog<bool>(
+    InputDecoration fieldDec(String label, BuildContext ctx) => InputDecoration(
+      labelText: label,
+      labelStyle: KiStyles.labelSm(color: AppColors.textTertiary(ctx)),
+      filled: true,
+      fillColor: AppColors.inputFill(ctx),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: AppColors.border(ctx))),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: accentContainer, width: 1.5)),
+    );
+
+    final saved = await showModalBottomSheet<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: cardBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Save as Template',
-            style: KiStyles.headlineMd(color: textPrimary)),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          textCapitalization: TextCapitalization.words,
-          style: KiStyles.body(color: textPrimary),
-          decoration: InputDecoration(
-            labelText: 'Template name',
-            hintText: 'e.g. Push Day A',
-            border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-          ),
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: cardBg,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 20, right: 20, top: 24,
+          bottom: MediaQuery.viewInsetsOf(ctx).bottom + 24,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text('Cancel', style: KiStyles.label(color: textTertiary)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: TextButton.styleFrom(
-              backgroundColor: accentContainer.withValues(alpha: 0.12),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.border(ctx),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
             ),
-            child: Text('Save', style: KiStyles.label(color: accentContainer)),
-          ),
-        ],
+            const SizedBox(height: 20),
+            Text('Save as Template', style: KiStyles.headlineMd(color: textPrimary)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+              style: KiStyles.body(color: textPrimary),
+              decoration: fieldDec('Template name', ctx).copyWith(
+                hintText: 'e.g. Push Day A',
+                hintStyle: KiStyles.labelSm(color: AppColors.textTertiary(ctx)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: accentContainer,
+                  foregroundColor: AppColors.primaryBtnFg(ctx),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  elevation: 0,
+                ),
+                child: Text('Save', style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(ctx))),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                child: Text('Cancel', style: KiStyles.bodySemibold(color: AppColors.textTertiary(ctx))),
+              ),
+            ),
+          ],
+        ),
       ),
     );
     if (saved == true && ctrl.text.trim().isNotEmpty) {
@@ -407,7 +532,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
             foregroundColor: AppColors.primaryBtnFg(context),
             minimumSize: const Size(double.infinity, 52),
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
+                borderRadius: BorderRadius.circular(20)),
             elevation: 0,
           ),
         ),
@@ -735,39 +860,53 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                 } else if (value == 'share') {
                   await _shareWorkout();
                 } else if (value == 'delete') {
-                  final confirm = await showDialog<bool>(
+                  final confirmed = await showModalBottomSheet<bool>(
                     context: context,
-                    builder: (ctx) => AlertDialog(
-                      backgroundColor: cardBg,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                      title: Text('Delete workout?',
-                          style: KiStyles.headlineMd(color: textPrimary)),
-                      content: Text(
-                        'This will permanently delete this workout and all its sets.',
-                        style: KiStyles.body(color: textSecondary),
+                    backgroundColor: AppColors.cardBg(context),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+                    builder: (ctx) => SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Delete workout?',
+                                style: KiStyles.headlineMd(color: AppColors.textPrimary(ctx))),
+                            const SizedBox(height: 6),
+                            Text('This cannot be undone.',
+                                style: KiStyles.body(color: AppColors.textTertiary(ctx))),
+                            const SizedBox(height: 24),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () => Navigator.pop(ctx, true),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.destructive(ctx),
+                                  foregroundColor: AppColors.primaryBtnFg(ctx),
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                  elevation: 0,
+                                ),
+                                child: Text('Delete', style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(ctx))),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                                child: Text('Cancel', style: KiStyles.bodySemibold(color: AppColors.textTertiary(ctx))),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: Text('Cancel',
-                              style: KiStyles.label(color: textTertiary)),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, true),
-                          style: TextButton.styleFrom(
-                            backgroundColor: AppColors.error(context),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                          ),
-                          child: Text('Delete',
-                              style: KiStyles.label(color: Colors.white)),
-                        ),
-                      ],
                     ),
                   );
-                  if (confirm == true) {
+                  if (confirmed == true) {
                     await DBHelper.deleteWorkout(widget.workoutId);
                     if (mounted) Navigator.pop(context, true); // ignore: use_build_context_synchronously
                   }
@@ -880,26 +1019,31 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                       child: Semantics(
                                         label: 'View history for $exName',
                                         button: true,
-                                        child: GestureDetector(
-                                          onTap: () => Navigator.push(
-                                            context,
-                                            fadeSlideRoute(ExerciseHistoryScreen(
-                                                exerciseName: exName,
-                                            )),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Flexible(
-                                                child: Text(exName,
-                                                    style: KiStyles.bodySemibold(
-                                                        color: textPrimary)),
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Icon(Icons.arrow_forward_ios_rounded,
-                                                  size: 11,
-                                                  color: AppColors.textTertiary(context)),
-                                            ],
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          borderRadius: BorderRadius.circular(4),
+                                          child: InkWell(
+                                            onTap: () => Navigator.push(
+                                              context,
+                                              fadeSlideRoute(ExerciseHistoryScreen(
+                                                  exerciseName: exName,
+                                              )),
+                                            ),
+                                            borderRadius: BorderRadius.circular(4),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Flexible(
+                                                  child: Text(exName,
+                                                      style: KiStyles.bodySemibold(
+                                                          color: textPrimary)),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                Icon(Icons.arrow_forward_ios_rounded,
+                                                    size: 11,
+                                                    color: AppColors.textTertiary(context)),
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -957,12 +1101,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                           Semantics(
                                             label: 'Edit set ${s['set_number']}',
                                             button: true,
-                                            child: GestureDetector(
-                                              onTap: () => _editSet(s),
-                                              child: Padding(
-                                                padding: const EdgeInsets.all(8),
-                                                child: Icon(Icons.edit_outlined,
-                                                    size: 16, color: textSecondary),
+                                            child: Material(
+                                              color: Colors.transparent,
+                                              child: InkWell(
+                                                onTap: () => _editSet(s),
+                                                borderRadius: BorderRadius.circular(20),
+                                                child: Padding(
+                                                  padding: const EdgeInsets.all(8),
+                                                  child: Icon(Icons.edit_outlined,
+                                                      size: 16, color: textSecondary),
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -970,12 +1118,16 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                           Semantics(
                                             label: 'Delete set ${s['set_number']}',
                                             button: true,
-                                            child: GestureDetector(
-                                              onTap: () => _deleteSet(s),
-                                              child: Padding(
-                                                padding: const EdgeInsets.all(8),
-                                                child: Icon(Icons.close,
-                                                    size: 16, color: errorColor),
+                                            child: Material(
+                                              color: Colors.transparent,
+                                              child: InkWell(
+                                                onTap: () => _deleteSet(s),
+                                                borderRadius: BorderRadius.circular(20),
+                                                child: Padding(
+                                                  padding: const EdgeInsets.all(8),
+                                                  child: Icon(Icons.close,
+                                                      size: 16, color: errorColor),
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -1013,23 +1165,26 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                     Semantics(
                                       label: 'Add set to $exName',
                                       button: true,
-                                      child: GestureDetector(
-                                        onTap: () =>
-                                            _addSetToExercise(exName),
-                                        child: SizedBox(
-                                          height: 44,
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Icon(Icons.add,
-                                                  size: 14,
-                                                  color: AppColors.accentContainer(context)),
-                                              const SizedBox(width: 6),
-                                              Text('Add set',
-                                                  style: KiStyles.label(
-                                                      color: textSecondary)),
-                                            ],
+                                      child: Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          onTap: () =>
+                                              _addSetToExercise(exName),
+                                          child: SizedBox(
+                                            height: 44,
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(Icons.add,
+                                                    size: 14,
+                                                    color: AppColors.accentContainer(context)),
+                                                const SizedBox(width: 6),
+                                                Text('Add set',
+                                                    style: KiStyles.label(
+                                                        color: textSecondary)),
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -1192,7 +1347,7 @@ class _SharePreviewDialogState extends State<_SharePreviewDialog> {
                       foregroundColor: AppColors.primaryBtnFg(context),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(20)),
                       textStyle:
                           const TextStyle(fontWeight: FontWeight.bold),
                     ),
@@ -1262,9 +1417,9 @@ class _RouteMapWidgetState extends State<_RouteMapWidget> {
               height: 12,
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.green,
+                  color: AppColors.liveGreen,
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
+                  border: Border.all(color: AppColors.background(context), width: 2),
                 ),
               ),
             ),
@@ -1276,7 +1431,7 @@ class _RouteMapWidgetState extends State<_RouteMapWidget> {
                 decoration: BoxDecoration(
                   color: AppColors.error(context),
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 2),
+                  border: Border.all(color: AppColors.background(context), width: 2),
                 ),
               ),
             ),

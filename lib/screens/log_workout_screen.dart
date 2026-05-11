@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:gymlog/db/db_helper.dart';
 import 'package:gymlog/screens/add_exercise_screen.dart';
 import 'package:gymlog/screens/workout_summary_screen.dart';
@@ -704,6 +705,154 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     }
   }
 
+  Future<void> _editSetInline(int exIndex, int setIdx) async {
+    final exName = _exercises[exIndex]['name'] as String;
+    final isTimed = ExerciseData.isTimedExercise(exName);
+    final existing = Map<String, dynamic>.from(
+        (_exercises[exIndex]['sets'] as List)[setIdx] as Map);
+    final existingWeight = (existing['weight'] as num).toDouble();
+    final existingReps = existing['reps'] as int;
+
+    final wCtrl = TextEditingController(
+      text: existingWeight > 0
+          ? (existingWeight % 1 == 0
+              ? existingWeight.toInt().toString()
+              : existingWeight.toStringAsFixed(1))
+          : '',
+    );
+    final rCtrl = TextEditingController(text: existingReps.toString());
+    bool showWeightField = existingWeight > 0 || !isTimed;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: AppColors.cardBg(context),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, sheetSetState) {
+          final accent = _accentColor(ctx);
+          final textPrimary = AppColors.textPrimary(ctx);
+          final textTertiary = AppColors.textTertiary(ctx);
+
+          InputDecoration fieldDeco(String label) => InputDecoration(
+            hintText: '0',
+            hintStyle: TextStyle(color: textTertiary),
+            labelText: label,
+            labelStyle: KiStyles.labelSm(color: textTertiary),
+            filled: true,
+            fillColor: AppColors.inputFill(ctx),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: AppColors.border(ctx))),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: accent, width: 1.5)),
+          );
+
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 20, right: 20, top: 24,
+              bottom: MediaQuery.viewInsetsOf(ctx).bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 36, height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.border(ctx),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text('Edit Set ${setIdx + 1}', style: KiStyles.headlineMd(color: textPrimary)),
+                Text(exName, style: KiStyles.label(color: textTertiary)),
+                const SizedBox(height: 16),
+                if (isTimed)
+                  TextField(
+                    controller: rCtrl,
+                    autofocus: true,
+                    keyboardType: TextInputType.number,
+                    style: KiStyles.bodySemibold(color: textPrimary),
+                    decoration: fieldDeco('Seconds'),
+                  )
+                else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (showWeightField) ...[
+                        Expanded(
+                          flex: 3,
+                          child: TextField(
+                            controller: wCtrl,
+                            autofocus: true,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            style: KiStyles.bodySemibold(color: textPrimary),
+                            decoration: fieldDeco(WeightFormat.inputLabel),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      Expanded(
+                        flex: 2,
+                        child: TextField(
+                          controller: rCtrl,
+                          autofocus: !showWeightField,
+                          keyboardType: TextInputType.number,
+                          style: KiStyles.bodySemibold(color: textPrimary),
+                          decoration: fieldDeco('Reps'),
+                        ),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final reps = int.tryParse(rCtrl.text) ?? 0;
+                      if (reps <= 0) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          SnackBar(content: Text(isTimed ? 'Enter a duration.' : 'Enter at least 1 rep.')),
+                        );
+                        return;
+                      }
+                      final weight = showWeightField
+                          ? (double.tryParse(wCtrl.text.isEmpty ? '0' : wCtrl.text) ?? 0.0)
+                          : 0.0;
+                      setState(() {
+                        final sets = _exercises[exIndex]['sets'] as List;
+                        sets[setIdx] = {
+                          ...Map<String, dynamic>.from(sets[setIdx] as Map),
+                          'weight': weight,
+                          'reps': reps,
+                        };
+                      });
+                      _saveDraftDebounced();
+                      FocusScope.of(ctx).unfocus();
+                      Navigator.pop(ctx);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: accent,
+                      foregroundColor: AppColors.primaryBtnFg(ctx),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      elevation: 0,
+                    ),
+                    child: Text('Save', style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(ctx))),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _confirmFinish() async {
     final setCount = _exercises.fold<int>(
         0, (sum, ex) => sum + (ex['sets'] as List).length);
@@ -823,7 +972,10 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not save workout. Please try again.')));
+            const SnackBar(
+              content: Text('Save failed. Your workout is still in your draft — tap Resume on the home screen to try again.'),
+              duration: Duration(seconds: 6),
+            ));
       }
     }
   }
@@ -937,7 +1089,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                       Text(
                         isToday
                             ? WorkoutTypes.label(widget.type).toUpperCase()
-                            : '${_workoutDate.day}/${_workoutDate.month}/${_workoutDate.year}',
+                            : DateFormat.MMMd().format(_workoutDate),
                         style: KiStyles.labelSm(color: textTertiary),
                       ),
                     ],
@@ -1066,6 +1218,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                           exIndex: exIndex,
                           accentColor: _accentColor(context),
                           onAddSet: _addSetInline,
+                          onEditSet: _editSetInline,
                           onConfirmDelete: _confirmDeleteExercise,
                           onRemoveSet: _removeSet,
                           fmtSecs: _fmtSecs,
@@ -1120,7 +1273,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
                                 const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                                 borderRadius:
-                                    BorderRadius.circular(14)),
+                                    BorderRadius.circular(20)),
                             elevation: 0,
                           ),
                         ),
@@ -1145,6 +1298,7 @@ class _ExerciseCard extends StatelessWidget {
   final int exIndex;
   final Color accentColor;
   final Future<void> Function(int, {double? prefillWeight, int? prefillReps}) onAddSet;
+  final Future<void> Function(int exIndex, int setIdx) onEditSet;
   final void Function(int) onConfirmDelete;
   final void Function(int, int) onRemoveSet;
   final String Function(int) fmtSecs;
@@ -1155,6 +1309,7 @@ class _ExerciseCard extends StatelessWidget {
     required this.exIndex,
     required this.accentColor,
     required this.onAddSet,
+    required this.onEditSet,
     required this.onConfirmDelete,
     required this.onRemoveSet,
     required this.fmtSecs,
@@ -1200,13 +1355,16 @@ class _ExerciseCard extends StatelessWidget {
                 Semantics(
                   label: 'Remove ${exercise['name']}',
                   button: true,
-                  child: GestureDetector(
-                    onTap: () => onConfirmDelete(exIndex),
-                    behavior: HitTestBehavior.opaque,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                      child: Icon(Icons.delete_outline_rounded,
-                          size: 18, color: textTertiary.withValues(alpha: 0.6)),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => onConfirmDelete(exIndex),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        child: Icon(Icons.delete_outline_rounded,
+                            size: 18, color: textTertiary.withValues(alpha: 0.6)),
+                      ),
                     ),
                   ),
                 ),
@@ -1235,10 +1393,10 @@ class _ExerciseCard extends StatelessWidget {
                             ? 'Last session set ${e.key + 1}: bodyweight × $repsLabel. Tap to prefill'
                             : 'Last session set ${e.key + 1}: $weightLabel × $repsLabel. Tap to prefill',
                         button: true,
-                        child: GestureDetector(
-                          onTap: () => onAddSet(exIndex, prefillWeight: w, prefillReps: r),
-                          child: Opacity(
-                            opacity: 0.4,
+                        child: Opacity(
+                          opacity: 0.4,
+                          child: InkWell(
+                            onTap: () => onAddSet(exIndex, prefillWeight: w, prefillReps: r),
                             child: Padding(
                               padding: const EdgeInsets.only(bottom: 5),
                               child: Row(children: [
@@ -1279,42 +1437,48 @@ class _ExerciseCard extends StatelessWidget {
                 final repsLabel = isTimed
                     ? fmtSecs(e.value['reps'] as int)
                     : '${e.value['reps']} reps';
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(children: [
-                    _SetBadge(number: e.key + 1, color: accentColor),
-                    const SizedBox(width: 10),
-                    Text(
-                      WeightFormat.format((e.value['weight'] as num).toDouble()),
-                      style: KiStyles.bodySemibold(color: textPrimary),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Text('×', style: KiStyles.label(color: textTertiary)),
-                    ),
-                    Text(repsLabel,
-                        style: KiStyles.bodySemibold(color: textSecondary)),
-                    if (e.value['isPR'] == true) ...[
-                      const SizedBox(width: 8),
-                      Text('PR', style: KiStyles.labelSm(color: accentColor)),
-                    ],
-                    const Spacer(),
-                    Semantics(
-                      label: 'Remove set ${e.key + 1}',
-                      button: true,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => onRemoveSet(exIndex, e.key),
-                        child: SizedBox(
-                          width: 44,
-                          height: 44,
-                          child: Center(
-                            child: Icon(Icons.close, size: 14, color: textTertiary),
+                return GestureDetector(
+                  onLongPress: () => onEditSet(exIndex, e.key),
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(children: [
+                      _SetBadge(number: e.key + 1, color: accentColor),
+                      const SizedBox(width: 10),
+                      Text(
+                        WeightFormat.format((e.value['weight'] as num).toDouble()),
+                        style: KiStyles.bodySemibold(color: textPrimary),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        child: Text('×', style: KiStyles.label(color: textTertiary)),
+                      ),
+                      Text(repsLabel,
+                          style: KiStyles.bodySemibold(color: textSecondary)),
+                      if (e.value['isPR'] == true) ...[
+                        const SizedBox(width: 8),
+                        Text('PR', style: KiStyles.labelSm(color: accentColor)),
+                      ],
+                      const Spacer(),
+                      Semantics(
+                        label: 'Remove set ${e.key + 1}',
+                        button: true,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => onRemoveSet(exIndex, e.key),
+                            borderRadius: BorderRadius.circular(22),
+                            child: SizedBox(
+                              width: 44,
+                              height: 44,
+                              child: Center(
+                                child: Icon(Icons.close, size: 14, color: textTertiary),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ]),
+                    ]),
+                  ),
                 );
               }),
 
@@ -1465,13 +1629,6 @@ class _StickyRestBar extends StatelessWidget {
             border: Border(
               bottom: BorderSide(color: AppColors.border(context), width: 1),
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
           ),
           child: Material(
             color: Colors.transparent,

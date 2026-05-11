@@ -13,6 +13,7 @@ import 'package:gymlog/screens/flexibility_log_screen.dart';
 import 'package:gymlog/screens/templates_screen.dart';
 import 'package:gymlog/screens/workout_detail_screen.dart';
 import 'package:gymlog/utils/body_svg_paths.dart';
+import 'package:gymlog/utils/date_display.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
 import 'package:gymlog/utils/ki_styles.dart';
@@ -371,7 +372,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (diff == 0) return 'Today';
     if (diff == 1) return 'Yesterday';
     if (diff < 7) return '$diff days ago';
-    return '${d.day}/${d.month}';
+    return DateDisplay.formatShort(dateStr);
   }
 
   int get _currentStreak {
@@ -504,29 +505,35 @@ class _HomeScreenState extends State<HomeScreen> {
                   Semantics(
                     label: 'Edit profile',
                     button: true,
-                    child: GestureDetector(
-                    onTap: () async {
-                      await Navigator.push(
-                          context,
-                          fadeSlideRoute(
-                              const ProfileSetupScreen(isEditing: true)));
-                      _refreshWorkouts();
-                    },
-                    child: CircleAvatar(
-                      radius: 18,
-                      backgroundColor: AppColors.surfaceContainerHigh(context),
-                      backgroundImage: _userImage != null
-                          ? FileImage(File(_userImage!))
-                          : null,
-                      child: _userImage == null
-                          ? Text(
-                              _userName.isNotEmpty
-                                  ? _userName[0].toUpperCase()
-                                  : '?',
-                              style: KiStyles.bodySemibold(color: textPrimary))
-                          : null,
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(18),
+                      child: InkWell(
+                        onTap: () async {
+                          await Navigator.push(
+                              context,
+                              fadeSlideRoute(
+                                  const ProfileSetupScreen(isEditing: true)));
+                          _refreshWorkouts();
+                        },
+                        borderRadius: BorderRadius.circular(18),
+                        child: CircleAvatar(
+                          radius: 18,
+                          backgroundColor: AppColors.surfaceContainerHigh(context),
+                          backgroundImage: _userImage != null
+                              ? FileImage(File(_userImage!))
+                              : null,
+                          child: _userImage == null
+                              ? Text(
+                                  _userName.isNotEmpty
+                                      ? _userName[0].toUpperCase()
+                                      : '?',
+                                  style: KiStyles.bodySemibold(color: textPrimary))
+                              : null,
+                        ),
+                      ),
                     ),
-                  )),
+                  ),
                   const SizedBox(width: 12),
                   // Center: GYMLOG wordmark
                   const Expanded(child: GymlogWordmark()),
@@ -534,20 +541,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   Semantics(
                     label: 'Templates',
                     button: true,
-                    child: GestureDetector(
-                      onTap: () => Navigator.push(
-                          context, fadeSlideRoute(const TemplatesScreen())),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(11, 8, 11, 8),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.bookmark_outline_rounded,
-                                color: textTertiary, size: 20),
-                            const SizedBox(height: 2),
-                            Text('TEMPLATES',
-                                style: KiStyles.labelSm(color: textTertiary)),
-                          ],
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => Navigator.push(
+                            context, fadeSlideRoute(const TemplatesScreen())),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(11, 8, 11, 8),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.bookmark_outline_rounded,
+                                  color: textTertiary, size: 20),
+                              const SizedBox(height: 2),
+                              Text('TEMPLATES',
+                                  style: KiStyles.labelSm(color: textTertiary)),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -720,13 +731,16 @@ class _HomeScreenState extends State<HomeScreen> {
                               Semantics(
                                 label: 'Discard draft',
                                 button: true,
-                                child: GestureDetector(
-                                  onTap: _discardDraft,
-                                  behavior: HitTestBehavior.opaque,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(8),
-                                    child: Icon(Icons.delete_outline_rounded,
-                                        size: 18, color: AppColors.error(context)),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: _discardDraft,
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8),
+                                      child: Icon(Icons.delete_outline_rounded,
+                                          size: 18, color: AppColors.error(context)),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -734,18 +748,21 @@ class _HomeScreenState extends State<HomeScreen> {
                               Semantics(
                                 label: 'Resume draft workout',
                                 button: true,
-                                child: GestureDetector(
-                                  onTap: _resumeDraft,
-                                  behavior: HitTestBehavior.opaque,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.accentContainer(context),
-                                      borderRadius: BorderRadius.circular(20),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: _resumeDraft,
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.accentContainer(context),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Text('Resume',
+                                          style: KiStyles.label(
+                                              color: AppColors.primaryBtnFg(context))),
                                     ),
-                                    child: Text('Resume',
-                                        style: KiStyles.label(
-                                            color: AppColors.primaryBtnFg(context))),
                                   ),
                                 ),
                               ),
@@ -826,7 +843,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     // ── Last workout line ──
                     if (_lastWorkout != null) ...[
                       Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
-                      GestureDetector(
+                      InkWell(
                         onTap: () async {
                           final w = _lastWorkout!;
                           await Navigator.push(
@@ -884,14 +901,21 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: Semantics(
                                 label: 'Repeat last workout',
                                 button: true,
-                                child: GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTap: _repeatLastWorkout,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                    child: Text(
-                                      'REPEAT',
-                                      style: KiStyles.labelSm(color: accentContainer),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: _repeatLastWorkout,
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        border: Border.all(color: accentContainer.withValues(alpha: 0.3)),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        'REPEAT',
+                                        style: KiStyles.labelSm(color: accentContainer),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -985,7 +1009,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               crossAxisCount: 7,
                               mainAxisSpacing: 4,
                               crossAxisSpacing: 0,
-                              childAspectRatio: 1.05,
+                              childAspectRatio: 0.95,
                             ),
                             itemCount: firstWeekday + daysInMonth,
                             itemBuilder: (ctx, index) {
@@ -1019,51 +1043,55 @@ class _HomeScreenState extends State<HomeScreen> {
                                             _refreshWorkouts();
                                           }
                                         : () => _startWorkout(tappedDate),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    // Day number
-                                    Container(
-                                      width: 28,
-                                      height: 28,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: isToday
-                                            ? accentContainer
-                                            : Colors.transparent,
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          '$day',
-                                          style: (isToday || hasWorkout
-                                                  ? KiStyles.label
-                                                  : KiStyles.labelSm)(
-                                            color: isToday
-                                                ? bg
-                                                : hasWorkout
-                                                    ? textPrimary
-                                                    : isFuture
-                                                        ? textTertiary
-                                                        : textSecondary,
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      // Day number
+                                      Container(
+                                        width: 28,
+                                        height: 28,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isToday
+                                              ? accentContainer
+                                              : Colors.transparent,
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '$day',
+                                            style: (isToday || hasWorkout
+                                                    ? KiStyles.label
+                                                    : KiStyles.labelSm)(
+                                              color: isToday
+                                                  ? bg
+                                                  : hasWorkout
+                                                      ? textPrimary
+                                                      : isFuture
+                                                          ? textTertiary
+                                                          : textSecondary,
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                    // Dot BELOW the number (KO calendar spec)
-                                    const SizedBox(height: 3),
-                                    if (hasWorkout)
-                                      Container(
-                                        width: 5,
-                                        height: 5,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: accentContainer.withValues(
-                                              alpha: workoutAlpha),
-                                        ),
-                                      )
-                                    else
-                                      const SizedBox(height: 5),
-                                  ],
+                                      // Dot BELOW the number (KO calendar spec)
+                                      const SizedBox(height: 3),
+                                      if (hasWorkout)
+                                        Container(
+                                          width: 5,
+                                          height: 5,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: accentContainer.withValues(
+                                                alpha: workoutAlpha),
+                                          ),
+                                        )
+                                      else
+                                        const SizedBox(height: 5),
+                                    ],
+                                  ),
                                 ),
                               ),
                             );
@@ -1084,7 +1112,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Semantics(
                       label: 'Muscle activity map. Tap to view details.',
                       button: true,
-                      child: GestureDetector(
+                      child: InkWell(
                         onTap: () async {
                           await Navigator.push(context, fadeSlideRoute(const MuscleMapScreen()));
                           _refreshWorkouts();
@@ -1255,7 +1283,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  '$day ${_monthLabel.split(' ').first}',
+                  DateDisplay.format('${date.day}/${date.month}/${date.year}'),
                   style: KiStyles.headlineMd(color: textPrimary),
                 ),
               ),
@@ -1358,10 +1386,6 @@ class _MicroStat extends StatelessWidget {
             ],
           ],
         ),
-        if (hint != null) ...[
-          const SizedBox(height: 1),
-          Text(hint!, style: KiStyles.labelSm(color: labelColor.withValues(alpha: 0.7))),
-        ],
       ],
     );
   }

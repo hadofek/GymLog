@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:gymlog/db/db_helper.dart';
+import 'package:gymlog/utils/date_display.dart';
 import 'package:gymlog/screens/workout_detail_screen.dart';
 import 'package:gymlog/utils/workout_types.dart';
 import 'package:gymlog/utils/app_colors.dart';
@@ -132,7 +133,7 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
                 final dur = DBHelper.formatDuration(
                     w['duration_seconds'] as int? ?? 0);
                 final displayDate =
-                    _formatDisplayDate(w['date'] as String);
+                    DateDisplay.format(w['date'] as String);
                 final type =
                     w['type'] as String? ?? WorkoutTypes.weighted;
                 final typeColor = WorkoutTypes.color(type, context);

@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gymlog/screens/splash_screen.dart';
 
 void main() {
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    // In release mode, errors are non-fatal — log and continue
+  };
+
   runApp(const GymLogApp());
 }
 
@@ -27,6 +33,40 @@ class _GymLogAppState extends State<GymLogApp> {
     super.initState();
     GymLogApp._state = this;
     _loadThemeMode();
+
+    ErrorWidget.builder = (FlutterErrorDetails details) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF0B0E1A),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Something went wrong.',
+                  style: GoogleFonts.lexend(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFFE8E8E8),
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Restart the app to continue. Your workouts are saved.',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 14,
+                    color: const Color(0xFF8896B0),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    };
   }
 
   @override

@@ -1,3 +1,8 @@
+# Signing credentials — never commit
+android/key.properties
+*.jks
+*.keystore
+
 # Miscellaneous
 *.class
 *.log

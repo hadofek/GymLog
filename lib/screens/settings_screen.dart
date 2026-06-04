@@ -320,7 +320,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Text('Version',
                         style: KiStyles.body(color: textPrimary)),
                   ),
-                  Text('1.2.4',
+                  Text('1.2.5',
                       style: KiStyles.labelSm(color: textTertiary)),
                 ],
               ),

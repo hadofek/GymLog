@@ -58,6 +58,7 @@ class _TemplatesScreenState extends State<TemplatesScreen> {
       });
     }
 
+    if (!mounted) return;
     nav.pop();
     if (!mounted) return;
 

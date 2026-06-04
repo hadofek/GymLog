@@ -41,6 +41,9 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   Timer? _draftDebounce;
   int _nextSupersetGroup = 1;
 
+  // ── Save guard ──
+  bool _isSaving = false;
+
   // ── Rest Timer State (Elevated) ──
   Timer? _restTimer;
   int? _restTarget;
@@ -69,12 +72,15 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   }
 
   Future<void> _seedLastSets() async {
-    for (final ex in _exercises) {
-      final last = await DBHelper.getLastSets(ex['name'] as String);
-      if (mounted && last.isNotEmpty) {
-        setState(() => ex['lastSets'] = last);
+    final names = _exercises.map((e) => e['name'] as String).toList();
+    final batch = await DBHelper.getLastSetsForExercises(names);
+    if (!mounted || batch.isEmpty) return;
+    setState(() {
+      for (final ex in _exercises) {
+        final last = batch[ex['name'] as String];
+        if (last != null && last.isNotEmpty) ex['lastSets'] = last;
       }
-    }
+    });
   }
 
   @override
@@ -855,7 +861,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
 
   Future<void> _confirmFinish() async {
     final setCount = _exercises.fold<int>(
-        0, (sum, ex) => sum + (ex['sets'] as List).length);
+        0, (sum, ex) => sum + (ex['sets'] as List).where((s) => (s['reps'] as int? ?? 0) > 0).length);
     if (setCount < 2) {
       // Only 0 or 1 set — no accidental finish risk, save immediately
       await _saveWorkout();
@@ -915,7 +921,8 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
   }
 
   Future<void> _saveWorkout() async {
-    if (_exercises.isEmpty) return;
+    if (_exercises.isEmpty || _isSaving) return;
+    _isSaving = true;
     try {
       final date = _workoutDate;
       final now = DateTime.now();
@@ -977,6 +984,8 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
               duration: Duration(seconds: 6),
             ));
       }
+    } finally {
+      _isSaving = false;
     }
   }
 

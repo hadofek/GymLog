@@ -26,6 +26,11 @@ extension _PeriodExt on _Period {
   }
 }
 
+const _monthNames = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
 // Heat map: blue → violet → pink → red (same stops as body_svg_paths.dart)
 Color _heatColor(double t) {
   final tt = t.clamp(0.0, 1.0);
@@ -69,16 +74,24 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
   Map<String, int> _counts = {};
   bool _loading = true;
 
+  // Navigation state for month/year filters
+  late DateTime _selectedMonth; // first day of selected month
+  late int _selectedYear;
+
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _selectedMonth = DateTime(now.year, now.month);
+    _selectedYear = now.year;
     _loadCounts();
   }
 
   Future<void> _loadCounts() async {
     if (mounted) setState(() => _loading = true);
-    final since = _periodSince(_period);
-    final raw = await DBHelper.getMuscleGroupCounts(since: since);
+    final since = _periodSince();
+    final until = _periodUntil();
+    final raw = await DBHelper.getMuscleGroupCounts(since: since, until: until);
     final normalized = <String, int>{};
     for (final e in raw.entries) {
       final key = _normalizeGroup(e.key);
@@ -92,20 +105,67 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
     }
   }
 
-  DateTime? _periodSince(_Period p) {
+  DateTime? _periodSince() {
     final now = DateTime.now();
-    switch (p) {
+    switch (_period) {
       case _Period.daily:
         return DateTime(now.year, now.month, now.day);
       case _Period.weekly:
-        return now.subtract(const Duration(days: 7));
+        final monday = now.subtract(Duration(days: now.weekday - 1));
+        return DateTime(monday.year, monday.month, monday.day);
       case _Period.monthly:
-        return now.subtract(const Duration(days: 30));
+        return _selectedMonth; // first day of selected month
       case _Period.yearly:
-        return now.subtract(const Duration(days: 365));
+        return DateTime(_selectedYear);
       case _Period.allTime:
         return null;
     }
+  }
+
+  DateTime? _periodUntil() {
+    switch (_period) {
+      case _Period.monthly:
+        // first day of the month after _selectedMonth
+        return DateTime(_selectedMonth.year, _selectedMonth.month + 1);
+      case _Period.yearly:
+        return DateTime(_selectedYear + 1);
+      default:
+        return null;
+    }
+  }
+
+  bool get _canGoNextMonth {
+    final now = DateTime.now();
+    return _selectedMonth.year < now.year ||
+        (_selectedMonth.year == now.year && _selectedMonth.month < now.month);
+  }
+
+  bool get _canGoNextYear {
+    return _selectedYear < DateTime.now().year;
+  }
+
+  void _prevMonth() {
+    setState(() =>
+        _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1));
+    _loadCounts();
+  }
+
+  void _nextMonth() {
+    if (!_canGoNextMonth) return;
+    setState(() =>
+        _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1));
+    _loadCounts();
+  }
+
+  void _prevYear() {
+    setState(() => _selectedYear--);
+    _loadCounts();
+  }
+
+  void _nextYear() {
+    if (!_canGoNextYear) return;
+    setState(() => _selectedYear++);
+    _loadCounts();
   }
 
   String _normalizeGroup(String name) {
@@ -178,7 +238,7 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
         const SizedBox(height: 4),
         Text(
           'These muscle groups had no logged sessions in the selected period.',
-          style: TextStyle(fontSize: 11, color: textTertiary.withValues(alpha: 0.6), height: 1.4),
+          style: KiStyles.labelSm(color: textTertiary.withValues(alpha: 0.6)),
         ),
       ],
       if (isOverTrained) ...[
@@ -193,7 +253,7 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
         const SizedBox(height: 4),
         Text(
           '${displayName(topEntry.key)} accounts for a large share of your sessions. Consider balancing with neglected groups.',
-          style: TextStyle(fontSize: 11, color: textTertiary.withValues(alpha: 0.6), height: 1.4),
+          style: KiStyles.labelSm(color: textTertiary.withValues(alpha: 0.6)),
         ),
       ],
       const SizedBox(height: 8),
@@ -279,7 +339,7 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 0.4,
-                            color: on ? Colors.white : textTertiary,
+                            color: on ? AppColors.primaryBtnFg(context) : textTertiary,
                           ),
                         ),
                       ),
@@ -288,6 +348,60 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
                 ),
               ),
             ),
+
+            // Month navigator (visible when Monthly is selected)
+            if (_period == _Period.monthly)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _NavArrow(
+                      icon: Icons.chevron_left_rounded,
+                      onTap: _prevMonth,
+                      color: textSecondary,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '${_monthNames[_selectedMonth.month - 1]} ${_selectedMonth.year}',
+                      style: KiStyles.bodySemibold(color: textPrimary),
+                    ),
+                    const SizedBox(width: 12),
+                    _NavArrow(
+                      icon: Icons.chevron_right_rounded,
+                      onTap: _canGoNextMonth ? _nextMonth : null,
+                      color: _canGoNextMonth ? textSecondary : textTertiary,
+                    ),
+                  ],
+                ),
+              ),
+
+            // Year navigator (visible when Yearly is selected)
+            if (_period == _Period.yearly)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _NavArrow(
+                      icon: Icons.chevron_left_rounded,
+                      onTap: _prevYear,
+                      color: textSecondary,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '$_selectedYear',
+                      style: KiStyles.bodySemibold(color: textPrimary),
+                    ),
+                    const SizedBox(width: 12),
+                    _NavArrow(
+                      icon: Icons.chevron_right_rounded,
+                      onTap: _canGoNextYear ? _nextYear : null,
+                      color: _canGoNextYear ? textSecondary : textTertiary,
+                    ),
+                  ],
+                ),
+              ),
             // Body + list
             Expanded(
               child: ListView(
@@ -341,11 +455,17 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
                     ),
                   ] else if (sortedGroups.isEmpty) ...[
                     const SizedBox(height: 32),
-                    Text('No muscle data yet.',
-                        style: KiStyles.headlineMd(color: textPrimary)),
+                    Text(
+                      _period == _Period.allTime
+                          ? 'No muscle data yet.'
+                          : 'No workouts in this period.',
+                      style: KiStyles.headlineMd(color: textPrimary),
+                    ),
                     const SizedBox(height: 6),
                     Text(
-                      'Open an exercise, set its muscle group, then log it — the map will light up.',
+                      _period == _Period.allTime
+                          ? 'Open an exercise, set its muscle group, then log it — the map will light up.'
+                          : 'Log a workout in this period with exercises that have a muscle group assigned.',
                       style: KiStyles.body(color: textTertiary),
                     ),
                   ] else ...[
@@ -429,6 +549,24 @@ class _MuscleMapScreenState extends State<MuscleMapScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _NavArrow extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final Color color;
+  const _NavArrow({required this.icon, required this.color, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Icon(icon, size: 20, color: color),
       ),
     );
   }

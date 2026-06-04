@@ -67,6 +67,7 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
       final sg = s['superset_group'] as int?;
       if (sg != null) supersetGroups[name] = sg;
     }
+    if (!mounted) return;
     setState(() {
       _grouped = grouped;
       _exerciseSupersetGroup = supersetGroups;
@@ -243,9 +244,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         ),
       ),
     );
+    final wText = wCtrl.text;
+    final rText = rCtrl.text;
+    wCtrl.dispose();
+    rCtrl.dispose();
     if (saved == true) {
-      final w = double.tryParse(wCtrl.text.isEmpty ? '0' : wCtrl.text);
-      final r = int.tryParse(rCtrl.text);
+      final w = double.tryParse(wText.isEmpty ? '0' : wText);
+      final r = int.tryParse(rText);
       if (w != null && r != null && w >= 0 && r > 0) {
         await DBHelper.updateSet(set['id'] as int, w, r);
         await _load();
@@ -399,9 +404,13 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         ),
       ),
     );
+    final wText = wCtrl.text;
+    final rText = rCtrl.text;
+    wCtrl.dispose();
+    rCtrl.dispose();
     if (saved == true) {
-      final w = double.tryParse(wCtrl.text.isEmpty ? '0' : wCtrl.text);
-      final r = int.tryParse(rCtrl.text);
+      final w = double.tryParse(wText.isEmpty ? '0' : wText);
+      final r = int.tryParse(rText);
       if (w != null && r != null && w >= 0 && r > 0) {
         final nextNum = (_grouped[exerciseName]?.length ?? 0) + 1;
         await DBHelper.insertSet(
@@ -501,13 +510,15 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
         ),
       ),
     );
-    if (saved == true && ctrl.text.trim().isNotEmpty) {
+    final ctrlText = ctrl.text;
+    ctrl.dispose();
+    if (saved == true && ctrlText.trim().isNotEmpty) {
       final exercises = _grouped.keys.toList();
-      await DBHelper.saveTemplate(ctrl.text.trim(), widget.type, exercises);
+      await DBHelper.saveTemplate(ctrlText.trim(), widget.type, exercises);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Template "${ctrl.text.trim()}" saved!'),
+            content: Text('Template "${ctrlText.trim()}" saved!'),
             backgroundColor: accentContainer,
             duration: const Duration(seconds: 2),
           ),
@@ -1093,9 +1104,17 @@ class _WorkoutDetailScreenState extends State<WorkoutDetailScreen> {
                                           ),
                                         ),
                                         Expanded(
-                                          child: Text('${s['reps']}',
-                                              style: KiStyles.bodySemibold(
-                                                  color: textPrimary)),
+                                          child: Builder(builder: (_) {
+                                            final reps = s['reps'] as int;
+                                            final isTimed = ExerciseData.isTimedExercise(
+                                                s['exercise_name'] as String? ?? '');
+                                            final label = isTimed
+                                                ? '${reps ~/ 60}:${(reps % 60).toString().padLeft(2, '0')}'
+                                                : '$reps';
+                                            return Text(label,
+                                                style: KiStyles.bodySemibold(
+                                                    color: textPrimary));
+                                          }),
                                         ),
                                         if (_editMode) ...[
                                           Semantics(

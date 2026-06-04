@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:gymlog/screens/main_shell.dart';
 import 'package:gymlog/screens/body_measurements_screen.dart';
@@ -51,6 +52,20 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
     });
   }
 
+  Future<String?> _persistImage(String pickerPath) async {
+    try {
+      final dir = await getApplicationDocumentsDirectory();
+      final photosDir = Directory('${dir.path}/profile_photos');
+      if (!photosDir.existsSync()) photosDir.createSync(recursive: true);
+      final dest =
+          '${photosDir.path}/profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      await File(pickerPath).copy(dest);
+      return dest;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     showModalBottomSheet(
@@ -73,11 +88,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
             const SizedBox(height: 20),
             Text(
               'Profile Photo',
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary(ctx),
-              ),
+              style: KiStyles.headlineMd(color: AppColors.textPrimary(ctx)),
             ),
             const SizedBox(height: 8),
             ListTile(
@@ -92,14 +103,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                     color: AppColors.textPrimary(ctx), size: 20),
               ),
               title: Text('Take a photo',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary(ctx))),
+                  style: KiStyles.body(color: AppColors.textPrimary(ctx))),
               onTap: () async {
                 Navigator.pop(ctx);
                 final img = await picker.pickImage(
                     source: ImageSource.camera, imageQuality: 80);
-                if (img != null) setState(() => _imagePath = img.path);
+                if (img != null) {
+                  final saved = await _persistImage(img.path);
+                  if (mounted) setState(() => _imagePath = saved ?? img.path);
+                }
               },
             ),
             ListTile(
@@ -114,14 +126,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                     color: AppColors.textPrimary(ctx), size: 20),
               ),
               title: Text('Choose from gallery',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary(ctx))),
+                  style: KiStyles.body(color: AppColors.textPrimary(ctx))),
               onTap: () async {
                 Navigator.pop(ctx);
                 final img = await picker.pickImage(
                     source: ImageSource.gallery, imageQuality: 80);
-                if (img != null) setState(() => _imagePath = img.path);
+                if (img != null) {
+                  final saved = await _persistImage(img.path);
+                  if (mounted) setState(() => _imagePath = saved ?? img.path);
+                }
               },
             ),
             if (_imagePath != null)
@@ -139,9 +152,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                         color: destructive, size: 20),
                   ),
                   title: Text('Remove photo',
-                      style: TextStyle(
-                          color: destructive,
-                          fontWeight: FontWeight.w500)),
+                      style: KiStyles.body(color: destructive)),
                   onTap: () {
                     Navigator.pop(ctx);
                     setState(() => _imagePath = null);
@@ -301,11 +312,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                   const SizedBox(height: 10),
                   Text(
                     'Tap to add photo',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: textSecondary,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: KiStyles.labelSm(color: textSecondary),
                   ),
 
                   const SizedBox(height: 40),
@@ -316,22 +323,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                     children: [
                       Text(
                         'YOUR NAME',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11,
-                          color: textSecondary,
-                          letterSpacing: 1.2,
-                        ),
+                        style: KiStyles.label(color: textSecondary),
                       ),
                       const SizedBox(height: 10),
                       TextField(
                         controller: _nameController,
                         textCapitalization: TextCapitalization.words,
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          color: textPrimary,
-                        ),
+                        style: KiStyles.bodySemibold(color: textPrimary),
                         decoration: InputDecoration(
                           hintText: 'e.g. Alex',
                           hintStyle:
@@ -382,12 +380,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                         children: [
                           Text(
                             'HEIGHT (CM)',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 11,
-                              color: textSecondary,
-                              letterSpacing: 1.2,
-                            ),
+                            style: KiStyles.label(color: textSecondary),
                           ),
                           const SizedBox(width: 6),
                           Text(
@@ -403,11 +396,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                       TextField(
                         controller: _heightController,
                         keyboardType: TextInputType.number,
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          color: textPrimary,
-                        ),
+                        style: KiStyles.bodySemibold(color: textPrimary),
                         decoration: InputDecoration(
                           hintText: 'e.g. 178',
                           hintStyle:
@@ -451,10 +440,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                           color: textPrimary, size: 18),
                       label: Text(
                         'Body Measurements',
-                        style: TextStyle(
-                            color: textPrimary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14),
+                        style: KiStyles.body(color: textPrimary),
                       ),
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size(double.infinity, 50),
@@ -493,11 +479,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen>
                               widget.isEditing
                                   ? 'Save Changes'
                                   : 'Get Started',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.2,
-                              ),
+                              style: KiStyles.bodySemibold(
+                                  color: AppColors.primaryBtnFg(context)),
                             ),
                     ),
                   ),

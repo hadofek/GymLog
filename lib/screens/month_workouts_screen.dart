@@ -118,7 +118,7 @@ class _MonthWorkoutsScreenState extends State<MonthWorkoutsScreen> {
                       style: KiStyles.headlineMd(color: textPrimary)),
                   const SizedBox(height: 6),
                   Text(
-                    'No workouts logged this month',
+                    'Tap any day on the calendar to log one.',
                     style: KiStyles.label(color: textTertiary),
                   ),
                 ],

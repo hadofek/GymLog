@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:gymlog/screens/main_shell.dart';
 import 'package:gymlog/screens/profile_setup_screen.dart';
 import 'package:gymlog/utils/app_colors.dart';
+import 'package:gymlog/widgets/gymlog_wordmark.dart';
 
 class SplashRouter extends StatefulWidget {
   const SplashRouter({super.key});
@@ -35,8 +36,16 @@ class _SplashRouterState extends State<SplashRouter> {
     return Scaffold(
       backgroundColor: AppColors.background(context),
       body: Center(
-        child: CircularProgressIndicator(
-          color: AppColors.accent(context),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const GymlogWordmark(),
+            const SizedBox(height: 32),
+            CircularProgressIndicator(
+              color: AppColors.accent(context),
+              strokeWidth: 2,
+            ),
+          ],
         ),
       ),
     );

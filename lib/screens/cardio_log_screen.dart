@@ -16,6 +16,7 @@ class CardioLogScreen extends StatefulWidget {
 }
 
 class _CardioLogScreenState extends State<CardioLogScreen> {
+  bool _isSaving = false;
   final _activityController = TextEditingController();
   final _distanceController = TextEditingController();
   final _avgSpeedController = TextEditingController();
@@ -77,7 +78,8 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
   }
 
   Future<void> _save() async {
-    if (!_canSave) return;
+    if (!_canSave || _isSaving) return;
+    _isSaving = true;
     try {
       final date = _workoutDate;
       final now = DateTime.now();
@@ -135,6 +137,8 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Could not save. Please try again.')));
       }
+    } finally {
+      _isSaving = false;
     }
   }
 
@@ -201,13 +205,13 @@ class _CardioLogScreenState extends State<CardioLogScreen> {
                   onPressed: () => Navigator.pop(ctx, true),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.error(ctx),
-                    foregroundColor: Colors.white,
+                    foregroundColor: AppColors.primaryBtnFg(ctx),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20)),
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  child: Text('Discard', style: KiStyles.bodySemibold(color: Colors.white)),
+                  child: Text('Discard', style: KiStyles.bodySemibold(color: AppColors.primaryBtnFg(ctx))),
                 ),
                 const SizedBox(height: 10),
                 TextButton(

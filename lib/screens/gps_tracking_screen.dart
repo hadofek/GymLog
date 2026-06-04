@@ -230,7 +230,7 @@ class _GpsTrackingScreenState extends State<GpsTrackingScreen> {
                         height: 14,
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.green,
+                            color: AppColors.liveGreen,
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 2),
                           ),

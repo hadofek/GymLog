@@ -544,6 +544,31 @@ class DBHelper {
     return result;
   }
 
+  /// Batch version of getLastSets — fetches last sets for multiple exercises
+  /// in a single query, returning a map of exerciseName → list of sets.
+  static Future<Map<String, List<Map<String, dynamic>>>> getLastSetsForExercises(
+      List<String> exerciseNames) async {
+    if (exerciseNames.isEmpty) return {};
+    final d = await db;
+    final placeholders = exerciseNames.map((_) => '?').join(', ');
+    final result = await d.rawQuery('''
+      SELECT s.* FROM sets s
+      INNER JOIN (
+        SELECT exercise_name, MAX(workout_id) as max_id
+        FROM sets
+        WHERE exercise_name IN ($placeholders)
+        GROUP BY exercise_name
+      ) latest ON s.workout_id = latest.max_id AND s.exercise_name = latest.exercise_name
+      ORDER BY s.exercise_name, s.set_number
+    ''', exerciseNames);
+    final map = <String, List<Map<String, dynamic>>>{};
+    for (final row in result) {
+      final name = row['exercise_name'] as String;
+      map.putIfAbsent(name, () => []).add(row);
+    }
+    return map;
+  }
+
   /// All-time personal records per exercise, sorted by session count descending.
   static Future<List<Map<String, dynamic>>> getAllExercisePRs() async {
     final d = await db;
@@ -730,7 +755,7 @@ class DBHelper {
   // ── Muscle group counts ────────────────────────────────────────────────────
 
   static Future<Map<String, int>> getMuscleGroupCounts(
-      {DateTime? since}) async {
+      {DateTime? since, DateTime? until}) async {
     final d = await db;
     final rows = await d.rawQuery('''
       SELECT e.muscle_group, w.date
@@ -744,10 +769,9 @@ class DBHelper {
     for (final row in rows) {
       final group = row['muscle_group'] as String;
       final dateStr = row['date'] as String;
-      if (since != null) {
-        final date = _parseWorkoutDate(dateStr);
-        if (date.isBefore(since)) continue;
-      }
+      final date = _parseWorkoutDate(dateStr);
+      if (since != null && date.isBefore(since)) continue;
+      if (until != null && !date.isBefore(until)) continue;
       counts[group] = (counts[group] ?? 0) + 1;
     }
     return counts;

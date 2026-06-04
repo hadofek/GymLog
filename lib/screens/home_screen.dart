@@ -34,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime _currentMonth = DateTime(DateTime.now().year, DateTime.now().month);
   int _weeklyGoal = 3;
   Map<String, int> _muscleCounts = {};
+  String? _cachedBodySvg;
   bool _showWelcomeBanner = false;
   Map<String, dynamic>? _draft;
   bool _loaded = false;
@@ -128,6 +129,11 @@ class _HomeScreenState extends State<HomeScreen> {
       _userImage = prefs.getString('user_image');
       _weeklyGoal = prefs.getInt('weekly_goal') ?? 3;
       _muscleCounts = normalized;
+      _cachedBodySvg = normalized.isEmpty ? null : buildBodySvg(
+        counts: normalized,
+        totalCount: normalized.values.fold(0, (a, b) => a + b),
+        isDark: AppColors.isDark(context),
+      );
       _showWelcomeBanner = !seenWelcome && w.isEmpty;
       _draft = draft;
       _loaded = true;
@@ -154,6 +160,11 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _workouts = w;
       _muscleCounts = normalized;
+      _cachedBodySvg = normalized.isEmpty ? null : buildBodySvg(
+        counts: normalized,
+        totalCount: normalized.values.fold(0, (a, b) => a + b),
+        isDark: AppColors.isDark(context),
+      );
       _draft = draft;
     });
   }
@@ -520,7 +531,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: CircleAvatar(
                           radius: 18,
                           backgroundColor: AppColors.surfaceContainerHigh(context),
-                          backgroundImage: _userImage != null
+                          backgroundImage: _userImage != null && File(_userImage!).existsSync()
                               ? FileImage(File(_userImage!))
                               : null,
                           child: _userImage == null
@@ -1144,11 +1155,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                       )
                                     : SvgPicture.string(
-                                        buildBodySvg(
-                                          counts: _muscleCounts,
-                                          totalCount: _muscleCounts.values.fold(0, (a, b) => a + b),
-                                          isDark: AppColors.isDark(context),
-                                        ),
+                                        _cachedBodySvg!,
                                         fit: BoxFit.contain,
                                       ),
                               ),
@@ -1266,7 +1273,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       backgroundColor: cardBg,
-      builder: (_) => SafeArea(
+      builder: (ctx) => SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
           child: Column(
@@ -1294,7 +1301,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 title: 'View workouts',
                 textColor: textPrimary,
                 onTap: () async {
-                  Navigator.pop(context);
+                  Navigator.pop(ctx);
                   await Navigator.push(
                       context,
                       fadeSlideRoute(MonthWorkoutsScreen(

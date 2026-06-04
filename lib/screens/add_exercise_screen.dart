@@ -1123,16 +1123,19 @@ class _AddExerciseScreenState extends State<AddExerciseScreen> {
                 // ── Log set button ──
                 SizedBox(
                   width: double.infinity,
-                  child: OutlinedButton(
+                  child: ElevatedButton(
                     onPressed: _saveSet,
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: borderColor),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: accentContainer,
+                      foregroundColor: AppColors.primaryBtnFg(context),
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
                     ),
                     child: Text('Log Set',
-                        style: KiStyles.bodySemibold(color: textPrimary)),
+                        style: KiStyles.bodySemibold(
+                            color: AppColors.primaryBtnFg(context))),
                   ),
                 ),
               ],
@@ -1423,7 +1426,7 @@ class _AddCustomExerciseSheetState extends State<_AddCustomExerciseSheet> {
 
   @override
   void dispose() {
-    _nameCtrl.dispose();
+    // _nameCtrl is managed by the sheet lifecycle — do not dispose here
     super.dispose();
   }
 

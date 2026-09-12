@@ -685,7 +685,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     ValueListenableBuilder<bool>(
                       valueListenable: _statCanScrollNotifier,
-                      builder: (_, canScroll, __) => canScroll
+                      builder: (_, canScroll, _) => canScroll
                           ? Positioned(
                               right: 6, top: 0, bottom: 0,
                               child: IgnorePointer(

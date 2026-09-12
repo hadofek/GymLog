@@ -235,7 +235,7 @@ class _TipCalloutLayerState extends State<_TipCalloutLayer>
               top: ptrTop,
               child: AnimatedBuilder(
                 animation: _opacity,
-                builder: (_, __) => Opacity(
+                builder: (_, _) => Opacity(
                   opacity: _opacity.value,
                   child: _TrianglePointer(
                     direction: direction,
@@ -253,7 +253,7 @@ class _TipCalloutLayerState extends State<_TipCalloutLayer>
             width: cardWidth,
             child: AnimatedBuilder(
               animation: _ctrl,
-              builder: (_, __) => Opacity(
+              builder: (_, _) => Opacity(
                 opacity: _opacity.value,
                 child: Transform.scale(
                   scale: _scale.value,

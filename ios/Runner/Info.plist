@@ -49,6 +49,12 @@
 		<string>To set your profile photo</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>To choose a profile photo</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>To save your workout share card to your photo library</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>To track your route during cardio sessions</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>To track your route during cardio sessions</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>

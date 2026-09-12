@@ -1081,7 +1081,7 @@ class _LogWorkoutScreenState extends State<LogWorkoutScreen> {
             Divider(height: 1, thickness: 0.5, color: AppColors.border(context)),
             ValueListenableBuilder<int>(
               valueListenable: _tickNotifier,
-              builder: (context, _, __) => Padding(
+              builder: (context, _, _) => Padding(
               padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -1739,7 +1739,7 @@ class _PulseDotState extends State<_PulseDot> with SingleTickerProviderStateMixi
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (_, __) => Container(
+      builder: (_, _) => Container(
         width: 8, height: 8,
         decoration: BoxDecoration(
           color: widget.color.withValues(alpha: 0.4 + (0.6 * _ctrl.value)),

@@ -133,7 +133,7 @@ class _TemplateEditScreenState extends State<TemplateEditScreen> {
                   controller: scrollCtrl,
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                   itemCount: filtered.length,
-                  separatorBuilder: (_, __) =>
+                  separatorBuilder: (_, _) =>
                       Divider(height: 1, color: border),
                   itemBuilder: (ctx, i) {
                     final name = filtered[i];
